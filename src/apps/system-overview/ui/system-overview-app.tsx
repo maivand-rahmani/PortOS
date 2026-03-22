@@ -9,8 +9,8 @@ const overviewIcons = [Layers3, ActivitySquare, Cpu];
 
 export function SystemOverviewApp({ processId, windowId }: AppComponentProps) {
   return (
-    <div className="flex h-full flex-col gap-4">
-      <section className="rounded-panel border border-border/70 bg-surface px-4 py-4 shadow-panel backdrop-blur-xl">
+    <div className="system-overview-app flex h-full flex-col gap-4">
+      <section className="system-overview-app__hero rounded-panel bg-surface px-4 py-4 shadow-panel backdrop-blur-xl">
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
           Runtime instance
         </p>
@@ -38,11 +38,11 @@ export function SystemOverviewApp({ processId, windowId }: AppComponentProps) {
             <article
               key={section.title}
               className={cn(
-                "rounded-panel border border-border/70 bg-window px-4 py-4 shadow-panel",
+                "system-overview-app__card rounded-panel bg-window px-4 py-4 shadow-panel",
                 "transition-transform duration-200 ease-out hover:-translate-y-0.5",
               )}
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/12 text-accent">
+              <span className="system-overview-app__badge flex h-11 w-11 items-center justify-center rounded-2xl text-accent">
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
               <h3 className="mt-4 text-base font-semibold text-foreground">

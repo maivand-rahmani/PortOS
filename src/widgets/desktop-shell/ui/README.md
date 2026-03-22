@@ -14,6 +14,7 @@ Visual building blocks for the macOS-style desktop shell.
 - `mac-dock/`: dock container and open/minimized app indicators.
 - `dock-app-button/`: dock button for installed apps.
 - `dock-minimized-button/`: dock restore button for minimized windows.
+- `dock-menu/`: dock context menu for app and window commands.
 - `boot-overlay/`: startup overlay shown before the desktop is ready.
 
 Each UI folder should stay small and focused on one visible shell responsibility.

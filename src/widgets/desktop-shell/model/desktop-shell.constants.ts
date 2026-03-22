@@ -17,6 +17,12 @@ export const DESKTOP_ICON_SPACING = {
   y: 108,
 } as const;
 
+export const DOCK_MENU = {
+  width: 260,
+  safeMargin: 18,
+  verticalOffset: 18,
+} as const;
+
 export const WINDOW_SURFACE_TRANSITION = {
   type: "spring",
   stiffness: 320,

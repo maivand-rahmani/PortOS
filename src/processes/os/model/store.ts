@@ -22,9 +22,11 @@ import {
 } from "./process-manager";
 import {
   beginWindowDragModel,
+  beginWindowResizeModel,
   closeWindowModel,
   createWindowManagerModel,
   endWindowDragModel,
+  endWindowResizeModel,
   focusWindowModel,
   minimizeWindowModel,
   openWindowModel,
@@ -32,6 +34,8 @@ import {
   restoreWindowModel,
   toggleWindowMaximizeModel,
   updateDraggedWindowModel,
+  updateResizedWindowModel,
+  type WindowResizeDirection,
   type WindowManagerState,
 } from "./window-manager";
 
@@ -65,6 +69,13 @@ export type OSStore = AppRegistryState &
     beginWindowDrag: (windowId: string, pointer: WindowPosition) => void;
     updateWindowDrag: (pointer: WindowPosition, bounds: DesktopBounds) => void;
     endWindowDrag: () => void;
+    beginWindowResize: (
+      windowId: string,
+      direction: WindowResizeDirection,
+      pointer: WindowPosition,
+    ) => void;
+    updateWindowResize: (pointer: WindowPosition, bounds: DesktopBounds) => void;
+    endWindowResize: () => void;
     resizeWindowsToBounds: (bounds: DesktopBounds) => void;
     terminateProcess: (processId: string) => void;
   };
@@ -141,6 +152,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: currentState.activeWindowId,
         nextZIndex: currentState.nextZIndex,
         dragState: currentState.dragState,
+        resizeState: currentState.resizeState,
       },
       {
         app,
@@ -193,18 +205,20 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     const nextWindowState = focusWindowModel(
       {
         windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-      },
-      windowId,
-    );
+      activeWindowId: state.activeWindowId,
+      nextZIndex: state.nextZIndex,
+      dragState: state.dragState,
+      resizeState: state.resizeState,
+    },
+    windowId,
+  );
 
     set({
       windows: nextWindowState.windows,
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   minimizeWindow: (windowId) => {
@@ -215,6 +229,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       windowId,
     );
@@ -224,6 +239,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   restoreWindow: (windowId) => {
@@ -234,6 +250,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       windowId,
     );
@@ -243,6 +260,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   toggleWindowMaximize: (windowId, bounds) => {
@@ -253,6 +271,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       {
         windowId,
@@ -265,6 +284,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   beginWindowDrag: (windowId, pointer) => {
@@ -275,6 +295,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       {
         windowId,
@@ -287,6 +308,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   updateWindowDrag: (pointer, bounds) => {
@@ -297,6 +319,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       {
         pointer,
@@ -307,6 +330,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({
       windows: nextWindowState.windows,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   endWindowDrag: () => {
@@ -316,10 +340,74 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: state.activeWindowId,
       nextZIndex: state.nextZIndex,
       dragState: state.dragState,
+      resizeState: state.resizeState,
     });
 
     set({
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
+    });
+  },
+  beginWindowResize: (windowId, direction, pointer) => {
+    const state = get();
+    const nextWindowState = beginWindowResizeModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+        resizeState: state.resizeState,
+      },
+      {
+        windowId,
+        direction,
+        pointer,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
+    });
+  },
+  updateWindowResize: (pointer, bounds) => {
+    const state = get();
+    const nextWindowState = updateResizedWindowModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+        resizeState: state.resizeState,
+      },
+      {
+        pointer,
+        bounds,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
+    });
+  },
+  endWindowResize: () => {
+    const state = get();
+    const nextWindowState = endWindowResizeModel({
+      windows: state.windows,
+      activeWindowId: state.activeWindowId,
+      nextZIndex: state.nextZIndex,
+      dragState: state.dragState,
+      resizeState: state.resizeState,
+    });
+
+    set({
+      dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   resizeWindowsToBounds: (bounds) => {
@@ -330,6 +418,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       bounds,
     );
@@ -337,6 +426,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({
       windows: nextWindowState.windows,
       dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
     });
   },
   closeWindow: (windowId) => {
@@ -353,6 +443,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       windowId,
     );
@@ -368,6 +459,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
       dragState: nextWindowState.state.dragState,
+      resizeState: nextWindowState.state.resizeState,
       processes: nextProcessState.processes,
     });
   },
@@ -400,6 +492,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
+        resizeState: state.resizeState,
       },
       targetProcess.windowId,
     );
@@ -410,6 +503,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
       dragState: nextWindowState.state.dragState,
+      resizeState: nextWindowState.state.resizeState,
     });
   },
 }));

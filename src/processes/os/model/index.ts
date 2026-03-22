@@ -1,8 +1,10 @@
 export {
   beginWindowDragModel,
+  beginWindowResizeModel,
   closeWindowModel,
   createWindowManagerModel,
   endWindowDragModel,
+  endWindowResizeModel,
   focusWindowModel,
   minimizeWindowModel,
   openWindowModel,
@@ -10,6 +12,7 @@ export {
   restoreWindowModel,
   toggleWindowMaximizeModel,
   updateDraggedWindowModel,
+  updateResizedWindowModel,
   windowManagerInitialState,
 } from "./window-manager";
 export {
@@ -29,4 +32,9 @@ export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { OSBootPhase, OSStore, OSRuntimeSnapshot } from "./store";
-export type { WindowDragState, WindowManagerState } from "./window-manager";
+export type {
+  WindowDragState,
+  WindowManagerState,
+  WindowResizeDirection,
+  WindowResizeState,
+} from "./window-manager";

@@ -1,23 +1,26 @@
 import type { AppConfig } from "@/entities/app";
-import type {
-  DesktopBounds,
-  WindowFrame,
-  WindowInstance,
-  WindowPosition,
-  WindowSize,
-} from "@/entities/window";
+import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
-export type WindowDragState = {
-  windowId: string;
-  offset: WindowPosition;
-};
-
-export type WindowManagerState = {
-  windows: WindowInstance[];
-  activeWindowId: string | null;
-  nextZIndex: number;
-  dragState: WindowDragState | null;
-};
+import {
+  clampWindowPosition,
+  getTopVisibleWindowId,
+  getWindowFrameFromBounds,
+  replaceWindow,
+  resolveWindowSize,
+} from "./window-manager.helpers";
+import {
+  beginWindowResizeModel as beginWindowResizeStateModel,
+  endWindowResizeModel,
+  updateResizedWindowModel,
+} from "./window-manager.resize";
+import {
+  createWindowManagerModel,
+  type WindowDragState,
+  type WindowManagerState,
+  type WindowResizeDirection,
+  type WindowResizeState,
+  windowManagerInitialState,
+} from "./window-manager.types";
 
 type OpenWindowInput = {
   app: Pick<AppConfig, "id" | "name" | "window">;
@@ -41,6 +44,12 @@ type MaximizeWindowInput = {
   bounds: DesktopBounds;
 };
 
+type WindowResizeInput = {
+  pointer: WindowPosition;
+  windowId: string;
+  direction: WindowResizeDirection;
+};
+
 const WINDOW_ORIGIN: WindowPosition = {
   x: 96,
   y: 72,
@@ -51,80 +60,13 @@ const WINDOW_OFFSET: WindowPosition = {
   y: 28,
 };
 
-export const windowManagerInitialState: WindowManagerState = {
-  windows: [],
-  activeWindowId: null,
-  nextZIndex: 100,
-  dragState: null,
+export { createWindowManagerModel, windowManagerInitialState };
+export type {
+  WindowDragState,
+  WindowManagerState,
+  WindowResizeDirection,
+  WindowResizeState,
 };
-
-export function createWindowManagerModel(
-  overrides: Partial<WindowManagerState> = {},
-): WindowManagerState {
-  return {
-    ...windowManagerInitialState,
-    ...overrides,
-  };
-}
-
-function getTopVisibleWindowId(windows: WindowInstance[]) {
-  return [...windows]
-    .filter((window) => !window.isMinimized)
-    .sort((left, right) => right.zIndex - left.zIndex)[0]?.id ?? null;
-}
-
-function getWindowFrameFromBounds(bounds: DesktopBounds): WindowFrame {
-  return {
-    position: {
-      x: bounds.insetLeft,
-      y: bounds.insetTop,
-    },
-    size: {
-      width: Math.max(320, bounds.width - bounds.insetLeft - bounds.insetRight),
-      height: Math.max(240, bounds.height - bounds.insetTop - bounds.insetBottom),
-    },
-  };
-}
-
-function resolveWindowSize(
-  size: WindowSize,
-  minSize: WindowSize,
-  bounds?: DesktopBounds,
-): WindowSize {
-  if (!bounds) {
-    return size;
-  }
-
-  const availableWidth = Math.max(320, bounds.width - bounds.insetLeft - bounds.insetRight);
-  const availableHeight = Math.max(240, bounds.height - bounds.insetTop - bounds.insetBottom);
-
-  return {
-    width: Math.min(Math.max(size.width, minSize.width), availableWidth),
-    height: Math.min(Math.max(size.height, minSize.height), availableHeight),
-  };
-}
-
-function clampWindowPosition(
-  position: WindowPosition,
-  size: WindowSize,
-  bounds: DesktopBounds,
-): WindowPosition {
-  const maxX = Math.max(bounds.insetLeft, bounds.width - bounds.insetRight - size.width);
-  const maxY = Math.max(bounds.insetTop, bounds.height - bounds.insetBottom - size.height);
-
-  return {
-    x: Math.min(Math.max(position.x, bounds.insetLeft), maxX),
-    y: Math.min(Math.max(position.y, bounds.insetTop), maxY),
-  };
-}
-
-function replaceWindow(
-  windows: WindowInstance[],
-  windowId: string,
-  updater: (window: WindowInstance) => WindowInstance,
-) {
-  return windows.map((window) => (window.id === windowId ? updater(window) : window));
-}
 
 export function openWindowModel(
   state: WindowManagerState,
@@ -178,6 +120,7 @@ export function openWindowModel(
       activeWindowId: window.id,
       nextZIndex: state.nextZIndex + 1,
       dragState: null,
+      resizeState: null,
     },
     window,
   };
@@ -199,6 +142,7 @@ export function focusWindowModel(
     activeWindowId: windowId,
     nextZIndex: state.nextZIndex + 1,
     dragState: state.dragState,
+    resizeState: state.resizeState,
   };
 }
 
@@ -213,6 +157,7 @@ export function beginWindowDragModel(
     return {
       ...focusedState,
       dragState: null,
+      resizeState: null,
     };
   }
 
@@ -225,6 +170,7 @@ export function beginWindowDragModel(
         y: input.pointer.y - targetWindow.position.y,
       },
     },
+    resizeState: null,
   };
 }
 
@@ -288,6 +234,7 @@ export function minimizeWindowModel(
     activeWindowId: getTopVisibleWindowId(nextWindows),
     nextZIndex: state.nextZIndex,
     dragState: state.dragState?.windowId === windowId ? null : state.dragState,
+    resizeState: state.resizeState?.windowId === windowId ? null : state.resizeState,
   };
 }
 
@@ -308,6 +255,7 @@ export function restoreWindowModel(
     activeWindowId: windowId,
     nextZIndex: state.nextZIndex + 1,
     dragState: null,
+    resizeState: null,
   };
 }
 
@@ -350,7 +298,17 @@ export function toggleWindowMaximizeModel(
     activeWindowId: input.windowId,
     nextZIndex: focusedState.nextZIndex,
     dragState: null,
+    resizeState: null,
   };
+}
+
+export function beginWindowResizeModel(
+  state: WindowManagerState,
+  input: WindowResizeInput,
+): WindowManagerState {
+  const focusedState = focusWindowModel(state, input.windowId);
+
+  return beginWindowResizeStateModel(focusedState, input);
 }
 
 export function resizeWindowsToBoundsModel(
@@ -378,6 +336,8 @@ export function resizeWindowsToBoundsModel(
         position: clampWindowPosition(window.position, size, bounds),
       };
     }),
+    dragState: state.dragState,
+    resizeState: state.resizeState,
   };
 }
 
@@ -399,6 +359,9 @@ export function closeWindowModel(
         ) + 1,
       ),
       dragState: state.dragState?.windowId === windowId ? null : state.dragState,
+      resizeState: state.resizeState?.windowId === windowId ? null : state.resizeState,
     },
   };
 }
+
+export { endWindowResizeModel, updateResizedWindowModel };

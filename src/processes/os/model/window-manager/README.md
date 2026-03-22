@@ -4,6 +4,9 @@ Typed OS window manager model.
 
 ## Files
 
-- `index.ts`: state shape and helpers for opening, focusing, dragging, minimizing, maximizing, resizing, restoring, and closing windows.
+- `index.ts`: public window manager API composed from focused helpers.
+- `window-manager.types.ts`: runtime drag and resize state types.
+- `window-manager.helpers.ts`: frame, clamping, and replacement helpers.
+- `window-manager.resize.ts`: edge and corner resize helpers.
 
 This module is the single source of truth for runtime window instances.

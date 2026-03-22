@@ -2,6 +2,7 @@ import { ChevronDown, Maximize2, Minus, X } from "lucide-react";
 import { motion } from "framer-motion";
 
 import type { WindowInstance, WindowPosition } from "@/entities/window";
+import type { WindowResizeDirection } from "@/processes";
 import { cn } from "@/shared/lib";
 
 import { WINDOW_SURFACE_TRANSITION } from "../../model/desktop-shell.constants";
@@ -11,34 +12,48 @@ type WindowSurfaceProps = {
   window: WindowInstance;
   isActive: boolean;
   isDragging: boolean;
+  isResizing: boolean;
   children: React.ReactNode;
   onFocus: () => void;
   onClose: () => void;
   onMinimize: () => void;
   onToggleMaximize: () => void;
   onDragStart: (pointer: WindowPosition) => void;
+  onResizeStart: (direction: WindowResizeDirection, pointer: WindowPosition) => void;
 };
+
+const WINDOW_RESIZE_HANDLES: Array<{
+  direction: WindowResizeDirection;
+  className: string;
+}> = [
+  { direction: "n", className: "absolute inset-x-4 top-0 h-2 cursor-ns-resize" },
+  { direction: "s", className: "absolute inset-x-4 bottom-0 h-2 cursor-ns-resize" },
+  { direction: "e", className: "absolute inset-y-4 right-0 w-2 cursor-ew-resize" },
+  { direction: "w", className: "absolute inset-y-4 left-0 w-2 cursor-ew-resize" },
+  { direction: "ne", className: "absolute right-0 top-0 h-4 w-4 cursor-nesw-resize" },
+  { direction: "nw", className: "absolute left-0 top-0 h-4 w-4 cursor-nwse-resize" },
+  { direction: "se", className: "absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize" },
+  { direction: "sw", className: "absolute bottom-0 left-0 h-4 w-4 cursor-nesw-resize" },
+];
 
 export function WindowSurface({
   window,
   isActive,
   isDragging,
+  isResizing,
   children,
   onFocus,
   onClose,
   onMinimize,
   onToggleMaximize,
   onDragStart,
+  onResizeStart,
 }: WindowSurfaceProps) {
   return (
     <motion.article
       layout={!window.isMaximized && !isDragging}
       initial={{ opacity: 0, scale: 0.98, y: 18 }}
-      animate={{
-        opacity: 1,
-        scale: isDragging ? 1.01 : 1,
-        y: 0,
-      }}
+      animate={{ opacity: 1, scale: isDragging || isResizing ? 1.01 : 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: 22 }}
       transition={WINDOW_SURFACE_TRANSITION}
       className={cn(
@@ -57,10 +72,32 @@ export function WindowSurface({
         event.stopPropagation();
       }}
     >
+      {!window.isMaximized
+        ? WINDOW_RESIZE_HANDLES.map((handle) => (
+            <div
+              key={handle.direction}
+              aria-hidden="true"
+              data-resize-direction={handle.direction}
+              className={cn("absolute z-20 touch-none bg-transparent", handle.className)}
+              onPointerDown={(event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+
+                event.stopPropagation();
+                onResizeStart(handle.direction, {
+                  x: event.clientX,
+                  y: event.clientY,
+                });
+              }}
+            />
+          ))
+        : null}
+
       <header
         className={cn(
           "flex h-14 touch-none select-none cursor-grab items-center justify-between border-b border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(244,246,251,0.74))] px-4 active:cursor-grabbing",
-          isDragging && "cursor-grabbing",
+          (isDragging || isResizing) && "cursor-grabbing",
         )}
         onDoubleClick={(event) => {
           event.stopPropagation();
@@ -77,22 +114,22 @@ export function WindowSurface({
           });
         }}
       >
-        <div className="flex items-center gap-2">
+        <div className="group flex items-center gap-2">
           <WindowTrafficButton
             tone="red"
-            icon={<X className="h-2.5 w-2.5" aria-hidden="true" />}
+            icon={<X className="h-2.5 w-2.5 hidden group-hover:block" aria-hidden="true" />}
             label={`Close ${window.title}`}
             onClick={onClose}
           />
           <WindowTrafficButton
             tone="yellow"
-            icon={<Minus className="h-2.5 w-2.5" aria-hidden="true" />}
+            icon={<Minus className="h-2.5 w-2.5 hidden group-hover:block" aria-hidden="true" />}
             label={`Minimize ${window.title}`}
             onClick={onMinimize}
           />
           <WindowTrafficButton
             tone="green"
-            icon={<Maximize2 className="h-2.5 w-2.5" aria-hidden="true" />}
+            icon={<Maximize2 className="h-2.5 w-2.5 hidden group-hover:block" aria-hidden="true" />}
             label={`Toggle maximize ${window.title}`}
             onClick={onToggleMaximize}
           />

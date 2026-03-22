@@ -8,6 +8,7 @@ import { DesktopIcons } from "../desktop-icons";
 import { DesktopWallpaper } from "../desktop-wallpaper";
 import { MacDock } from "../mac-dock";
 import { MacMenuBar } from "../mac-menu-bar";
+import { DockMenu } from "../dock-menu";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
@@ -20,18 +21,23 @@ export function DesktopShell() {
     selectedDesktopAppId,
     desktopIconPositions,
     dockApps,
+    dockMenu,
     minimizedWindows,
     visibleWindows,
     clearDesktopSelection,
+    closeDockMenu,
     selectDesktopApp,
     openDesktopApp,
     beginDesktopIconDrag,
+    openDockMenu,
+    runDockMenuAction,
     focusWindow,
     closeWindow,
     minimizeWindow,
     restoreWindow,
     toggleWindowMaximize,
     beginWindowDrag,
+    beginWindowResize,
   } = useDesktopShell();
 
   return (
@@ -45,6 +51,7 @@ export function DesktopShell() {
           return;
         }
 
+        closeDockMenu();
         clearDesktopSelection();
       }}
     >
@@ -65,17 +72,22 @@ export function DesktopShell() {
 
         <div className="absolute inset-0 pointer-events-none">
           <AnimatePresence>
-            {visibleWindows.map(({ window, app, AppComponent, isActive, isDragging }) => (
+            {visibleWindows.map(
+              ({ window, app, AppComponent, isActive, isDragging, isResizing }) => (
               <WindowSurface
                 key={window.id}
                 window={window}
                 isActive={isActive}
                 isDragging={isDragging}
+                isResizing={isResizing}
                 onFocus={() => focusWindow(window.id)}
                 onClose={() => closeWindow(window.id)}
                 onMinimize={() => minimizeWindow(window.id)}
                 onToggleMaximize={() => toggleWindowMaximize(window.id)}
                 onDragStart={(pointer) => beginWindowDrag(window.id, pointer)}
+                onResizeStart={(direction, pointer) =>
+                  beginWindowResize(window.id, direction, pointer)
+                }
               >
                 {AppComponent ? (
                   <AppComponent processId={window.processId} windowId={window.id} />
@@ -85,7 +97,12 @@ export function DesktopShell() {
                   </div>
                 )}
               </WindowSurface>
-            ))}
+              ),
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {dockMenu ? <DockMenu menu={dockMenu} onAction={runDockMenuAction} /> : null}
           </AnimatePresence>
         </div>
       </main>
@@ -95,6 +112,7 @@ export function DesktopShell() {
         minimizedWindows={minimizedWindows}
         apps={apps}
         onActivateApp={openDesktopApp}
+        onOpenMenu={openDockMenu}
         onRestoreWindow={restoreWindow}
       />
 

@@ -6,15 +6,18 @@ import { useReducedMotion } from "framer-motion";
 import { useOSStore } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 
-import { BOOT_SEQUENCE, DESKTOP_INSETS } from "./desktop-shell.constants";
+import { BOOT_SEQUENCE, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
 import {
   clampDesktopIconPosition,
   getDockAppStates,
+  getDockMenuEntries,
   syncDesktopIconPositions,
 } from "./desktop-shell.layout";
 import type {
   DesktopIconDragState,
   DesktopIconMap,
+  DockMenuAction,
+  DockMenuModel,
   WindowRenderItem,
   UseDesktopShellResult,
 } from "./desktop-shell.types";
@@ -26,6 +29,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const [customDesktopIconPositions, setDesktopIconPositions] = useState<DesktopIconMap>({});
   const [desktopIconDragState, setDesktopIconDragState] =
     useState<DesktopIconDragState>(null);
+  const [dockMenu, setDockMenu] = useState<DockMenuModel | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
   const apps = useOSStore((state) => state.apps);
@@ -35,6 +39,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const loadedApps = useOSStore((state) => state.loadedApps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
   const dragWindowId = useOSStore((state) => state.dragState?.windowId ?? null);
+  const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
   const bootPhase = useOSStore((state) => state.bootPhase);
   const bootProgress = useOSStore((state) => state.bootProgress);
 
@@ -45,10 +50,15 @@ export function useDesktopShell(): UseDesktopShellResult {
   const closeWindow = useOSStore((state) => state.closeWindow);
   const minimizeWindow = useOSStore((state) => state.minimizeWindow);
   const restoreWindow = useOSStore((state) => state.restoreWindow);
+  const launchApp = useOSStore((state) => state.launchApp);
+  const terminateProcess = useOSStore((state) => state.terminateProcess);
   const toggleWindowMaximize = useOSStore((state) => state.toggleWindowMaximize);
   const beginWindowDrag = useOSStore((state) => state.beginWindowDrag);
   const updateWindowDrag = useOSStore((state) => state.updateWindowDrag);
   const endWindowDrag = useOSStore((state) => state.endWindowDrag);
+  const beginWindowResize = useOSStore((state) => state.beginWindowResize);
+  const updateWindowResize = useOSStore((state) => state.updateWindowResize);
+  const endWindowResize = useOSStore((state) => state.endWindowResize);
   const resizeWindowsToBounds = useOSStore((state) => state.resizeWindowsToBounds);
 
   const visibleWindows = useMemo<WindowRenderItem[]>(
@@ -62,12 +72,16 @@ export function useDesktopShell(): UseDesktopShellResult {
           AppComponent: loadedApps[window.appId] ?? null,
           isActive: window.id === activeWindowId,
           isDragging: dragWindowId === window.id,
+          isResizing: resizeWindowId === window.id,
         }))
         .filter((entry) => Boolean(entry.app)),
-    [activeWindowId, appMap, dragWindowId, loadedApps, windows],
+    [activeWindowId, appMap, dragWindowId, loadedApps, resizeWindowId, windows],
   );
 
-  const dockApps = useMemo(() => getDockAppStates(apps, windows), [apps, windows]);
+  const dockApps = useMemo(
+    () => getDockAppStates(apps, windows, activeWindowId),
+    [activeWindowId, apps, windows],
+  );
 
   const desktopIconPositions = useMemo(
     () => syncDesktopIconPositions(apps, desktopBounds, customDesktopIconPositions),
@@ -193,14 +207,13 @@ export function useDesktopShell(): UseDesktopShellResult {
         }));
       }
 
-      updateWindowDrag(
-        nextPointer,
-        desktopBounds,
-      );
+      updateWindowDrag(nextPointer, desktopBounds);
+      updateWindowResize(nextPointer, desktopBounds);
     };
 
     const handlePointerUp = () => {
       endWindowDrag();
+      endWindowResize();
       setDesktopIconDragState(null);
     };
 
@@ -211,10 +224,21 @@ export function useDesktopShell(): UseDesktopShellResult {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [desktopBounds, desktopIconDragState, endWindowDrag, updateWindowDrag]);
+  }, [
+    desktopBounds,
+    desktopIconDragState,
+    endWindowDrag,
+    endWindowResize,
+    updateWindowDrag,
+    updateWindowResize,
+  ]);
 
   const clearDesktopSelection = () => {
     setSelectedDesktopAppId(null);
+  };
+
+  const closeDockMenu = () => {
+    setDockMenu(null);
   };
 
   const selectDesktopApp = (appId: string | null) => {
@@ -226,8 +250,19 @@ export function useDesktopShell(): UseDesktopShellResult {
       return;
     }
 
+    setDockMenu(null);
     setSelectedDesktopAppId(appId);
     void activateApp(appId, desktopBounds);
+  };
+
+  const launchDesktopApp = (appId: string) => {
+    if (!desktopBounds) {
+      return;
+    }
+
+    setDockMenu(null);
+    setSelectedDesktopAppId(appId);
+    void launchApp(appId, desktopBounds);
   };
 
   const beginDesktopIconDrag = (appId: string, pointer: WindowPosition) => {
@@ -253,7 +288,17 @@ export function useDesktopShell(): UseDesktopShellResult {
   };
 
   const beginDesktopWindowDrag = (windowId: string, pointer: WindowPosition) => {
+    setDockMenu(null);
     beginWindowDrag(windowId, getContainerPointer(pointer));
+  };
+
+  const beginDesktopWindowResize = (
+    windowId: string,
+    direction: Parameters<UseDesktopShellResult["beginWindowResize"]>[1],
+    pointer: WindowPosition,
+  ) => {
+    setDockMenu(null);
+    beginWindowResize(windowId, direction, getContainerPointer(pointer));
   };
 
   const toggleDesktopWindowMaximize = (windowId: string) => {
@@ -262,6 +307,81 @@ export function useDesktopShell(): UseDesktopShellResult {
     }
 
     toggleWindowMaximize(windowId, desktopBounds);
+  };
+
+  const openDockMenu = (appId: string, anchor: WindowPosition) => {
+    const item = dockApps.find((entry) => entry.app.id === appId);
+
+    if (!item || !desktopBounds) {
+      return;
+    }
+
+    const localAnchor = getContainerPointer({
+      x: anchor.x,
+      y: window.innerHeight - anchor.y,
+    });
+    const clampedX = Math.min(
+      Math.max(localAnchor.x - DOCK_MENU.width / 2, DOCK_MENU.safeMargin),
+      desktopBounds.width - DOCK_MENU.width - DOCK_MENU.safeMargin,
+    );
+
+    setDockMenu({
+      item,
+      entries: getDockMenuEntries(item),
+      position: {
+        x: clampedX,
+        y: Math.max(
+          DOCK_MENU.safeMargin,
+          desktopBounds.height - localAnchor.y + DOCK_MENU.verticalOffset,
+        ),
+      },
+    });
+  };
+
+  const runDockMenuAction = (action: DockMenuAction) => {
+    setDockMenu(null);
+
+    switch (action.id) {
+      case "open-app": {
+        openDesktopApp(action.appId);
+        return;
+      }
+      case "new-window": {
+        launchDesktopApp(action.appId);
+        return;
+      }
+      case "restore-all-windows": {
+        dockApps
+          .find((item) => item.app.id === action.appId)
+          ?.minimizedWindows.forEach((window) => {
+            restoreWindow(window.id);
+          });
+        return;
+      }
+      case "focus-window": {
+        focusWindow(action.windowId);
+        return;
+      }
+      case "restore-window": {
+        restoreWindow(action.windowId);
+        return;
+      }
+      case "minimize-window": {
+        minimizeWindow(action.windowId);
+        return;
+      }
+      case "quit-app": {
+        dockApps
+          .find((item) => item.app.id === action.appId)
+          ?.windows.forEach((window) => {
+            const runtimeWindow = windows.find((entry) => entry.id === window.id);
+
+            if (runtimeWindow) {
+              terminateProcess(runtimeWindow.processId);
+            }
+          });
+      }
+    }
   };
 
   return {
@@ -274,17 +394,22 @@ export function useDesktopShell(): UseDesktopShellResult {
     selectedDesktopAppId,
     desktopIconPositions,
     dockApps,
+    dockMenu,
     minimizedWindows,
     visibleWindows,
     clearDesktopSelection,
+    closeDockMenu,
     selectDesktopApp,
     openDesktopApp,
     beginDesktopIconDrag,
+    openDockMenu,
+    runDockMenuAction,
     focusWindow,
     closeWindow,
     minimizeWindow,
     restoreWindow,
     toggleWindowMaximize: toggleDesktopWindowMaximize,
     beginWindowDrag: beginDesktopWindowDrag,
+    beginWindowResize: beginDesktopWindowResize,
   };
 }

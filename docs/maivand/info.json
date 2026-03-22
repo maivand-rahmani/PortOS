@@ -1,0 +1,36 @@
+{
+  "name": "Maivand Rahmani",
+  "title": "Frontend engineer and product-focused builder",
+  "location": "Remote",
+  "summary": "I design and build ambitious interactive products with a focus on frontend systems, visual polish, and AI-powered workflows.",
+  "contact": {
+    "email": "maivandking777@icloud.com",
+    "github": "https://github.com/maivandrahmani"
+  },
+  "skills": [
+    "Next.js",
+    "TypeScript",
+    "React",
+    "Tailwind CSS",
+    "UI architecture",
+    "AI product integration"
+  ],
+  "projects": [
+    {
+      "name": "PortOS",
+      "type": "Interactive portfolio operating system",
+      "summary": "A desktop-like browser OS that presents portfolio work as a living interface instead of a conventional website.",
+      "stack": ["Next.js", "TypeScript", "Zustand", "Framer Motion"]
+    }
+  ],
+  "writing": [
+    {
+      "title": "Building interfaces that feel like products",
+      "slug": "interfaces-that-feel-like-products"
+    },
+    {
+      "title": "Why portfolios should be interactive systems",
+      "slug": "interactive-system-portfolios"
+    }
+  ]
+}

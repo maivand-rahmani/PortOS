@@ -1,5 +1,5 @@
 import type { AppConfig } from "@/entities/app";
-import type { WindowInstance } from "@/entities/window";
+import type { WindowInstance, WindowPosition } from "@/entities/window";
 
 import type { DockAppState } from "../../model/desktop-shell.types";
 import { DockAppButton } from "../dock-app-button";
@@ -10,6 +10,7 @@ type MacDockProps = {
   minimizedWindows: WindowInstance[];
   apps: AppConfig[];
   onActivateApp: (appId: string) => void;
+  onOpenMenu: (appId: string, anchor: WindowPosition) => void;
   onRestoreWindow: (windowId: string) => void;
 };
 
@@ -18,6 +19,7 @@ export function MacDock({
   minimizedWindows,
   apps,
   onActivateApp,
+  onOpenMenu,
   onRestoreWindow,
 }: MacDockProps) {
   const appMap = new Map(apps.map((app) => [app.id, app]));
@@ -30,6 +32,7 @@ export function MacDock({
             key={item.app.id}
             item={item}
             onActivate={() => onActivateApp(item.app.id)}
+            onOpenMenu={(anchor) => onOpenMenu(item.app.id, anchor)}
           />
         ))}
 

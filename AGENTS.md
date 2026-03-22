@@ -34,6 +34,7 @@ This is a **system-driven frontend architecture** where:
 3. State is centralized and predictable
 4. UI reflects system state, not the other way around
 5. Code must remain scalable and maintainable
+6. No mock interactions in shipped UI
 
 ---
 
@@ -140,6 +141,12 @@ Apps MUST NOT:
 * know about system internals
 
 Apps SHOULD follow the same modular structure as widgets whenever they grow beyond a single small component.
+
+Apps MUST provide real behavior for every visible control. Do not add buttons, menu items, toggles, command rows, or panels that do nothing.
+
+If a feature cannot be implemented with real logic yet, do not add the UI for it.
+
+Prototype-only placeholder apps are not allowed in the main app registry.
 
 ---
 
@@ -256,6 +263,21 @@ bg-[var(--color-bg)]
 ```
 
 Always map variables into Tailwind config.
+
+---
+
+## ✅ Real Logic Requirement
+
+Every application, component, and control added to the desktop must satisfy these rules:
+
+* every button must trigger real logic
+* every app in `src/apps/` must own a real use case
+* avoid placeholder dashboards that only display fake numbers unless the numbers are derived from real project/runtime state
+* avoid placeholder forms unless submission and validation logic are implemented
+* avoid fake terminals, fake assistants, fake process tools, and fake calculators
+* app visuals may be expressive, but behavior must stay functional and testable
+
+When building apps for this project, prefer fewer fully working apps over many decorative ones.
 
 ---
 

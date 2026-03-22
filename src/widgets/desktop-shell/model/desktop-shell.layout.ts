@@ -2,7 +2,8 @@ import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
 import { DESKTOP_ICON_FRAME, DESKTOP_ICON_SPACING, DESKTOP_INSETS } from "./desktop-shell.constants";
-import type { DesktopIconMap, DockAppState } from "./desktop-shell.types";
+import type { DockMenuEntry } from "./desktop-shell.types";
+import type { DesktopIconMap, DockAppState, DockWindowItem } from "./desktop-shell.types";
 
 function getDesktopIconRows(bounds: DesktopBounds | null) {
   if (!bounds) {
@@ -71,15 +72,104 @@ export function syncDesktopIconPositions(
 export function getDockAppStates(
   apps: AppConfig[],
   windows: WindowInstance[],
+  activeWindowId: string | null,
 ): DockAppState[] {
   return apps.map((app) => {
-    const appWindows = windows.filter((window) => window.appId === app.id);
+    const appWindows: DockWindowItem[] = windows
+      .filter((window) => window.appId === app.id)
+      .sort((left, right) => right.zIndex - left.zIndex)
+      .map((window) => ({
+        id: window.id,
+        title: window.title,
+        isMinimized: window.isMinimized,
+        isActive: window.id === activeWindowId,
+        zIndex: window.zIndex,
+      }));
+    const visibleWindows = appWindows.filter((window) => !window.isMinimized);
+    const minimizedWindows = appWindows.filter((window) => window.isMinimized);
+    const activeWindow = appWindows.find((window) => window.isActive) ?? null;
 
     return {
       app,
+      windows: appWindows,
+      visibleWindows,
+      minimizedWindows,
       openCount: appWindows.length,
-      visibleCount: appWindows.filter((window) => !window.isMinimized).length,
-      minimizedCount: appWindows.filter((window) => window.isMinimized).length,
+      visibleCount: visibleWindows.length,
+      minimizedCount: minimizedWindows.length,
+      isRunning: appWindows.length > 0,
+      isFrontmost: activeWindow?.id != null,
+      activeWindowId: activeWindow?.id ?? null,
     };
   });
+}
+
+export function getDockMenuEntries(item: DockAppState): DockMenuEntry[] {
+  const entries: DockMenuEntry[] = [];
+
+  entries.push({
+    kind: "action",
+    action: {
+      id: item.isRunning ? "new-window" : "open-app",
+      appId: item.app.id,
+      label: item.isRunning ? `New ${item.app.name} Window` : `Open ${item.app.name}`,
+    },
+  });
+
+  if (item.minimizedWindows.length > 0) {
+    entries.push({
+      kind: "action",
+      action: {
+        id: "restore-all-windows",
+        appId: item.app.id,
+        label: `Restore ${item.minimizedWindows.length} Minimized`,
+      },
+    });
+  }
+
+  if (item.windows.length > 0) {
+    entries.push({
+      kind: "separator",
+      key: `${item.app.id}-windows`,
+    });
+
+    item.windows.forEach((window) => {
+      entries.push({
+        kind: "action",
+        action: {
+          id: window.isMinimized ? "restore-window" : "focus-window",
+          appId: item.app.id,
+          windowId: window.id,
+          label: window.isMinimized ? `Restore ${window.title}` : `Show ${window.title}`,
+        },
+      });
+
+      if (!window.isMinimized) {
+        entries.push({
+          kind: "action",
+          action: {
+            id: "minimize-window",
+            appId: item.app.id,
+            windowId: window.id,
+            label: `Minimize ${window.title}`,
+          },
+        });
+      }
+    });
+
+    entries.push({
+      kind: "separator",
+      key: `${item.app.id}-quit`,
+    });
+    entries.push({
+      kind: "action",
+      action: {
+        id: "quit-app",
+        appId: item.app.id,
+        label: `Quit ${item.app.name}`,
+      },
+    });
+  }
+
+  return entries;
 }

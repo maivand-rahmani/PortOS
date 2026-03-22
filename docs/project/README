@@ -1,0 +1,55 @@
+# Project Brief
+
+PortOS is a browser-based portfolio operating system built with Next.js, Zustand, Framer Motion, and Tailwind CSS.
+
+## Vision
+
+The project should feel like a real desktop operating system in the browser rather than a traditional website. The desktop itself is the primary interface. Information should live inside apps and windows, not as flat landing-page sections.
+
+## Current Runtime
+
+The current system includes:
+
+- a desktop shell with wallpaper, menu bar, dock, icons, and floating windows
+- a typed runtime store for apps, windows, and processes
+- dynamic app loading from `src/apps/`
+- window focus, minimize, maximize, drag, and resize behavior
+
+## App Philosophy
+
+Applications must be isolated modules with real logic.
+
+- no placeholder dashboards in the main app registry
+- no dead buttons or non-functional controls
+- each application may have its own local `theme.css`
+- each application must keep behavior separate from system state
+
+## Design Direction
+
+The overall shell follows a macOS-inspired visual language, but apps are allowed to have their own distinct personalities as long as they stay usable and integrated with the OS.
+
+## Technical Notes
+
+- framework: Next.js App Router
+- language: TypeScript / TSX
+- state: Zustand
+- motion: Framer Motion
+- icons: Lucide
+- styles: Tailwind CSS v4 + CSS variables
+
+## Near-term Goals
+
+The next major milestone is the real first batch of applications:
+
+- system info
+- terminal
+- portfolio
+- resume
+- docs
+- blog
+- contact
+- AI agent
+- calculator
+- notes
+- weather
+- clock
