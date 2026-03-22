@@ -183,7 +183,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 
 ## FSD Architecture Guidelines
 
-* **Apps folder**: each app in `src/apps/<app-name>` with `README.md`, `index.js`, and local app assets.
+* **Apps folder**: each app in `src/apps/<app-name>` with `README.md`, `index.ts`, and local app assets.
 * **Reusable UI primitives**: buttons, windows, cards, inputs, icons
 * **Context & hooks**: manage OS state (z-index, focus, drag)
 * **Global Styles**: Tailwind + CSS variables for colors, radius, shadows, typography

@@ -8,6 +8,20 @@ export type WindowSize = {
   height: number;
 };
 
+export type WindowFrame = {
+  position: WindowPosition;
+  size: WindowSize;
+};
+
+export type DesktopBounds = {
+  width: number;
+  height: number;
+  insetTop: number;
+  insetRight: number;
+  insetBottom: number;
+  insetLeft: number;
+};
+
 export type WindowInstance = {
   id: string;
   appId: string;
@@ -15,5 +29,9 @@ export type WindowInstance = {
   title: string;
   position: WindowPosition;
   size: WindowSize;
+  minSize: WindowSize;
   zIndex: number;
+  isMinimized: boolean;
+  isMaximized: boolean;
+  restoredFrame: WindowFrame | null;
 };

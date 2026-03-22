@@ -115,11 +115,11 @@
 * [ ] Test app load in system
 
   * **Description:** Ensures the OS can dynamically load and render the app.
-* [ ] Implement drag functionality
+* [x] Implement drag functionality
 
-  * Mousedown, Mousemove, Mouseup
-  * Offset calculation
-  * Performance optimization
+  * [x] Mousedown, Mousemove, Mouseup
+  * [x] Offset calculation
+  * [x] Performance optimization
   * **Description:** Provides realistic window dragging behavior with smooth animations and minimal performance impact.
 
 ---
@@ -130,9 +130,9 @@
 
 * [ ] Define CSS variables in globals.css
 * [ ] Map CSS variables into Tailwind config
-* [ ] Ensure all UI follows `docs/style/README.md`
-* [ ] Implement `cn` utility for consistent class management
-* [ ] Add Framer Motion animations for window transitions and interactions
+* [x] Ensure all UI follows `docs/style/README.md`
+* [x] Implement `cn` utility for consistent class management
+* [x] Add Framer Motion animations for window transitions and interactions
 
   * **Description:** Smooth animations improve user experience and make the OS feel realistic.
 
@@ -142,11 +142,11 @@
 
 **Description:** Enhance window system behavior to feel more like a real OS.
 
-* [ ] Track multiple open windows
-* [ ] Implement layering (bring to front)
+* [x] Track multiple open windows
+* [x] Implement layering (bring to front)
 * [ ] Persist temporary window positions
-* [ ] Ensure smooth drag experience
-* [ ] Add minimize/maximize/close buttons
+* [x] Ensure smooth drag experience
+* [x] Add minimize/maximize/close buttons
 
 ---
 

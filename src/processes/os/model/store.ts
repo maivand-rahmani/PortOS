@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { installedApps } from "@/apps";
 import type { AppConfig, AppConfigMap, LoadedAppMap } from "@/entities/app";
 import type { ProcessInstance } from "@/entities/process";
-import type { WindowInstance } from "@/entities/window";
+import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
 import {
   createAppRegistryModel,
@@ -21,12 +21,21 @@ import {
   type ProcessManagerState,
 } from "./process-manager";
 import {
+  beginWindowDragModel,
   closeWindowModel,
   createWindowManagerModel,
+  endWindowDragModel,
   focusWindowModel,
+  minimizeWindowModel,
   openWindowModel,
+  resizeWindowsToBoundsModel,
+  restoreWindowModel,
+  toggleWindowMaximizeModel,
+  updateDraggedWindowModel,
   type WindowManagerState,
 } from "./window-manager";
+
+export type OSBootPhase = "booting" | "ready";
 
 export type OSRuntimeSnapshot = {
   apps: AppConfig[];
@@ -34,15 +43,29 @@ export type OSRuntimeSnapshot = {
   processes: ProcessInstance[];
   windows: WindowInstance[];
   activeWindowId: string | null;
+  bootPhase: OSBootPhase;
+  bootProgress: number;
 };
 
 export type OSStore = AppRegistryState &
   ProcessManagerState &
   WindowManagerState & {
-    launchApp: (appId: string) => Promise<string | null>;
+    bootPhase: OSBootPhase;
+    bootProgress: number;
+    setBootProgress: (progress: number) => void;
+    completeBoot: () => void;
+    launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
+    activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     loadAppComponent: (appId: string) => Promise<LoadedAppMap[string] | null>;
     closeWindow: (windowId: string) => void;
     focusWindow: (windowId: string) => void;
+    minimizeWindow: (windowId: string) => void;
+    restoreWindow: (windowId: string) => void;
+    toggleWindowMaximize: (windowId: string, bounds: DesktopBounds) => void;
+    beginWindowDrag: (windowId: string, pointer: WindowPosition) => void;
+    updateWindowDrag: (pointer: WindowPosition, bounds: DesktopBounds) => void;
+    endWindowDrag: () => void;
+    resizeWindowsToBounds: (bounds: DesktopBounds) => void;
     terminateProcess: (processId: string) => void;
   };
 
@@ -55,6 +78,19 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   }),
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
+  bootPhase: "booting",
+  bootProgress: 0,
+  setBootProgress: (progress) => {
+    set({
+      bootProgress: Math.max(0, Math.min(100, progress)),
+    });
+  },
+  completeBoot: () => {
+    set({
+      bootPhase: "ready",
+      bootProgress: 100,
+    });
+  },
   loadAppComponent: async (appId) => {
     const currentApp = get().appMap[appId];
 
@@ -79,7 +115,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     return loadedApp.component;
   },
-  launchApp: async (appId) => {
+  launchApp: async (appId, bounds) => {
     const app = get().appMap[appId];
 
     if (!app) {
@@ -104,11 +140,13 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         windows: currentState.windows,
         activeWindowId: currentState.activeWindowId,
         nextZIndex: currentState.nextZIndex,
+        dragState: currentState.dragState,
       },
       {
         app,
         processId: processResult.process.id,
         instanceIndex: currentState.windows.length,
+        bounds,
       },
     );
     const linkedProcesses = attachWindowToProcessModel(processResult.state, {
@@ -121,9 +159,34 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       windows: windowResult.state.windows,
       activeWindowId: windowResult.state.activeWindowId,
       nextZIndex: windowResult.state.nextZIndex,
+      dragState: windowResult.state.dragState,
     });
 
     return windowResult.window.id;
+  },
+  activateApp: async (appId, bounds) => {
+    const state = get();
+    const appWindows = [...state.windows]
+      .filter((window) => window.appId === appId)
+      .sort((left, right) => right.zIndex - left.zIndex);
+    const visibleWindow = appWindows.find((window) => !window.isMinimized);
+
+    if (visibleWindow) {
+      get().focusWindow(visibleWindow.id);
+
+      return visibleWindow.id;
+    }
+
+    const minimizedWindow = appWindows[0];
+
+    if (minimizedWindow) {
+      get().restoreWindow(minimizedWindow.id);
+      get().focusWindow(minimizedWindow.id);
+
+      return minimizedWindow.id;
+    }
+
+    return get().launchApp(appId, bounds);
   },
   focusWindow: (windowId) => {
     const state = get();
@@ -132,6 +195,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         windows: state.windows,
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
       },
       windowId,
     );
@@ -140,6 +204,139 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       windows: nextWindowState.windows,
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  minimizeWindow: (windowId) => {
+    const state = get();
+    const nextWindowState = minimizeWindowModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      windowId,
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  restoreWindow: (windowId) => {
+    const state = get();
+    const nextWindowState = restoreWindowModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      windowId,
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  toggleWindowMaximize: (windowId, bounds) => {
+    const state = get();
+    const nextWindowState = toggleWindowMaximizeModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      {
+        windowId,
+        bounds,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  beginWindowDrag: (windowId, pointer) => {
+    const state = get();
+    const nextWindowState = beginWindowDragModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      {
+        windowId,
+        pointer,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  updateWindowDrag: (pointer, bounds) => {
+    const state = get();
+    const nextWindowState = updateDraggedWindowModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      {
+        pointer,
+        bounds,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      dragState: nextWindowState.dragState,
+    });
+  },
+  endWindowDrag: () => {
+    const state = get();
+    const nextWindowState = endWindowDragModel({
+      windows: state.windows,
+      activeWindowId: state.activeWindowId,
+      nextZIndex: state.nextZIndex,
+      dragState: state.dragState,
+    });
+
+    set({
+      dragState: nextWindowState.dragState,
+    });
+  },
+  resizeWindowsToBounds: (bounds) => {
+    const state = get();
+    const nextWindowState = resizeWindowsToBoundsModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+      },
+      bounds,
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      dragState: nextWindowState.dragState,
     });
   },
   closeWindow: (windowId) => {
@@ -155,6 +352,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         windows: state.windows,
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
       },
       windowId,
     );
@@ -169,6 +367,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       windows: nextWindowState.state.windows,
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
+      dragState: nextWindowState.state.dragState,
       processes: nextProcessState.processes,
     });
   },
@@ -200,6 +399,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         windows: state.windows,
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
       },
       targetProcess.windowId,
     );
@@ -209,6 +409,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       windows: nextWindowState.state.windows,
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
+      dragState: nextWindowState.state.dragState,
     });
   },
 }));
