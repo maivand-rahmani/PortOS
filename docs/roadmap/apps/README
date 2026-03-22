@@ -9,4 +9,17 @@
 ### terminal
 
 - **Description:** A command-line interface application that allows users to execute commands and interact with the system.
-- 
+- **Folder Structure:**
+  - /src/apps/terminal
+    - index.tsx (main component)
+    - model.ts (state management and logic)
+    - styles.css (styling for the terminal)
+- **Functionality:**
+  - Basic command execution (e.g., `ls`, `cd`, `echo`)
+  - Displaying command output
+  - Handling user input
+- **Integration:** The terminal app will be registered in the App Registry and will interact with the Process Manager to create a new process when launched.
+- **style** the terminal app to have a classic look with a dark background and green text, mimicking traditional command-line interfaces. 
+
+
+### 
