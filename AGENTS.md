@@ -62,6 +62,13 @@ We use a modified **Feature-Sliced Design (FSD)** architecture.
 
   /widgets
     README.md
+    /desktop-shell
+      README.md
+      index.ts
+      /model
+        README.md
+      /ui
+        README.md
   /features
     README.md
   /entities
@@ -131,6 +138,8 @@ Apps MUST NOT:
 
 * control window state
 * know about system internals
+
+Apps SHOULD follow the same modular structure as widgets whenever they grow beyond a single small component.
 
 ---
 
@@ -366,6 +375,40 @@ Rules:
 
 ---
 
+### 5. File Size and Modularization Rule
+
+Project-owned UI and runtime files must stay small, focused, and easy to scale.
+
+Rules:
+
+* do not create giant components or store files that mix many responsibilities
+* if a widget, feature, app, or shared component starts owning multiple visual sections or behaviors, split it into a folder with `index.ts`, `ui/`, and `model/`
+* each important subcomponent should live in its own folder when it has its own state, interactions, or documentation needs
+* prefer composition through small files over one large file with many local helper components
+* when a file becomes hard to scan or mixes shell, dock, menu bar, icons, and windows together, break it apart immediately
+
+Recommended pattern:
+
+```ts
+/desktop-shell
+  README.md
+  index.ts
+  /model
+    README.md
+    use-desktop-shell.ts
+    desktop-shell.constants.ts
+  /ui
+    README.md
+    /desktop-shell-root
+      README.md
+      desktop-shell-root.tsx
+    /desktop-dock
+      README.md
+      desktop-dock.tsx
+```
+
+---
+
 ## 🧱 Development Rules
 
 1. Do NOT mix system logic with UI
@@ -376,6 +419,7 @@ Rules:
 6. Always check `docs/` before implementing
 7. Every non-generated, project-owned folder must have a `README.md`
 8. Use TypeScript and TSX for project-owned source files
+9. Keep files small and split large widgets/apps into `index.ts`, `ui/`, and `model/` folders
 
 ---
 

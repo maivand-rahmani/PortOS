@@ -106,13 +106,13 @@
 
 **Description:** Create the first modular app to test OS integration, ensuring that applications load correctly and behave as expected.
 
-* [ ] Create example application template
+* [x] Create example application template
 
   * index.js with exportable appConfig
   * UI folder
   * Model folder
   * Icon file
-* [ ] Test app load in system
+* [x] Test app load in system
 
   * **Description:** Ensures the OS can dynamically load and render the app.
 * [x] Implement drag functionality
@@ -166,7 +166,7 @@
 
 **Description:** Integrate an AI assistant that reads project Docs and responds to queries from users, acting as an interactive guide within the OS.
 
-* [ ] Prepare AGENTS.md for context
+* [x] Prepare AGENTS.md for context
 * [ ] Implement agent reading `docs/` folder
 * [ ] Configure agent to answer questions based on project info
 * [ ] Integrate with OS interface
