@@ -4,4 +4,9 @@
 
 ## 1. apps list and their structure
 
+- **Description:** Define a list of applications to be included in the OS simulation, along with their folder structure and basic functionality.
+
+### terminal
+
+- **Description:** A command-line interface application that allows users to execute commands and interact with the system.
 - 
