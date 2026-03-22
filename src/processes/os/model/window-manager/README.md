@@ -1,9 +1,9 @@
 # window-manager
 
-Scaffold for the OS window manager model.
+Typed OS window manager model.
 
 ## Files
 
-- `index.js`: initial state and factory for tracking open windows, the active window, and z-index flow.
+- `index.ts`: state shape and helpers for opening, focusing, and closing windows.
 
-This module will become the single source of truth for runtime window instances.
+This module is the single source of truth for runtime window instances.

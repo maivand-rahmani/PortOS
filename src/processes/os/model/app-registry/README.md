@@ -1,9 +1,9 @@
 # app-registry
 
-Scaffold for the OS app registry model.
+Typed OS app registry model.
 
 ## Files
 
-- `index.js`: initial state and factory for registered apps, metadata lookup, and lazy loaders.
+- `index.ts`: app metadata state, indexing helpers, and lazy loader integration.
 
-This module will define how the system discovers and loads apps from `src/apps/`.
+This module controls how the system discovers and loads apps from `src/apps/`.

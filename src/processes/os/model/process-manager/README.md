@@ -1,9 +1,9 @@
 # process-manager
 
-Scaffold for the OS process manager model.
+Typed OS process manager model.
 
 ## Files
 
-- `index.js`: initial state and factory for tracking running processes and process identifiers.
+- `index.ts`: state shape and helpers for starting, linking, and stopping processes.
 
-This module defines the structure that later runtime logic will manage.
+This module tracks active application processes in the runtime.

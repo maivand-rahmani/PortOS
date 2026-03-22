@@ -12,4 +12,5 @@ Browser-based Portfolio OS built with Next.js.
 
 - The project follows a modified Feature-Sliced Design structure under `src/`.
 - Folder-level documentation is required for project-owned, non-generated folders.
+- Project-owned source files use TypeScript (`.ts` and `.tsx`).
 - Implementation order is tracked in `docs/roadmap/README.md`.

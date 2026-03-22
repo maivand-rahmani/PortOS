@@ -38,9 +38,10 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 * **Styling**: Tailwind CSS + custom global CSS variables
 * **Component Library**: Custom components using FSD (Feature-Sliced Design)
 * **Animations**: Framer Motion
-* **State Management**: React context/hooks
+* **State Management**: Zustand with typed runtime models and actions
 * **Unique IDs**: `crypto.randomUUID()` for in-app objects
 * **Drag & Drop**: Custom implementation for OS-like interactions
+* **Language**: TypeScript for source modules and TSX for React components
 
 **Constraints**:
 

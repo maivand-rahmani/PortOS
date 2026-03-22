@@ -35,7 +35,7 @@
 * [x] Set up `cn` utility for classNames
 
   * **Description:** Combines clsx and tailwind-merge to handle dynamic classNames efficiently.
-* [ ] Verify dev server runs correctly
+* [x] Verify dev server runs correctly
 
   * **Description:** Ensures that the development environment is ready and the app runs without errors.
 
@@ -79,15 +79,26 @@
 
 **Description:** Build the main operating system logic that controls windows, apps, and processes, providing the framework for the entire OS simulation.
 
-* [ ] Implement Window Manager
+* [x] Implement Window Manager
+
+  * [x] Create typed window state model and open/focus/close runtime helpers
 
   * **Description:** Handles all windows' open/close actions, focus, and layering.
-* [ ] Implement Process Manager
+* [x] Implement Process Manager
+
+  * [x] Create typed process state model with process lifecycle helpers
 
   * **Description:** Tracks active applications and processes in the system.
-* [ ] Implement App Registry
+* [x] Implement App Registry
 
-  * **Description:** Dynamically loads applications from the /apps folder and keeps metadata.
+  * [x] Register typed apps from `src/apps/`
+  * [x] Load app UI lazily through the registry
+
+  * **Description:** Dynamically loads applications from the `src/apps/` folder and keeps metadata.
+* [x] Implement runtime integration shell for verification
+
+  * [x] Connect the runtime to the homepage through a desktop shell widget
+  * [x] Validate the runtime with an example app module
 
 ---
 

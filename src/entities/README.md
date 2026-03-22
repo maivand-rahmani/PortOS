@@ -2,10 +2,10 @@
 
 Core domain building blocks for the Portfolio OS.
 
-## Planned contents
+## Files
 
-- `window`: runtime window data and related helpers
-- `app`: application metadata and app-facing contracts
-- `process`: process instances and lifecycle helpers
+- `window.ts`: runtime window data, position, and sizing types.
+- `app.ts`: application metadata, lazy-loader, and component contracts.
+- `process.ts`: process instance and lifecycle types.
 
 Entities define the nouns of the system that features and widgets build on top of.

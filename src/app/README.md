@@ -4,8 +4,8 @@ Next.js application layer.
 
 ## Files
 
-- `layout.js`: root HTML shell, metadata, and global app wrapper.
-- `page.js`: current home route and future OS boot surface.
+- `layout.tsx`: root HTML shell, metadata, and global font setup.
+- `page.tsx`: boots the desktop shell widget.
 - `globals.css`: global styles and design-token entrypoint.
 - `favicon.ico`: browser tab icon.
 
