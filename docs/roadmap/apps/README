@@ -1,2 +1,7 @@
 # apps (and how it have to work)
 
+- **Description:** This section focuses on building the application modules that will run within the OS simulation, including their structure, registration, and integration with the system core.
+
+## 1. apps list and their structure
+
+- 
