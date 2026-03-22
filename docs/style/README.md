@@ -27,7 +27,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 * Floating windows with z-index ordering to emulate OS window behavior.
 * Soft shadows with realistic depth for all components.
 * High fidelity drag-and-drop interactions, with responsive snapping and ghost previews.
-* Modular app system: each app exists as a folder under `apps/` with its own component and assets.
+* Modular app system: each app exists as a folder under `src/apps/` with its own component, assets, and folder README.
 * The portfolio AI assistant reads structured data from a `docs/` folder before answering.
 
 ---
@@ -36,7 +36,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 
 * **Frontend Framework**: Next.js (latest)
 * **Styling**: Tailwind CSS + custom global CSS variables
-* **Component Library**: Custom components using FSD (Future-Sliced Architecture)
+* **Component Library**: Custom components using FSD (Feature-Sliced Design)
 * **Animations**: Framer Motion
 * **State Management**: React context/hooks
 * **Unique IDs**: `crypto.randomUUID()` for in-app objects
@@ -44,7 +44,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 
 **Constraints**:
 
-* Must support dynamic loading of apps from `apps/` folder.
+* Must support dynamic loading of apps from `src/apps/`.
 * Must be highly reusable and modular to allow adding new apps without breaking the system.
 * Minimize bundle size while keeping high visual fidelity.
 
@@ -135,7 +135,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 
 ### AI Assistant Panel
 
-* Reads `docs/` folder: `Style/Readme.md`, `Roadmap/Readme.md`
+* Reads `docs/` folder: `docs/style/README.md`, `docs/roadmap/README.md`
 * Displays AI answers in floating window with smooth open/close animations
 * Uses structured prompts to ensure consistent, accurate info
 
@@ -182,7 +182,7 @@ You are an expert frontend engineer, UI/UX designer, visual design specialist, a
 
 ## FSD Architecture Guidelines
 
-* **Apps folder**: each app in `apps/<app-name>` with `index.jsx` and `assets/`
+* **Apps folder**: each app in `src/apps/<app-name>` with `README.md`, `index.js`, and local app assets.
 * **Reusable UI primitives**: buttons, windows, cards, inputs, icons
 * **Context & hooks**: manage OS state (z-index, focus, drag)
 * **Global Styles**: Tailwind + CSS variables for colors, radius, shadows, typography

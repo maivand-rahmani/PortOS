@@ -46,25 +46,41 @@ We use a modified **Feature-Sliced Design (FSD)** architecture.
 ```
 /src
   /app
+    README.md
   /processes
+    README.md
     /os
+      README.md
       /model
-        windowManager
-        processManager
-        appRegistry
+        README.md
+        /window-manager
+          README.md
+        /process-manager
+          README.md
+        /app-registry
+          README.md
 
   /widgets
+    README.md
   /features
+    README.md
   /entities
+    README.md
   /shared
+    README.md
+    /lib
+      README.md
+    /ui
+      README.md
   /apps
+    README.md
 ```
 
 ---
 
 ## ⚙️ Core System Layers
 
-### 1. OS Runtime (`/processes/os`)
+### 1. OS Runtime (`/src/processes/os`)
 
 This is the heart of the system.
 
@@ -80,15 +96,16 @@ All system logic MUST live here.
 
 ---
 
-### 2. App System (`/apps`)
+### 2. App System (`/src/apps`)
 
 Each app is an isolated module.
 
 Structure:
 
 ```
-/apps
-  /exampleApp
+/src/apps
+  /example-app
+    README.md
     index.js
     ui/
     model/
@@ -267,22 +284,23 @@ Animations should feel smooth and responsive.
 
 ## 📚 Documentation System (CRITICAL)
 
-The agent MUST always check the `/Docs` folder before making decisions.
+The agent MUST always check the `docs/` folder before making decisions.
 
 ### Structure:
 
 ```
-/Docs
-  /Style
-    Readme.md
+/docs
+  README.md
+  /style
+    README.md
 
-  /Roadmap
-    Readme.md
+  /roadmap
+    README.md
 ```
 
 ---
 
-### 1. Style Documentation (`/Docs/Style/Readme.md`)
+### 1. Style Documentation (`docs/style/README.md`)
 
 Contains:
 
@@ -299,7 +317,7 @@ Rules:
 
 ---
 
-### 2. Roadmap (`/Docs/Roadmap/Readme.md`)
+### 2. Roadmap (`docs/roadmap/README.md`)
 
 Contains:
 
@@ -316,6 +334,24 @@ Rules:
 
 ---
 
+### 3. Folder Documentation Rule
+
+Every non-generated, project-owned folder MUST include a `README.md`.
+
+Each folder README must explain:
+
+* what the folder owns
+* what each direct child folder or key file does
+* where related logic should live when that boundary matters
+
+Rules:
+
+* create or update the folder `README.md` in the same change that creates or changes the folder
+* keep folder documentation short, specific, and accurate
+* do not leave source, docs, app, widget, feature, entity, process, or shared folders undocumented
+
+---
+
 ## 🧱 Development Rules
 
 1. Do NOT mix system logic with UI
@@ -323,7 +359,8 @@ Rules:
 3. Do NOT duplicate state
 4. Keep modules isolated
 5. Follow architecture strictly
-6. Always check Docs before implementing
+6. Always check `docs/` before implementing
+7. Every non-generated, project-owned folder must have a `README.md`
 
 ---
 

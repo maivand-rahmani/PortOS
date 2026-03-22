@@ -32,7 +32,7 @@
   * [x] framer-motion (animations)
   * [x] zustand (state management)
   * [x] lucide-react (icons)
-* [ ] Set up `cn` utility for classNames
+* [x] Set up `cn` utility for classNames
 
   * **Description:** Combines clsx and tailwind-merge to handle dynamic classNames efficiently.
 * [ ] Verify dev server runs correctly
@@ -43,30 +43,35 @@
 
 ## 2. Project Structure Setup (FSD)
 
-**Description:** Organizing the project using Feature-Sliced Design to keep the code modular, scalable, and maintainable.
+**Description:** Organizing the project using Feature-Sliced Design under `src/` to keep the code modular, scalable, and maintainable.
 
-* [ ] Create main folders:
+* [x] Create main folders:
 
-  * [ ] /app (Next.js application layer)
-  * [ ] /processes (system core logic)
-  * [ ] /widgets (UI components like Taskbar, Window)
-  * [ ] /features (user actions and interactions)
-  * [ ] /entities (core entities: windows, apps, processes)
-  * [ ] /shared (shared utilities and UI)
-  * [ ] /apps (application modules)
-* [ ] Set up OS runtime folder structure
+  * [x] /src/app (Next.js application layer)
+  * [x] /src/processes (system core logic)
+  * [x] /src/widgets (UI components like Taskbar, Window)
+  * [x] /src/features (user actions and interactions)
+  * [x] /src/entities (core entities: windows, apps, processes)
+  * [x] /src/shared (shared utilities and UI)
+  * [x] /src/apps (application modules)
+* [x] Set up OS runtime folder structure
 
-  * [ ] /processes/os/model
+  * [x] /src/processes/os/model
 
     * **Description:** Contains models for window manager, process manager, and app registry.
-* [ ] Create /Docs folder
+* [x] Create `docs/` folder structure
 
-  * [ ] /Docs/Style
+  * [x] /docs/README.md
+  * [x] /docs/style
 
-    * [ ] Readme.md (UI and style guidelines)
-  * [ ] /Docs/Roadmap
+    * [x] README.md (UI and style guidelines)
+  * [x] /docs/roadmap
 
-    * [ ] Readme.md (this roadmap)
+    * [x] README.md (this roadmap)
+* [x] Add folder documentation for this step
+
+  * [x] Every created source folder includes a `README.md`
+  * [x] Every created folder README explains what the folder owns and what its direct children do
 
 ---
 
@@ -114,7 +119,7 @@
 
 * [ ] Define CSS variables in globals.css
 * [ ] Map CSS variables into Tailwind config
-* [ ] Ensure all UI follows `/Docs/Style/Readme.md`
+* [ ] Ensure all UI follows `docs/style/README.md`
 * [ ] Implement `cn` utility for consistent class management
 * [ ] Add Framer Motion animations for window transitions and interactions
 
@@ -151,7 +156,7 @@
 **Description:** Integrate an AI assistant that reads project Docs and responds to queries from users, acting as an interactive guide within the OS.
 
 * [ ] Prepare AGENTS.md for context
-* [ ] Implement agent reading `/Docs` folder
+* [ ] Implement agent reading `docs/` folder
 * [ ] Configure agent to answer questions based on project info
 * [ ] Integrate with OS interface
 * [ ] Test queries and responses
