@@ -154,23 +154,23 @@
 
 **Description:** Populate the OS with multiple apps, ensuring modularity, isolation, and proper functionality.
 
-* [x] Add first batch of apps
-  - [x] (medium) system info (displays runtime state and allows real process termination)
-  - [x] (medium) terminal (runs basic commands and can open OS apps with `open <app-id>`)
-  - [x] (hard) portfolio (app showcasing projects)
-  - [x] (hard) resume (interactive resume)
-  - [x] (easy)  docs (project documentation viewer)
+* [ ] Add first batch of apps
+  - [ ] (easy-medium) system info (displays runtime state and allows real process termination)
+  - [x] (easy) terminal (runs basic commands, basic navigation, and can open OS apps with `open <app-id>`)
+  - [ ] (hard) portfolio (app showcasing projects)
+  - [ ] (hard) resume (interactive resume)
+  - [x] (easy) docs (project documentation viewer)
   - [x] (easy) blog (personal blog reader)
   - [x] (easy) contact (contact form and info)
-  - [x] (hard) AI agent (interactive assistant app that answers from project/profile context and can open apps)
+  - [ ] (hard) AI agent (interactive assistant app that answers from project/profile context and can open apps)
     * description: This app will be an AI assistant that can read the project documentation and answer questions about the project, as well as perform simple tasks like opening other apps. It will be integrated with the OS interface and will provide an interactive way for users to learn about the project and navigate the OS. it will to a ai model from openrouter and will read the `docs/project`
     `docs/maivand/info.json` folder for context to answer questions about the project and about my projects and portfolio.
   - [x] (easy) calculator (simple calculator app)
   - [x] (easy) notes (note-taking app)
-  - [x] (medium) weather (weather forecast app)
+  - [ ] (medium) weather (weather forecast app)
   - [x] (easy) clock (world clock app)
-* [x] Test dynamic loading and removal
-* [x] Implement app-specific features
+* [x] Test dynamic loading and removal for the easy app set
+* [x] Implement app-specific features for the easy app set
 * [x] Icons and visual representation
 * [ ] Ensure app isolation
 
@@ -181,10 +181,10 @@
 **Description:** Integrate an AI assistant that reads project Docs and responds to queries from users, acting as an interactive guide within the OS.
 
 * [x] Prepare AGENTS.md for context
-* [x] Implement agent reading `docs/` folder
-* [x] Configure agent to answer questions based on project info
-* [x] Integrate with OS interface
-* [x] Test queries and responses
+* [ ] Implement agent reading `docs/` folder
+* [ ] Configure agent to answer questions based on project info
+* [ ] Integrate with OS interface
+* [ ] Test queries and responses
 
 ---
 

@@ -1,7 +1,8 @@
-import type { LucideIcon } from "lucide-react";
-import type { ComponentType } from "react";
+import type { ComponentType, SVGProps } from "react";
 
 import type { WindowSize } from "./window";
+
+export type AppIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export type AppComponentProps = {
   processId: string;
@@ -21,7 +22,7 @@ export type AppConfig = {
   id: string;
   name: string;
   description: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   tint: string;
   window: AppWindowConfig;
   load: () => Promise<LoadedAppModule>;

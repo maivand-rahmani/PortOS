@@ -1,12 +1,12 @@
-import { Send } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import ContactIcon from "./icon";
 
 export const contactAppConfig: AppConfig = {
   id: "contact",
   name: "Contact",
   description: "Working contact form and contact information.",
-  icon: Send,
+  icon: ContactIcon,
   tint: "#0ea5e9",
   window: {
     width: 620,

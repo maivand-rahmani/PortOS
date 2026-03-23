@@ -1,3 +1,5 @@
 .contact-app {
-  background: linear-gradient(180deg, #ecfeff, #cffafe);
+  background:
+    radial-gradient(circle at top right, rgba(14, 184, 166, 0.12), transparent 34%),
+    linear-gradient(180deg, #f0fdfa, #ccfbf1);
 }

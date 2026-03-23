@@ -1,25 +1,193 @@
-# apps (and how it have to work)
-
-- **Description:** This section focuses on building the application modules that will run within the OS simulation, including their structure, registration, and integration with the system core.
+# apps (and how it have to work) – Expanded
 
 ## 1. apps list and their structure
 
-- **Description:** Define a list of applications to be included in the OS simulation, along with their folder structure and basic functionality.
+- **Description:** Define the structure, behavior, and visual design of each app module inside the OS. Each app lives in its own folder under `/apps`, has a main entry file, optional assets (icons, images), and exports a React component that the OS Window Manager can render dynamically.
 
-### terminal
+### terminal [x](but can be improved a lot to add more commands and features and redesign the UI)
 
-- **Description:** A command-line interface application that allows users to execute commands and interact with the system.
-- **Folder Structure:**
-  - /src/apps/terminal
-    - index.tsx (main component)
-    - model.ts (state management and logic)
-    - styles.css (styling for the terminal)
+- **difficulty:** easy
+- **Description:** A command-line interface (CLI) that allows users to execute basic commands in the OS simulation.
 - **Functionality:**
-  - Basic command execution (e.g., `ls`, `cd`, `echo`)
-  - Displaying command output
-  - Handling user input
-- **Integration:** The terminal app will be registered in the App Registry and will interact with the Process Manager to create a new process when launched.
-- **style** the terminal app to have a classic look with a dark background and green text, mimicking traditional command-line interfaces. 
+  - Execute commands: `ls`, `cd`, `echo`, `cat`
+  - Display command output in scrollable console
+  - Handle keyboard input (enter, arrow navigation for command history)
+  - Optional: auto-completion and error handling
+- **Integration:**
+  - Registers itself in the App Registry
+  - Interacts with the Process Manager to simulate creating a new process
+  - Can open other apps via commands (e.g., `open calculator`)
+- **Style:**
+  - Dark background (`#1E1E2F`)
+  - Green monospaced text (`#00FF7F`)
+  - Soft inset shadow around the terminal window for depth
+  - Scrollable terminal area with neumorphic scrollbar
 
+### system info
 
-### 
+- **difficulty:** easy-medium
+- **Description:** Displays real-time system metrics such as CPU usage, memory usage, running processes, and allows basic process management.
+- **Functionality:**
+  - Show live CPU, RAM, and storage usage charts
+  - List active processes with CPU/memory footprint
+  - Kill processes via interface
+  - Expand to full-screen view on launch for better readability
+- **Integration:**
+  - Registered in App Registry
+  - Fetches live data from Process Manager
+- **Style:**
+  - Clean neumorphic cards for metrics
+  - Interactive charts (Framer Motion animated)
+  - Buttons with Extruded shadows for actions (kill process, refresh)
+
+### portfolio [x]
+
+- **difficulty:** hard
+- **Description:** Showcases all projects in a modular interactive format, including images, descriptions, links, and tags.
+- **Functionality:**
+  - Dynamic project cards with hover animations
+  - Clickable for detailed modal or new app window
+  - Filter projects by technology, type, or status
+- **Integration:**
+  - Registered in App Registry
+  - Fetches project data from JSON or Markdown files
+- **Style:**
+  - Neumorphic cards with subtle hover lift
+  - Smooth Framer Motion transitions for modals
+  - Consistent iconography and typography
+
+### resume
+
+- **difficulty:** hard
+- **Description:** Interactive, timeline-based resume with clickable sections.
+- **Functionality:**
+  - Sections for experience, education, skills
+  - Expand/collapse for details
+  - Downloadable PDF export option
+- **Integration:**
+  - OS windowed interface
+- **Style:**
+  - Vertical timeline with neumorphic "pillowed" cards
+  - Accent color for skill highlights and links
+
+### docs [x]
+
+- **difficulty:** easy
+- **Description:** Viewer for project documentation files in `/docs` folder.
+- **Functionality:**
+  - Navigate folders (`Style`, `Roadmap`)
+  - Render Markdown files dynamically
+  - Full-screen toggle for better readability
+- **Integration:**
+  - Reads from `/docs` folder and renders content
+- **Style:**
+  - Light neumorphic panels for each doc
+  - Table of contents on the left sidebar
+  - Smooth scrolling with floating shadows
+
+### blog [x]
+
+- **difficulty:** easy
+- **Description:** Personal blog reader for posts stored in Markdown or fetched from CMS.
+- **Functionality:**
+  - List recent posts with title, date, snippet
+  - Click to open full post in modal or new window
+  - Search/filter posts
+- **Integration:**
+  - Fetch Markdown content or API
+- **Style:**
+  - Neumorphic cards with hover lift
+  - Accent color for links
+  - Smooth animated transitions
+
+### contact [x](but can be improved a lot)
+
+- **difficulty:** easy
+- **Description:** Contact form and personal info viewer.
+- **Functionality:**
+  - Form submission with validation
+  - Display email, phone, social links
+  - Optional: integrate with API for email sending
+- **Integration:**
+  - Standalone OS app, registers in App Registry
+- **Style:**
+  - Input fields with `Inset Deep` shadows
+  - Submit button with lift animation
+  - Clean layout with padding and spacing
+
+### AI agent
+
+- **difficulty:** hard
+- **Description:** AI assistant that answers questions about projects, portfolio, and system usage.
+- **Functionality:**
+  - Reads `docs/project` and `docs/maivand/info.json` for context
+  - Can answer questions about projects and personal portfolio
+  - Opens other apps on command (e.g., `open terminal`)
+- **Integration:**
+  - Connected to OpenRouter model
+  - Registered in App Registry
+  - Uses Project Context Loader to pre-load documents
+- **Style:**
+  - Chat interface with neumorphic message bubbles
+  - Floating assistant icon in OS dock
+  - Typing animation and smooth message appearance
+
+### calculator [x]
+
+- **difficulty:** easy
+- **Description:** Simple calculator app with basic operations.
+- **Functionality:**
+  - Add, subtract, multiply, divide
+  - Keyboard and click input
+  - Memory operations optional
+- **Integration:**
+  - OS windowed interface
+- **Style:**
+  - Buttons with `Extruded` shadow
+  - Rounded edges and smooth hover effect
+  - Neumorphic display area for input/output
+
+### notes [x]
+
+- **difficulty:** easy
+- **Description:** Note-taking application with simple CRUD functionality.
+- **Functionality:**
+  - Create, edit, delete notes
+  - Categorize or tag notes
+  - Save notes locally (localStorage/IndexedDB)
+- **Integration:**
+  - Registers in App Registry
+- **Style:**
+  - Soft inset cards for each note
+  - Smooth drag-and-drop reorder
+  - Floating "new note" button with neumorphic lift
+
+### weather
+
+- **difficulty:** medium
+- **Description:** Displays weather forecasts for selected locations.
+- **Functionality:**
+  - Show current conditions and 5-day forecast
+  - Weather icons and animations
+  - Search cities and set default location
+- **Integration:**
+  - Fetches data from weather API
+- **Style:**
+  - Rounded neumorphic cards for each day
+  - Animated icon for weather condition
+  - Subtle shadow and background elevation for depth
+
+### clock [x](but can be improved a lot)
+
+- **difficulty:** easy
+- **Description:** World clock displaying multiple timezones.
+- **Functionality:**
+  - Add/remove cities
+  - Toggle between 12h/24h format
+  - Alarm optional
+- **Integration:**
+  - OS windowed interface
+- **Style:**
+  - Circular neumorphic clock face
+  - Smooth ticking animation
+  - Soft inset for numbers and hands

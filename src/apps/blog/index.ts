@@ -1,12 +1,12 @@
-import { Newspaper } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import BlogIcon from "./icon";
 
 export const blogAppConfig: AppConfig = {
   id: "blog",
   name: "Blog",
   description: "Personal blog reader with real posts.",
-  icon: Newspaper,
+  icon: BlogIcon,
   tint: "#7c3aed",
   window: {
     width: 760,

@@ -1,12 +1,12 @@
-import { Clock3 } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import ClockIcon from "./icon";
 
 export const clockAppConfig: AppConfig = {
   id: "clock",
   name: "Clock",
   description: "A world clock app with live updates.",
-  icon: Clock3,
+  icon: ClockIcon,
   tint: "#0f172a",
   window: {
     width: 580,

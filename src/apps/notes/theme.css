@@ -1,3 +1,5 @@
 .notes-app {
-  background: linear-gradient(180deg, #fefce8, #fef3c7);
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.16), transparent 34%),
+    linear-gradient(180deg, #fefce8, #fff7ed);
 }

@@ -1,12 +1,12 @@
-import { TerminalSquare } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import TerminalIcon from "./icon";
 
 export const terminalAppConfig: AppConfig = {
   id: "terminal",
   name: "Terminal",
   description: "Simple terminal emulator with real command handling.",
-  icon: TerminalSquare,
+  icon: TerminalIcon,
   tint: "#16a34a",
   window: {
     width: 760,

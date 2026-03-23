@@ -1,3 +1,5 @@
 .blog-app {
-  background: linear-gradient(180deg, #faf5ff, #f3e8ff);
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 34%),
+    linear-gradient(180deg, #f0fdfa, #ecfeff);
 }

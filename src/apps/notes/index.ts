@@ -1,12 +1,12 @@
-import { StickyNote } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import NotesIcon from "./icon";
 
 export const notesAppConfig: AppConfig = {
   id: "notes",
   name: "Notes",
   description: "A simple note-taking app with local persistence.",
-  icon: StickyNote,
+  icon: NotesIcon,
   tint: "#facc15",
   window: {
     width: 620,

@@ -1,12 +1,12 @@
-import { BookOpenText } from "lucide-react";
-
 import type { AppConfig } from "@/entities/app";
+
+import DocsIcon from "./icon";
 
 export const docsAppConfig: AppConfig = {
   id: "docs",
   name: "Docs",
   description: "Project documentation viewer.",
-  icon: BookOpenText,
+  icon: DocsIcon,
   tint: "#0f172a",
   window: {
     width: 760,

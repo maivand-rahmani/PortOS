@@ -8,6 +8,13 @@ import type { ProcessInstance } from "@/entities/process";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
 import {
+  DEFAULT_WALLPAPER_ID,
+  getStoredWallpaperId,
+  setStoredWallpaperId,
+  type Wallpaper,
+  getWallpaperById,
+} from "@/shared/lib/wallpapers";
+import {
   createAppRegistryModel,
   indexAppConfigs,
   loadAppModule,
@@ -47,6 +54,7 @@ export type OSRuntimeSnapshot = {
   processes: ProcessInstance[];
   windows: WindowInstance[];
   activeWindowId: string | null;
+  wallpaperId: Wallpaper["id"];
   bootPhase: OSBootPhase;
   bootProgress: number;
 };
@@ -56,8 +64,11 @@ export type OSStore = AppRegistryState &
   WindowManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
+    wallpaperId: Wallpaper["id"];
     setBootProgress: (progress: number) => void;
     completeBoot: () => void;
+    hydrateWallpaper: () => void;
+    setWallpaper: (wallpaperId: Wallpaper["id"]) => void;
     launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     loadAppComponent: (appId: string) => Promise<LoadedAppMap[string] | null>;
@@ -91,6 +102,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createWindowManagerModel(),
   bootPhase: "booting",
   bootProgress: 0,
+  wallpaperId: DEFAULT_WALLPAPER_ID,
   setBootProgress: (progress) => {
     set({
       bootProgress: Math.max(0, Math.min(100, progress)),
@@ -101,6 +113,28 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       bootPhase: "ready",
       bootProgress: 100,
     });
+  },
+  hydrateWallpaper: () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const wallpaperId = getWallpaperById(getStoredWallpaperId()).id;
+
+    set({
+      wallpaperId,
+    });
+  },
+  setWallpaper: (wallpaperId) => {
+    const normalizedWallpaperId = getWallpaperById(wallpaperId).id;
+
+    set({
+      wallpaperId: normalizedWallpaperId,
+    });
+
+    if (typeof window !== "undefined") {
+      setStoredWallpaperId(normalizedWallpaperId);
+    }
   },
   loadAppComponent: async (appId) => {
     const currentApp = get().appMap[appId];

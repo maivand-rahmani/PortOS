@@ -10,25 +10,33 @@ const profile = getProfileBasics();
 export function ContactApp({ processId }: AppComponentProps) {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [status, setStatus] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submitForm() {
+    setIsSubmitting(true);
     setStatus(null);
 
-    const response = await fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
 
-    const payload = (await response.json()) as { error?: string; submittedAt?: string };
+      const payload = (await response.json()) as { error?: string; submittedAt?: string };
 
-    if (!response.ok) {
-      setStatus(payload.error ?? "Submission failed.");
-      return;
+      if (!response.ok) {
+        setStatus(payload.error ?? "Submission failed.");
+        return;
+      }
+
+      setStatus(`Saved at ${payload.submittedAt}`);
+      setForm({ name: "", email: "", message: "" });
+    } catch {
+      setStatus("Submission failed.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setStatus(`Saved at ${payload.submittedAt}`);
-    setForm({ name: "", email: "", message: "" });
   }
 
   return (
@@ -40,6 +48,7 @@ export function ContactApp({ processId }: AppComponentProps) {
           <p>{String(profile.name ?? "Maivand Rahmani")}</p>
           <p>{String(profile.title ?? "Builder")}</p>
           <p>{String((profile as { contact?: { email?: string } }).contact?.email ?? "-")}</p>
+          <p>{String((profile as { contact?: { github?: string } }).contact?.github ?? "-")}</p>
           <p>Session {processId.slice(0, 6)}</p>
         </div>
       </aside>
@@ -51,7 +60,14 @@ export function ContactApp({ processId }: AppComponentProps) {
         <textarea value={form.message} onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))} placeholder="Message" className="mt-3 min-h-0 flex-1 resize-none rounded-[18px] border border-cyan-200 bg-white/85 p-4 outline-none focus:ring-2 focus:ring-cyan-400/60" />
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-sm text-cyan-900/60">{status}</p>
-          <button type="button" onClick={() => void submitForm()} className="cursor-pointer rounded-full bg-cyan-500 px-4 py-3 text-sm font-semibold text-white">Send</button>
+          <button
+            type="button"
+            onClick={() => void submitForm()}
+            disabled={isSubmitting}
+            className="cursor-pointer rounded-full bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:bg-cyan-600 disabled:cursor-not-allowed disabled:bg-cyan-300"
+          >
+            {isSubmitting ? "Sending..." : "Send"}
+          </button>
         </div>
       </section>
     </div>

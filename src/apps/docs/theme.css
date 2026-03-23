@@ -1,3 +1,5 @@
 .docs-app {
-  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+  background:
+    radial-gradient(circle at top left, rgba(13, 148, 136, 0.12), transparent 34%),
+    linear-gradient(180deg, #f0fdfa, #f8fafc);
 }

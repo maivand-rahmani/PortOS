@@ -150,6 +150,60 @@ Prototype-only placeholder apps are not allowed in the main app registry.
 
 ---
 
+### App Icon Design System
+
+Every app MUST have a custom SVG icon component at `src/apps/<app>/icon.tsx`.
+
+**Component pattern:**
+
+```tsx
+import type { SVGProps } from "react";
+
+export default function AppNameIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <defs>
+        {/* linearGradient for bright, saturated fill matching app tint */}
+        <linearGradient id="app-bg" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#bright-variant" />
+          <stop offset="100%" stopColor="#base-tint" />
+        </linearGradient>
+        {/* radialGradient for specular light source (top-left) */}
+        <radialGradient id="app-glow" cx="8" cy="7" r="12" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        {/* filter for depth/glow shadow */}
+        <filter id="app-shadow" x="-10%" y="-10%" width="130%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#base-tint" floodOpacity="0.35" />
+        </filter>
+      </defs>
+      {/* Main shape with gradient fill and shadow */}
+      <rect x="..." y="..." width="..." height="..." rx="..." fill="url(#app-bg)" filter="url(#app-shadow)" />
+      {/* Specular glow overlay */}
+      <rect x="..." y="..." width="..." height="..." rx="..." fill="url(#app-glow)" />
+      {/* Detail strokes with light colors */}
+      <path d="..." stroke="#light-variant" strokeWidth="1.6" strokeLinecap="round" />
+      {/* Glass reflection highlight (top-left corner) */}
+      <rect x="2" y="3" width="10" height="7" rx="3" fill="white" opacity="0.14" />
+    </svg>
+  );
+}
+```
+
+**Liquid Glass style rules:**
+
+- Use `linearGradient` for bright, saturated fills matching the app's tint color
+- Use `radialGradient` with `cx="8" cy="7"` for specular light source (top-left, Apple-style)
+- Use `filter` with `feDropShadow` for depth/glow using the app's tint as flood color
+- Add a semi-transparent white `rect` in the top-left corner for glass reflection
+- Use secondary strokes with fading `opacity` (0.9, 0.7, 0.55) for depth layering
+- All gradient/filter IDs must be unique per icon (prefix with app name: `contact-bg`, `blog-glow`, etc.)
+- `viewBox` must be `"0 0 24 24"`, component must accept and spread `SVGProps<SVGSVGElement>`
+- Stroke details: `strokeWidth="1.6"`, `strokeLinecap="round"`, `strokeLinejoin="round"`
+
+---
+
 ### 3. Window System
 
 Windows are controlled by the system.

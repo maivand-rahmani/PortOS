@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
 import { calculateExpression, cn } from "@/shared/lib";
@@ -11,16 +11,20 @@ export function CalculatorApp({ processId }: AppComponentProps) {
   const [expression, setExpression] = useState("0");
   const [error, setError] = useState<string | null>(null);
 
-  const appendValue = (value: string) => {
-    setError(null);
-    setExpression((current) => (current === "0" ? value : `${current}${value}`));
-  };
-
-  const handleKey = (value: string) => {
+  const handleKey = useCallback((value: string) => {
     if (value === "AC") {
       setExpression("0");
       setError(null);
       return;
+    }
+
+    if (value === ".") {
+      const segments = expression.split(/[+\-*/]/);
+      const currentSegment = segments[segments.length - 1] ?? "";
+
+      if (currentSegment.includes(".")) {
+        return;
+      }
     }
 
     if (value === "=") {
@@ -34,8 +38,39 @@ export function CalculatorApp({ processId }: AppComponentProps) {
       return;
     }
 
-    appendValue(value);
-  };
+    setError(null);
+    setExpression((current) => (current === "0" ? value : `${current}${value}`));
+  }, [expression]);
+
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      const allowedKeys = "0123456789+-*/().%";
+
+      if (allowedKeys.includes(event.key)) {
+        handleKey(event.key);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleKey("=");
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        setExpression((current) => {
+          const nextValue = current.slice(0, -1);
+          return nextValue.length > 0 ? nextValue : "0";
+        });
+        setError(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyboard);
+
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [handleKey]);
 
   return (
     <div className="calculator-app flex h-full flex-col gap-4 rounded-[24px] p-4">

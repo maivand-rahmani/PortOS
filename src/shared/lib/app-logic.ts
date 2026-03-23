@@ -1,3 +1,5 @@
+import { getProfileBasics } from "./project-data";
+
 export type BlogPost = {
   id: string;
   title: string;
@@ -16,7 +18,50 @@ export type ContactSubmission = {
 export type TerminalResult = {
   output: string[];
   openAppId?: string;
+  nextPath?: string;
 };
+
+type TerminalAppInfo = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
+type TerminalDocsFile = {
+  name: string;
+  content: string[];
+};
+
+const TERMINAL_DOC_FILES: TerminalDocsFile[] = [
+  {
+    name: "overview.txt",
+    content: [
+      "PortOS currently focuses on the easy app set.",
+      "Use docs, blog, contact, calculator, notes, clock, and terminal to explore the system.",
+    ],
+  },
+  {
+    name: "project.txt",
+    content: [
+      "PortOS is a browser-based portfolio operating system.",
+      "The current milestone keeps only easy apps in the live registry.",
+    ],
+  },
+  {
+    name: "roadmap.txt",
+    content: [
+      "Current implementation pass: ship the easy applications first.",
+      "Medium and hard apps stay out of the registry until they are revisited.",
+    ],
+  },
+  {
+    name: "style.txt",
+    content: [
+      "Shell styling stays macOS-inspired.",
+      "Each app can keep a local theme as long as behavior stays real.",
+    ],
+  },
+];
 
 export function calculateExpression(expression: string) {
   const safeExpression = expression.replace(/[^0-9+\-*/().%\s]/g, "");
@@ -35,28 +80,14 @@ export function calculateExpression(expression: string) {
   return Number.isInteger(result) ? String(result) : result.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-export function buildWorldClockTime(timeZone: string) {
+export function buildFormattedWorldClockTime(timeZone: string, use24Hour: boolean) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    hour12: !use24Hour,
     timeZone,
   }).format(new Date());
-}
-
-export function createWeatherSnapshot(city: string) {
-  const seed = city.toLowerCase().split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const temperature = 12 + (seed % 17);
-  const wind = 3 + (seed % 8);
-  const conditions = ["Clear", "Partly cloudy", "Rain drift", "Soft fog"];
-
-  return {
-    city,
-    temperature,
-    wind,
-    condition: conditions[seed % conditions.length],
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 export const blogPosts: BlogPost[] = [
@@ -97,7 +128,106 @@ export function validateContactSubmission(payload: ContactSubmission) {
   };
 }
 
-export function runTerminalCommand(input: string, availableApps: { id: string; name: string }[]) {
+function normalizeTerminalPath(currentPath: string, targetPath: string) {
+  const segments = (targetPath.startsWith("/") ? targetPath : `${currentPath}/${targetPath}`)
+    .split("/")
+    .filter(Boolean);
+  const normalized: string[] = [];
+
+  segments.forEach((segment) => {
+    if (segment === ".") {
+      return;
+    }
+
+    if (segment === "..") {
+      normalized.pop();
+      return;
+    }
+
+    normalized.push(segment);
+  });
+
+  return `/${normalized.join("/")}`.replace(/\/+/g, "/") || "/";
+}
+
+function getTerminalRootEntries() {
+  return ["apps/", "docs/", "profile.txt", "readme.txt"];
+}
+
+function getProfileFileLines() {
+  const profile = getProfileBasics() as {
+    name?: string;
+    title?: string;
+    location?: string;
+    contact?: { email?: string; github?: string };
+  };
+
+  return [
+    `name: ${profile.name ?? "Unknown"}`,
+    `title: ${profile.title ?? "Unknown"}`,
+    `location: ${profile.location ?? "Unknown"}`,
+    `email: ${profile.contact?.email ?? "Unknown"}`,
+    `github: ${profile.contact?.github ?? "Unknown"}`,
+  ];
+}
+
+function getTerminalFileContents(pathName: string, availableApps: TerminalAppInfo[]) {
+  if (pathName === "/readme.txt") {
+    return [
+      "Available commands:",
+      "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date",
+    ];
+  }
+
+  if (pathName === "/profile.txt") {
+    return getProfileFileLines();
+  }
+
+  if (pathName.startsWith("/apps/")) {
+    const fileName = pathName.replace("/apps/", "");
+    const appId = fileName.replace(/\.app$/, "");
+    const app = availableApps.find((item) => item.id === appId);
+
+    if (!app || !fileName.endsWith(".app")) {
+      return null;
+    }
+
+    return [
+      `id: ${app.id}`,
+      `name: ${app.name}`,
+      `description: ${app.description ?? "No description"}`,
+    ];
+  }
+
+  if (pathName.startsWith("/docs/")) {
+    const fileName = pathName.replace("/docs/", "");
+    return TERMINAL_DOC_FILES.find((item) => item.name === fileName)?.content ?? null;
+  }
+
+  return null;
+}
+
+function getTerminalDirectoryEntries(pathName: string, availableApps: TerminalAppInfo[]) {
+  if (pathName === "/") {
+    return getTerminalRootEntries();
+  }
+
+  if (pathName === "/apps") {
+    return availableApps.map((app) => `${app.id}.app`);
+  }
+
+  if (pathName === "/docs") {
+    return TERMINAL_DOC_FILES.map((file) => file.name);
+  }
+
+  return null;
+}
+
+export function runTerminalCommand(
+  input: string,
+  availableApps: TerminalAppInfo[],
+  currentPath: string,
+) {
   const [command, ...args] = input.trim().split(/\s+/);
 
   if (!command) {
@@ -108,38 +238,48 @@ export function runTerminalCommand(input: string, availableApps: { id: string; n
     case "help":
       return {
         output: [
-          "help, echo, date, fortune, cowsay, apps, open <app-id>",
+          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date",
         ],
       };
+    case "pwd":
+      return { output: [currentPath] };
+    case "ls": {
+      const targetPath = normalizeTerminalPath(currentPath, args[0] ?? ".");
+      const entries = getTerminalDirectoryEntries(targetPath, availableApps);
+
+      if (!entries) {
+        return { output: [`Directory not found: ${targetPath}`] };
+      }
+
+      return { output: entries };
+    }
+    case "cd": {
+      const targetPath = normalizeTerminalPath(currentPath, args[0] ?? "/");
+      const entries = getTerminalDirectoryEntries(targetPath, availableApps);
+
+      if (!entries) {
+        return { output: [`Directory not found: ${targetPath}`] };
+      }
+
+      return {
+        output: [`Current directory: ${targetPath}`],
+        nextPath: targetPath,
+      };
+    }
+    case "cat": {
+      const targetPath = normalizeTerminalPath(currentPath, args[0] ?? "");
+      const fileContents = getTerminalFileContents(targetPath, availableApps);
+
+      if (!fileContents) {
+        return { output: [`File not found: ${targetPath}`] };
+      }
+
+      return { output: fileContents };
+    }
     case "echo":
       return { output: [args.join(" ")] };
     case "date":
       return { output: [new Date().toString()] };
-    case "fortune": {
-      const fortunes = [
-        "Ship the real interaction, not the fake demo.",
-        "A great UI earns trust through behavior.",
-        "Delete the mock and keep the logic.",
-      ];
-
-      return { output: [fortunes[Math.floor(Math.random() * fortunes.length)]] };
-    }
-    case "cowsay": {
-      const text = args.join(" ") || "PortOS says hi";
-
-      return {
-        output: [
-          ` ${"_".repeat(text.length + 2)}`,
-          `< ${text} >`,
-          ` ${"-".repeat(text.length + 2)}`,
-          "        \\   ^__^",
-          "         \\  (oo)\\_______",
-          "            (__)\\       )\\/\\",
-          "                ||----w |",
-          "                ||     ||",
-        ],
-      };
-    }
     case "apps":
       return {
         output: availableApps.map((app) => `${app.id} :: ${app.name}`),

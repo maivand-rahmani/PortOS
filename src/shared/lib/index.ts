@@ -1,5 +1,6 @@
 export { cn } from "./cn";
 export { calculateExpression } from "./app-logic";
+export { slugifyDocsHeading } from "./docs";
 export {
   closeWindowById,
   getRuntimeSnapshot,
@@ -7,8 +8,4 @@ export {
   openAppById,
   terminateProcessById,
 } from "./os-actions";
-export {
-  getProfileBasics,
-  getProfileProjects,
-  maivandProfile,
-} from "./project-data";
+export { getProfileBasics } from "./project-data";

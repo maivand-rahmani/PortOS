@@ -1,7 +1,7 @@
 # server
 
-Server-only shared utilities for docs and API routes.
+Server-only shared utilities for docs and easy-app API routes.
 
 ## Files
 
-- `docs-data.ts`: reads repository docs and profile data for real app routes.
+- `docs-data.ts`: reads repository docs and profile basics for the docs route.
