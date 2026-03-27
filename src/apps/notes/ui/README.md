@@ -1,7 +1,7 @@
 # ui
 
-Notes UI.
+Sketch-style Notes interface.
 
 ## Files
 
-- `notes-app.tsx`: note editor with local storage persistence.
+- `notes-app.tsx`: notebook workspace with sidebar filters, page-switch animation, and local note editing.
