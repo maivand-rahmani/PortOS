@@ -23,6 +23,15 @@ export const DOCK_MENU = {
   verticalOffset: 18,
 } as const;
 
+export const DESKTOP_AI_WIDGET = {
+  width: 340,
+  height: 332,
+  initialOffset: {
+    x: 24,
+    y: 96,
+  },
+} as const;
+
 export const WINDOW_SURFACE_TRANSITION = {
   type: "spring",
   stiffness: 320,

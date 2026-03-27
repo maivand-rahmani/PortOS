@@ -13,6 +13,10 @@ export type DesktopIconDragState = {
   offset: WindowPosition;
 } | null;
 
+export type DesktopWidgetDragState = {
+  offset: WindowPosition;
+} | null;
+
 export type WindowRenderItem = {
   window: WindowInstance;
   app: AppConfig;
@@ -81,6 +85,7 @@ export type UseDesktopShellResult = {
   desktopBounds: DesktopBounds | null;
   selectedDesktopAppId: string | null;
   desktopIconPositions: DesktopIconMap;
+  aiWidgetPosition: WindowPosition | null;
   dockApps: DockAppState[];
   dockMenu: DockMenuModel | null;
   minimizedWindows: WindowInstance[];
@@ -89,6 +94,8 @@ export type UseDesktopShellResult = {
   closeDockMenu: () => void;
   selectDesktopApp: (appId: string | null) => void;
   openDesktopApp: (appId: string) => void;
+  openAgentPrompt: (prompt: string) => void;
+  beginAiWidgetDrag: (pointer: WindowPosition) => void;
   beginDesktopIconDrag: (appId: string, pointer: WindowPosition) => void;
   openDockMenu: (appId: string, anchor: WindowPosition) => void;
   runDockMenuAction: (action: DockMenuAction) => void;

@@ -11,9 +11,11 @@ The project should feel like a real desktop operating system in the browser rath
 The current system includes:
 
 - a desktop shell with wallpaper, menu bar, dock, icons, and floating windows
+- a draggable AI teaser widget on the desktop shell that surfaces the agent before any app is opened
 - a typed runtime store for apps, windows, and processes
 - dynamic app loading from `src/apps/`
 - window focus, minimize, maximize, drag, and resize behavior
+- cross-app actions that let the AI agent launch apps, run guided flows, and prefill notes drafts
 
 ## App Philosophy
 
@@ -24,9 +26,13 @@ Applications must be isolated modules with real logic.
 - each application may have its own local `theme.css`
 - each application must keep behavior separate from system state
 
+The most important product-facing app right now is the AI agent. It is not a generic chat feature - it is a portfolio attraction surface designed to represent Maivand, answer hiring/client questions, and guide people through the OS.
+
 ## Design Direction
 
 The overall shell follows a macOS-inspired visual language, but apps are allowed to have their own distinct personalities as long as they stay usable and integrated with the OS.
+
+The AI agent and desktop attraction surfaces should feel premium, minimal, and conversion-focused. They are part of the portfolio narrative, not utility-only controls.
 
 ## Technical Notes
 
@@ -37,19 +43,43 @@ The overall shell follows a macOS-inspired visual language, but apps are allowed
 - icons: Lucide
 - styles: Tailwind CSS v4 + CSS variables
 
-## Near-term Goals
+## Implemented Application Set
 
-The next major milestone is the real first batch of applications:
+The current installed app set is:
 
-- system info
+- AI agent
 - terminal
-- portfolio
-- resume
 - docs
 - blog
 - contact
-- AI agent
+- portfolio
+- resume
+- system info
 - calculator
 - notes
-- weather
 - clock
+- settings
+
+Still not implemented from the broader roadmap:
+
+- weather
+
+## Current AI Agent Status
+
+The AI agent currently supports:
+
+- identity-driven answers based on `docs/project/*`, `docs/maivand/info.json`, and roadmap context
+- recruiter/client-facing guided prompts
+- opening installed apps through the OS runtime
+- guided portfolio and hiring/contact flows
+- note draft creation through the Notes app
+- a visible desktop-shell teaser widget that can be dragged like a real widget
+
+## Near-term Goals
+
+The next major milestone is refinement and depth rather than just adding the first batch:
+
+- make the AI agent even closer to Maivand's real voice
+- improve guided portfolio flows and deeper app targeting
+- finish the remaining planned app(s)
+- keep polishing responsiveness, motion, and OS realism

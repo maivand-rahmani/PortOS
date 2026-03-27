@@ -1,0 +1,30 @@
+import type { SVGProps } from "react";
+
+export default function AiAgentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <defs>
+        <linearGradient id="ai-agent-bg" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#ffb36b" />
+          <stop offset="100%" stopColor="#ff5d47" />
+        </linearGradient>
+        <radialGradient id="ai-agent-glow" cx="8" cy="7" r="12" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.42" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <filter id="ai-agent-shadow" x="-10%" y="-10%" width="130%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#ff5d47" floodOpacity="0.35" />
+        </filter>
+      </defs>
+      <rect x="2" y="2.5" width="20" height="19" rx="5" fill="url(#ai-agent-bg)" filter="url(#ai-agent-shadow)" />
+      <rect x="2" y="2.5" width="20" height="19" rx="5" fill="url(#ai-agent-glow)" />
+      <path d="M7.1 9.3c1.4-1.95 3.2-2.92 5.4-2.92 2.22 0 4.03.97 5.42 2.92" stroke="#fff4de" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.92" />
+      <path d="M8.15 14.8c1.12 1.5 2.56 2.25 4.35 2.25 1.78 0 3.24-.75 4.38-2.25" stroke="#fff1d8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.82" />
+      <circle cx="9.2" cy="11.8" r="1.05" fill="#fffaf1" opacity="0.95" />
+      <circle cx="15.8" cy="11.8" r="1.05" fill="#fffaf1" opacity="0.95" />
+      <path d="M5.4 6.3l1.2 1.15" stroke="#ffe7bf" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <path d="M18.6 6.3l-1.2 1.15" stroke="#ffe7bf" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <rect x="2.6" y="3.1" width="9.4" height="6.7" rx="3" fill="white" opacity="0.14" />
+    </svg>
+  );
+}

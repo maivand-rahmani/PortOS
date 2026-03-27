@@ -9,4 +9,6 @@ Shell-level model layer for the desktop widget.
 - `desktop-shell.types.ts`: shared shell types used by the UI folders.
 - `use-desktop-shell.ts`: main hook that wires desktop UI state to the OS runtime store.
 
+The shell hook also owns shell-level launch flows such as opening the AI agent with guided prompts from the desktop teaser.
+
 Keep desktop coordination logic here so UI components stay small and focused.

@@ -5,8 +5,9 @@ import { useReducedMotion } from "framer-motion";
 
 import { useOSStore } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
+import { openAgentWithPrompt } from "@/apps/ai-agent/model/contextLoader";
 
-import { BOOT_SEQUENCE, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
+import { BOOT_SEQUENCE, DESKTOP_AI_WIDGET, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
 import {
   clampDesktopIconPosition,
   getDockAppStates,
@@ -16,6 +17,7 @@ import {
 import type {
   DesktopIconDragState,
   DesktopIconMap,
+  DesktopWidgetDragState,
   DockMenuAction,
   DockMenuModel,
   WindowRenderItem,
@@ -29,6 +31,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const [customDesktopIconPositions, setDesktopIconPositions] = useState<DesktopIconMap>({});
   const [desktopIconDragState, setDesktopIconDragState] =
     useState<DesktopIconDragState>(null);
+  const [customAiWidgetPosition, setAiWidgetPosition] = useState<WindowPosition | null>(null);
+  const [desktopWidgetDragState, setDesktopWidgetDragState] = useState<DesktopWidgetDragState>(null);
   const [dockMenu, setDockMenu] = useState<DockMenuModel | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
@@ -149,6 +153,21 @@ export function useDesktopShell(): UseDesktopShellResult {
     resizeWindowsToBounds(desktopBounds);
   }, [desktopBounds, resizeWindowsToBounds]);
 
+  const aiWidgetPosition = useMemo(() => {
+    if (customAiWidgetPosition) {
+      return customAiWidgetPosition;
+    }
+
+    if (!desktopBounds) {
+      return null;
+    }
+
+    return {
+      x: Math.max(desktopBounds.insetLeft, DESKTOP_AI_WIDGET.initialOffset.x),
+      y: Math.max(desktopBounds.insetTop + 24, DESKTOP_AI_WIDGET.initialOffset.y),
+    };
+  }, [customAiWidgetPosition, desktopBounds]);
+
   useEffect(() => {
     if (bootPhase !== "booting") {
       return undefined;
@@ -207,6 +226,28 @@ export function useDesktopShell(): UseDesktopShellResult {
         }));
       }
 
+      if (desktopWidgetDragState) {
+        const maxX = Math.max(
+          desktopBounds.insetLeft,
+          desktopBounds.width - desktopBounds.insetRight - DESKTOP_AI_WIDGET.width,
+        );
+        const maxY = Math.max(
+          desktopBounds.insetTop,
+          desktopBounds.height - desktopBounds.insetBottom - DESKTOP_AI_WIDGET.height,
+        );
+
+        setAiWidgetPosition({
+          x: Math.min(
+            Math.max(nextPointer.x - desktopWidgetDragState.offset.x, desktopBounds.insetLeft),
+            maxX,
+          ),
+          y: Math.min(
+            Math.max(nextPointer.y - desktopWidgetDragState.offset.y, desktopBounds.insetTop),
+            maxY,
+          ),
+        });
+      }
+
       updateWindowDrag(nextPointer, desktopBounds);
       updateWindowResize(nextPointer, desktopBounds);
     };
@@ -215,6 +256,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       endWindowDrag();
       endWindowResize();
       setDesktopIconDragState(null);
+      setDesktopWidgetDragState(null);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -227,6 +269,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   }, [
     desktopBounds,
     desktopIconDragState,
+    desktopWidgetDragState,
     endWindowDrag,
     endWindowResize,
     updateWindowDrag,
@@ -253,6 +296,17 @@ export function useDesktopShell(): UseDesktopShellResult {
     setDockMenu(null);
     setSelectedDesktopAppId(appId);
     void activateApp(appId, desktopBounds);
+  };
+
+  const openAgentPrompt = (prompt: string) => {
+    if (!desktopBounds) {
+      return;
+    }
+
+    openAgentWithPrompt(prompt);
+    setDockMenu(null);
+    setSelectedDesktopAppId("ai-agent");
+    void activateApp("ai-agent", desktopBounds);
   };
 
   const launchDesktopApp = (appId: string) => {
@@ -283,6 +337,21 @@ export function useDesktopShell(): UseDesktopShellResult {
       offset: {
         x: localPointer.x - currentPosition.x,
         y: localPointer.y - currentPosition.y,
+      },
+    });
+  };
+
+  const beginAiWidgetDrag = (pointer: WindowPosition) => {
+    if (bootPhase !== "ready" || !aiWidgetPosition) {
+      return;
+    }
+
+    const localPointer = getContainerPointer(pointer);
+
+    setDesktopWidgetDragState({
+      offset: {
+        x: localPointer.x - aiWidgetPosition.x,
+        y: localPointer.y - aiWidgetPosition.y,
       },
     });
   };
@@ -393,6 +462,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     desktopBounds,
     selectedDesktopAppId,
     desktopIconPositions,
+    aiWidgetPosition,
     dockApps,
     dockMenu,
     minimizedWindows,
@@ -401,6 +471,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     closeDockMenu,
     selectDesktopApp,
     openDesktopApp,
+    openAgentPrompt,
+    beginAiWidgetDrag,
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,

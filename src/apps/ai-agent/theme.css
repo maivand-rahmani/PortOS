@@ -1,0 +1,64 @@
+.ai-agent-app {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.92), transparent 34%),
+    radial-gradient(circle at 0% 0%, rgba(10, 132, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 100% 0%, rgba(255, 107, 87, 0.10), transparent 24%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef2f7 100%);
+}
+
+.ai-agent-app__skeleton-line {
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9) 0%, rgba(241, 245, 249, 1) 50%, rgba(226, 232, 240, 0.9) 100%);
+  background-size: 200% 100%;
+  animation: ai-agent-shimmer 1.5s linear infinite;
+}
+
+.ai-agent-app__typing-dot {
+  animation: ai-agent-bounce 1.05s infinite ease-in-out;
+}
+
+.ai-agent-app__typing-dot:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.ai-agent-app__typing-dot:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.ai-agent-app__float {
+  animation: ai-agent-float 3.2s ease-in-out infinite;
+}
+
+@keyframes ai-agent-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.38;
+  }
+
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes ai-agent-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-6px) rotate(1deg);
+  }
+}
+
+@keyframes ai-agent-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

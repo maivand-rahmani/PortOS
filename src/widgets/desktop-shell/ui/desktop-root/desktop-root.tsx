@@ -5,6 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
+import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
 import { DesktopWallpaper } from "../desktop-wallpaper";
 import { MacDock } from "../mac-dock";
 import { MacMenuBar } from "../mac-menu-bar";
@@ -20,6 +21,7 @@ export function DesktopShell() {
     bootProgress,
     selectedDesktopAppId,
     desktopIconPositions,
+    aiWidgetPosition,
     dockApps,
     dockMenu,
     minimizedWindows,
@@ -28,6 +30,8 @@ export function DesktopShell() {
     closeDockMenu,
     selectDesktopApp,
     openDesktopApp,
+    openAgentPrompt,
+    beginAiWidgetDrag,
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,
@@ -61,6 +65,14 @@ export function DesktopShell() {
       <MacMenuBar processCount={processCount} />
 
       <main className="relative h-screen w-full">
+        <DesktopAiTeaser
+          isBooting={bootPhase === "booting"}
+          position={aiWidgetPosition}
+          onOpenAgent={() => openDesktopApp("ai-agent")}
+          onRunPrompt={openAgentPrompt}
+          onDragStart={beginAiWidgetDrag}
+        />
+
         <DesktopIcons
           apps={apps}
           positions={desktopIconPositions}
