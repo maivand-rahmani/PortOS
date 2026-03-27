@@ -12,6 +12,7 @@ export type AppComponentProps = {
 export type AppWindowConfig = WindowSize & {
   minWidth?: number;
   minHeight?: number;
+  launchMaximized?: boolean;
 };
 
 export type LoadedAppModule = {

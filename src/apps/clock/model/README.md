@@ -1,7 +1,7 @@
 # model
 
-World clock time zones.
+World clock timezone data helpers.
 
 ## Files
 
-- `content.ts`: known cities and IANA time zones.
+- `content.ts`: builds searchable worldwide timezone options from `@vvo/tzdb` and defines the default clock wall set.

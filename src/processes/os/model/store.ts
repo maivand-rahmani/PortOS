@@ -46,6 +46,15 @@ import {
   type WindowManagerState,
 } from "./window-manager";
 
+const DEFAULT_LAUNCH_BOUNDS: DesktopBounds = {
+  width: 1440,
+  height: 900,
+  insetTop: 42,
+  insetRight: 24,
+  insetBottom: 120,
+  insetLeft: 24,
+};
+
 export type OSBootPhase = "booting" | "ready";
 
 export type OSRuntimeSnapshot = {
@@ -207,6 +216,12 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       nextZIndex: windowResult.state.nextZIndex,
       dragState: windowResult.state.dragState,
     });
+
+    if (app.window.launchMaximized) {
+      const maximizeBounds = bounds ?? DEFAULT_LAUNCH_BOUNDS;
+
+      get().toggleWindowMaximize(windowResult.window.id, maximizeBounds);
+    }
 
     return windowResult.window.id;
   },
