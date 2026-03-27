@@ -1,5 +1,53 @@
 .terminal-app {
   background:
-    radial-gradient(circle at top left, rgba(13, 148, 136, 0.18), transparent 30%),
-    linear-gradient(180deg, #08110d, #0f172a);
+    linear-gradient(180deg, rgba(51, 255, 0, 0.05), transparent 18%),
+    linear-gradient(180deg, #050805, #0a0a0a);
+  text-shadow: 0 0 5px rgba(51, 255, 0, 0.28);
+  position: relative;
+}
+
+.terminal-app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02) 0,
+    rgba(255, 255, 255, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  background-size: 100% 3px;
+  opacity: 0.28;
+}
+
+.terminal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #33ff00 #0a0a0a;
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: #1f521f;
+  border: 1px solid #33ff00;
+}
+
+.terminal-action-button {
+  color: #33ff00;
+  background: transparent;
+  text-shadow: 0 0 5px rgba(51, 255, 0, 0.4);
+}
+
+.terminal-action-button:hover {
+  background: #33ff00;
+  color: #050805;
+  text-shadow: none;
 }

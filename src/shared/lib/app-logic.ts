@@ -19,12 +19,34 @@ export type TerminalResult = {
   output: string[];
   openAppId?: string;
   nextPath?: string;
+  clear?: boolean;
 };
 
 type TerminalAppInfo = {
   id: string;
   name: string;
   description?: string;
+};
+
+type RuntimeSnapshot = {
+  apps: Array<{ id: string; name: string }>;
+  processes: Array<{ id: string; appId: string; name: string; startedAt: number }>;
+  windows: Array<{
+    id: string;
+    appId: string;
+    title: string;
+    processId: string;
+    isMinimized: boolean;
+    isMaximized: boolean;
+    zIndex: number;
+  }>;
+  activeWindowId: string | null;
+  bootPhase: string;
+  bootProgress: number;
+};
+
+type TerminalContext = {
+  runtime?: RuntimeSnapshot;
 };
 
 type TerminalDocsFile = {
@@ -151,7 +173,7 @@ function normalizeTerminalPath(currentPath: string, targetPath: string) {
 }
 
 function getTerminalRootEntries() {
-  return ["apps/", "docs/", "profile.txt", "readme.txt"];
+  return ["apps/", "docs/", "profile.txt", "readme.txt", "runtime.txt"];
 }
 
 function getProfileFileLines() {
@@ -181,6 +203,13 @@ function getTerminalFileContents(pathName: string, availableApps: TerminalAppInf
 
   if (pathName === "/profile.txt") {
     return getProfileFileLines();
+  }
+
+  if (pathName === "/runtime.txt") {
+    return [
+      "PortOS runtime report",
+      "Use `sysinfo`, `ps`, and `windows` for live state.",
+    ];
   }
 
   if (pathName.startsWith("/apps/")) {
@@ -227,8 +256,11 @@ export function runTerminalCommand(
   input: string,
   availableApps: TerminalAppInfo[],
   currentPath: string,
+  context: TerminalContext = {},
 ) {
   const [command, ...args] = input.trim().split(/\s+/);
+
+  const runtime = context.runtime;
 
   if (!command) {
     return { output: [] } satisfies TerminalResult;
@@ -238,8 +270,13 @@ export function runTerminalCommand(
     case "help":
       return {
         output: [
-          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date",
+          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, clear, whoami, tree, ps, windows, sysinfo",
         ],
+      };
+    case "clear":
+      return {
+        output: ["Terminal cleared."],
+        clear: true,
       };
     case "pwd":
       return { output: [currentPath] };
@@ -280,10 +317,99 @@ export function runTerminalCommand(
       return { output: [args.join(" ")] };
     case "date":
       return { output: [new Date().toString()] };
+    case "whoami":
+      return { output: ["maivandrahmani"] };
     case "apps":
       return {
         output: availableApps.map((app) => `${app.id} :: ${app.name}`),
       };
+    case "tree": {
+      const targetPath = normalizeTerminalPath(currentPath, args[0] ?? ".");
+      const rootEntries = getTerminalDirectoryEntries(targetPath, availableApps);
+
+      if (!rootEntries) {
+        return { output: [`Directory not found: ${targetPath}`] };
+      }
+
+      if (targetPath === "/") {
+        return {
+          output: [
+            "/",
+            "|- apps/",
+            ...availableApps.map((app) => `|  |- ${app.id}.app`),
+            "|- docs/",
+            ...TERMINAL_DOC_FILES.map((file) => `|  |- ${file.name}`),
+            "|- profile.txt",
+            "|- readme.txt",
+            "|- runtime.txt",
+          ],
+        };
+      }
+
+      return {
+        output: [targetPath, ...rootEntries.map((entry) => `|- ${entry}`)],
+      };
+    }
+    case "ps": {
+      if (!runtime) {
+        return { output: ["Runtime snapshot unavailable."] };
+      }
+
+      if (runtime.processes.length === 0) {
+        return { output: ["No running processes."] };
+      }
+
+      return {
+        output: [
+          "PID      APP           NAME",
+          ...runtime.processes.map((process) => {
+            const pid = process.id.slice(0, 8);
+            return `${pid.padEnd(8)} ${process.appId.padEnd(12)} ${process.name}`;
+          }),
+        ],
+      };
+    }
+    case "windows": {
+      if (!runtime) {
+        return { output: ["Runtime snapshot unavailable."] };
+      }
+
+      if (runtime.windows.length === 0) {
+        return { output: ["No open windows."] };
+      }
+
+      return {
+        output: [
+          "WINDOW   APP           STATE      TITLE",
+          ...runtime.windows.map((window) => {
+            const state = window.isMaximized
+              ? "max"
+              : window.isMinimized
+                ? "min"
+                : window.id === runtime.activeWindowId
+                  ? "focus"
+                  : "open";
+            return `${window.id.slice(0, 6).padEnd(8)} ${window.appId.padEnd(12)} ${state.padEnd(10)} ${window.title}`;
+          }),
+        ],
+      };
+    }
+    case "sysinfo": {
+      if (!runtime) {
+        return { output: ["Runtime snapshot unavailable."] };
+      }
+
+      return {
+        output: [
+          `boot phase: ${runtime.bootPhase}`,
+          `boot progress: ${runtime.bootProgress}%`,
+          `apps installed: ${runtime.apps.length}`,
+          `running processes: ${runtime.processes.length}`,
+          `open windows: ${runtime.windows.length}`,
+          `active window: ${runtime.activeWindowId ?? "none"}`,
+        ],
+      };
+    }
     case "open": {
       const appId = args[0];
       const match = availableApps.find((app) => app.id === appId);
