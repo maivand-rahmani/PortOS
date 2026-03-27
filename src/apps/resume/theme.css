@@ -1,0 +1,42 @@
+.resume-app {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(255, 255, 255, 0.5), transparent 20%),
+    linear-gradient(180deg, #eef2f7 0%, #e0e5ec 100%);
+}
+
+.resume-marquee-track {
+  animation: resume-marquee 24s linear infinite;
+}
+
+@keyframes resume-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .resume-marquee-track {
+    animation: none;
+  }
+}
+
+@media print {
+  .resume-app {
+    background: #ffffff;
+  }
+
+  .resume-print-hidden {
+    display: none !important;
+  }
+
+  .industrial-panel,
+  .industrial-recessed,
+  .industrial-button,
+  .industrial-chip {
+    box-shadow: none !important;
+  }
+}

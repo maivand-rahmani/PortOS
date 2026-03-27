@@ -1,8 +1,13 @@
+@import "../shared/ui/industrial-theme.css";
 @import "./terminal/theme.css";
 @import "./docs/theme.css";
 @import "./blog/theme.css";
 @import "./contact/theme.css";
+@import "./portfolio/theme.css";
+@import "./resume/theme.css";
+@import "./system-info/theme.css";
 @import "./calculator/theme.css";
 @import "./notes/theme.css";
 @import "./clock/theme.css";
 @import "./settings/theme.css";
+@import "./ai-agent/theme.css";

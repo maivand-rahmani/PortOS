@@ -6,6 +6,7 @@ Shared interface primitives.
 
 - buttons
 - cards and panels
+- design-system CSS and font exports
 - window frames
 - inputs and layout primitives
 

@@ -1,0 +1,40 @@
+.portfolio-app {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 24%),
+    radial-gradient(circle at 85% 12%, rgba(255, 255, 255, 0.55), transparent 18%),
+    linear-gradient(180deg, #eef2f7 0%, #e0e5ec 100%);
+}
+
+.portfolio-app-shell {
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.18) 0, transparent 24%),
+    linear-gradient(rgba(255, 255, 255, 0.08) 50%, rgba(0, 0, 0, 0.02) 50%),
+    linear-gradient(90deg, rgba(74, 85, 104, 0.08) 1px, transparent 1px);
+  background-size: auto, 100% 4px, 4px 100%;
+}
+
+.portfolio-device-glow {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 35%),
+    linear-gradient(180deg, #dbe3ed 0%, #cfd7e4 100%);
+}
+
+.portfolio-marquee-track {
+  animation: portfolio-marquee 24s linear infinite;
+}
+
+@keyframes portfolio-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-marquee-track {
+    animation: none;
+  }
+}
