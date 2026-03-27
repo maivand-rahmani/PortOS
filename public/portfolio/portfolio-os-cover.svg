@@ -1,0 +1,21 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#111827"/>
+  <rect width="1600" height="900" fill="url(#bg)" fill-opacity="0.88"/>
+  <rect x="64" y="66" width="1472" height="68" rx="20" fill="#E5E7EB" fill-opacity="0.24" stroke="#F8FAFC" stroke-opacity="0.2" stroke-width="2"/>
+  <rect x="144" y="192" width="248" height="316" rx="28" fill="#F8FAFC" fill-opacity="0.2" stroke="#FFFFFF" stroke-opacity="0.26" stroke-width="2"/>
+  <rect x="466" y="244" width="640" height="402" rx="34" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.26" stroke-width="2"/>
+  <rect x="1144" y="214" width="298" height="248" rx="28" fill="#FFFFFF" fill-opacity="0.14" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="2"/>
+  <rect x="118" y="760" width="1364" height="88" rx="36" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="2"/>
+  <circle cx="264" cy="350" r="42" fill="#F97316" fill-opacity="0.32"/>
+  <circle cx="786" cy="402" r="56" fill="#60A5FA" fill-opacity="0.24"/>
+  <circle cx="1292" cy="300" r="34" fill="#34D399" fill-opacity="0.26"/>
+  <text x="98" y="816" fill="#F9FAFB" font-family="Arial, sans-serif" font-size="54" font-weight="700">Portfolio OS</text>
+  <text x="98" y="860" fill="#FDBA74" font-family="Arial, sans-serif" font-size="28">Placeholder desktop shell preview - replace with final hero screenshot later</text>
+  <defs>
+    <linearGradient id="bg" x1="194" y1="82" x2="1398" y2="876" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="0.52" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#EA580C"/>
+    </linearGradient>
+  </defs>
+</svg>

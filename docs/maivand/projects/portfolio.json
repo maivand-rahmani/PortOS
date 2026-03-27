@@ -1,0 +1,65 @@
+{
+  "projects": [
+    {
+      "id": "crazy-ecommerce-project",
+      "source": "catalog",
+      "sourceId": "crazy-ecommerce-project",
+      "profileSourceName": "E-commerce Platform",
+      "featured": true,
+      "sortOrder": 1,
+      "category": "Full-scale product",
+      "heroLabel": "Commerce System",
+      "summary": "Production-style marketplace focused on real-world scale, infrastructure decisions, and admin operations.",
+      "accent": "#2563eb",
+      "tags": [
+        "nextjs",
+        "e-commerce",
+        "admin",
+        "full-stack",
+        "architecture"
+      ],
+      "gallery": [
+        {
+          "src": "/portfolio/crazy-ecommerce-cover.svg",
+          "alt": "Placeholder storefront preview for Crazy eCommerce",
+          "label": "Storefront Placeholder"
+        },
+        {
+          "src": "/portfolio/crazy-ecommerce-admin.svg",
+          "alt": "Placeholder admin dashboard preview for Crazy eCommerce",
+          "label": "Admin Placeholder"
+        }
+      ]
+    },
+    {
+      "id": "portfolio-os",
+      "source": "profile",
+      "sourceId": "Portfolio OS (in progress)",
+      "featured": true,
+      "sortOrder": 2,
+      "category": "Product",
+      "heroLabel": "System Interface",
+      "summary": "Browser-based operating system portfolio that turns projects and profile content into a working desktop product.",
+      "accent": "#f97316",
+      "tags": [
+        "nextjs",
+        "system-design",
+        "ai",
+        "portfolio",
+        "product-architecture"
+      ],
+      "gallery": [
+        {
+          "src": "/portfolio/portfolio-os-cover.svg",
+          "alt": "Placeholder desktop shell preview for Portfolio OS",
+          "label": "Desktop Placeholder"
+        },
+        {
+          "src": "/portfolio/portfolio-os-window.svg",
+          "alt": "Placeholder app window preview for Portfolio OS",
+          "label": "Window Placeholder"
+        }
+      ]
+    }
+  ]
+}

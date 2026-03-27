@@ -1,0 +1,212 @@
+{
+  "crazy-ecommerce-project": {
+    "name": "Crazy eCommerce",
+    "slug": "crazy-ecommerce-project",
+    "description": "Production-ready e-commerce platform built with Next.js App Router, Prisma, and NextAuth. Includes multilingual storefront, sandbox checkout flow, wishlist, order management, product reviews, and a full admin panel.",
+    "status": "active",
+    "type": "full-stack e-commerce web application",
+    "portfolioReady": true,
+    "repository": {
+      "provider": "GitHub",
+      "url": "https://github.com/Kingnew2006/crazy-eCommerce-project",
+      "owner": "Kingnew2006",
+      "repositoryName": "crazy-eCommerce-project"
+    },
+    "urls": {
+      "live": "https://crazy-e-commerce-project.vercel.app",
+      "apiBase": "https://crazy-e-commerce-project.vercel.app/api"
+    },
+    "authoring": {
+      "maintainer": "Maivand Rahmani"
+    },
+    "summary": {
+      "short": "A modern multilingual e-commerce platform with authentication, cart, wishlist, checkout, reviews, and admin management.",
+      "long": "This project is a full-featured online store built with the Next.js App Router architecture. It supports customer-facing commerce flows, secure authentication, localized UI, sandbox payments for demo use, and an administrative dashboard for managing products, orders, users, coupons, and sales operations."
+    },
+    "architecture": {
+      "pattern": "Feature-Sliced Design (FSD)",
+      "frontend": "Next.js App Router",
+      "rendering": [
+        "Server Components by default",
+        "Client Components where needed"
+      ],
+      "apiStyle": "Next.js route handlers with REST-like structure",
+      "layers": ["app", "entities", "features", "shared", "widgets"]
+    },
+    "coreFeatures": [
+      "Product catalog with categories, search, related products, specs, ratings, and comments",
+      "User authentication with credentials and OAuth",
+      "Wishlist management",
+      "Shopping cart with quantity updates",
+      "Coupon validation",
+      "Sandbox checkout flow",
+      "Order history and order management",
+      "Admin dashboard for products, orders, users, coupons, and sales",
+      "Multi-language support",
+      "Protected routes and account management"
+    ],
+    "userFlows": [
+      "Register account",
+      "Sign in with email and password",
+      "Sign in with Google",
+      "Sign in with GitHub",
+      "Browse products by category",
+      "Add items to cart",
+      "Apply coupons",
+      "Place sandbox orders",
+      "Leave ratings and comments",
+      "Manage profile and addresses",
+      "View order history",
+      "Manage wishlist"
+    ],
+    "adminCapabilities": [
+      "Manage products",
+      "Manage variants",
+      "Manage orders",
+      "Process returns",
+      "Manage users",
+      "Manage coupons",
+      "View sales overview"
+    ],
+    "techStack": {
+      "frontend": ["Next.js 15", "React 18"],
+      "backend": ["Next.js Route Handlers", "Prisma ORM", "PostgreSQL"],
+      "authentication": [
+        "NextAuth.js",
+        "Credentials login",
+        "Google OAuth",
+        "GitHub OAuth"
+      ],
+      "styling": ["Tailwind CSS v4", "Styled Components", "Custom global CSS"],
+      "formsAndState": ["React Hook Form", "React Hooks"],
+      "internationalization": ["next-intl"],
+      "testing": ["Vitest"],
+      "uiLibraries": ["Lucide React", "React Hot Toast"]
+    },
+    "libraries": {
+      "important": [
+        "next",
+        "react",
+        "next-auth",
+        "@next-auth/prisma-adapter",
+        "@prisma/client",
+        "prisma",
+        "next-intl",
+        "react-hook-form",
+        "lucide-react",
+        "react-hot-toast",
+        "styled-components",
+        "vitest"
+      ],
+      "notes": "The project also uses Tailwind CSS, PostCSS, ESLint, and Next.js ecosystem tooling."
+    },
+    "database": {
+      "engine": "PostgreSQL",
+      "orm": "Prisma",
+      "schemaLocation": "prisma/schema.prisma",
+      "clientGeneration": "npx prisma generate",
+      "migrationWorkflow": "npx prisma migrate dev"
+    },
+    "authentication": {
+      "system": "NextAuth.js",
+      "sessionStrategy": "JWT",
+      "providers": ["Credentials", "Google", "GitHub"],
+      "adapter": "Prisma Adapter"
+    },
+    "internationalization": {
+      "enabled": true,
+      "library": "next-intl",
+      "supportedLocales": ["en", "ru", "fa"]
+    },
+    "testing": {
+      "runner": "Vitest",
+      "configured": true,
+      "setupFile": "tests/setup.ts",
+      "coverageAreas": [
+        "shared layer utilities",
+        "catalog feature model",
+        "add-to-cart feature model",
+        "cart feature model",
+        "leave-comment feature model",
+        "auth/register feature model"
+      ]
+    },
+    "quality": {
+      "linting": "ESLint",
+      "buildCommand": "npm run build",
+      "devCommand": "npm run dev",
+      "startCommand": "npm start",
+      "lintCommand": "npm run lint",
+      "testCommand": "npm run test"
+    },
+    "projectStructure": {
+      "rootDirectories": ["documentation", "prisma", "public", "src", "tests"],
+      "srcLayers": ["app", "entities", "features", "shared", "widgets"]
+    },
+    "environment": {
+      "required": ["DATABASE_URL", "NEXTAUTH_SECRET"],
+      "optional": [
+        "NEXTAUTH_URL",
+        "INTERNAL_APP_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_API_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET"
+      ]
+    },
+    "deployment": {
+      "nodeVersion": "20+",
+      "npmVersion": "10+",
+      "productionReady": true
+    },
+    "highlights": [
+      "Modern App Router architecture",
+      "Feature-Sliced Design structure",
+      "Localized storefront",
+      "Sandbox-friendly checkout for demos and QA",
+      "Admin panel included",
+      "Prisma + PostgreSQL backend",
+      "OAuth and credentials authentication"
+    ],
+    "opportunities": [
+      "Integrate a real payment gateway such as Stripe",
+      "Add automated end-to-end testing",
+      "Increase unit and integration test coverage",
+      "Add analytics and event tracking",
+      "Improve SEO and structured metadata",
+      "Add product recommendations and personalization",
+      "Introduce caching and performance optimization",
+      "Expand admin reporting and dashboards",
+      "Add inventory forecasting",
+      "Support image/CDN optimization workflows"
+    ],
+    "aiContext": {
+      "intendedUse": [
+        "Portfolio presentation",
+        "Project summarization",
+        "AI assistant context",
+        "Repository metadata",
+        "Technical onboarding"
+      ],
+      "domain": "e-commerce",
+      "businessModel": "online retail platform",
+      "maturity": "advanced demo / production-style application"
+    },
+    "tags": [
+      "e-commerce",
+      "nextjs",
+      "react",
+      "prisma",
+      "postgresql",
+      "nextauth",
+      "tailwindcss",
+      "vitest",
+      "i18n",
+      "admin-dashboard",
+      "portfolio-project",
+      "full-stack"
+    ]
+  }
+}

@@ -8,6 +8,11 @@
     "focus": "Building scalable web products with strong architecture and AI integration"
   },
 
+  "links": {
+    "github": "https://github.com/maivand-rahmani",
+    "gmail": "maivand123r@gmail.com"
+  },
+
   "education": {
     "institution": "Moscow Financial and Law University",
     "program": "Information Systems and Programming",
@@ -16,8 +21,22 @@
 
   "skills": {
     "frontend": {
-      "core": ["JavaScript", "TypeScript", "React", "Next.js"],
-      "styling": ["Tailwind CSS"],
+      "core": {
+        "react": "solid practical experience with hooks, component architecture, and performance optimization 7/10",
+        "typescript": "good practical experience, still improving 3/10",
+        "nextjs": "used in multiple projects, understands routing and data fetching 7/10",
+        "javascript": "strong foundation, comfortable with modern features 8/10",
+          "html_css": "proficient in semantic HTML and responsive CSS 7/10",
+          "ui_design": "basic understanding of design principles, focuses on functionality over aesthetics 4/10",
+            "testing": "basic knowledge of testing principles, not yet applied in projects 2/10",
+              "performance": "applies optimization techniques, understands importance of performance 6/10",
+                "accessibility": "aware of accessibility importance, not yet implemented in projects 2/10",
+        "Git": "proficient in version control, comfortable with branching and pull requests 7/10",
+        "AI_tools": "actively uses AI for problem-solving and code generation, understands limitations 7/10",
+        "design_patterns": "familiar with common patterns, still learning to apply them effectively 3/10",
+          "system_design": "strong architectural thinking, focuses on building scalable systems 7/10",
+        "Tailwind": "proficient in utility-first CSS framework, builds responsive and maintainable styles 7/10"  
+      },
       "level": "intermediate+",
       "details": [
         "Solid understanding of hooks and component architecture",
@@ -61,20 +80,11 @@
         "Importance of infrastructure decisions",
         "Designing scalable architecture"
       ],
-      "level": "advanced"
-    },
-    {
-      "name": "Custom ChatGPT Client",
-      "type": "AI product",
-      "description": "AI client with model selection, persistent memory, and parameter control",
-      "stack": ["React", "API", "LocalStorage"],
-      "level": "advanced"
-    },
-    {
-      "name": "Web Parser",
-      "type": "Tooling",
-      "description": "Parser for extracting structured product data",
-      "level": "intermediate"
+      "level": "advanced",
+      "time_spent": "5 months (without AI assistance) + 1 month (with AI assistance)",
+      "started": "2025-9",
+      "finished": "2026-2",
+      "status": "completed" 
     },
     {
       "name": "Portfolio OS (in progress)",
@@ -84,7 +94,12 @@
         "System design",
         "AI integration",
         "Product architecture"
-      ]
+      ],
+      "level": "advanced",
+      "status": "in progress",
+      "notes": "Focus on building a working system with strong architecture and AI capabilities",
+      "started": "2026-3",
+      "finished": "TBD"
     }
   ],
 
