@@ -147,6 +147,7 @@
 * [ ] Persist temporary window positions
 * [x] Ensure smooth drag experience
 * [x] Add minimize/maximize/close buttons
+* [x] Support launch-maximized apps where needed
 
 ---
 
@@ -155,14 +156,14 @@
 **Description:** Populate the OS with multiple apps, ensuring modularity, isolation, and proper functionality.
 
 * [ ] Add first batch of apps
-  - [ ] (easy-medium) system info (displays runtime state and allows real process termination)
+  - [x] (easy-medium) system info (displays runtime state and allows real process termination)
   - [x] (easy) terminal (runs basic commands, basic navigation, and can open OS apps with `open <app-id>`)
-  - [ ] (hard) portfolio (app showcasing projects)
-  - [ ] (hard) resume (interactive resume)
+  - [x] (hard) portfolio (app showcasing projects)
+  - [x] (hard) resume (interactive resume)
   - [x] (easy) docs (project documentation viewer)
   - [x] (easy) blog (personal blog reader)
   - [x] (easy) contact (contact form and info)
-  - [ ] (hard) AI agent (interactive assistant app that answers from project/profile context and can open apps)
+  - [x] (hard) AI agent (interactive assistant app that answers from project/profile context and can open apps)
     * description: This app will be an AI assistant that can read the project documentation and answer questions about the project, as well as perform simple tasks like opening other apps. It will be integrated with the OS interface and will provide an interactive way for users to learn about the project and navigate the OS. it will to a ai model from openrouter and will read the `docs/project`
     `docs/maivand/info.json` folder for context to answer questions about the project and about my projects and portfolio.
   - [x] (easy) calculator (simple calculator app)
@@ -174,6 +175,11 @@
 * [x] Icons and visual representation
 * [ ] Ensure app isolation
 
+Current installed app reality:
+
+- implemented: ai-agent, terminal, docs, blog, contact, portfolio, resume, system-info, calculator, notes, clock, settings
+- not implemented yet: weather
+
 ---
 
 ## 8. AI Agent Integration
@@ -181,10 +187,23 @@
 **Description:** Integrate an AI assistant that reads project Docs and responds to queries from users, acting as an interactive guide within the OS.
 
 * [x] Prepare AGENTS.md for context
-* [ ] Implement agent reading `docs/` folder
-* [ ] Configure agent to answer questions based on project info
-* [ ] Integrate with OS interface
-* [ ] Test queries and responses
+* [x] Implement agent reading `docs/` folder
+* [x] Configure agent to answer questions based on project info
+* [x] Integrate with OS interface
+* [x] Test queries and responses
+* [x] Add hiring/client-facing UX for the agent
+* [x] Add shell-level AI attraction widget
+* [x] Add guided portfolio and contact flows
+* [x] Allow the agent to create note drafts in Notes
+* [x] Add movable desktop AI widget behavior
+* [x] Add local history reset inside the agent
+
+Notes on the current AI agent state:
+
+- the agent is now part of the portfolio conversion flow, not just a docs chatbot
+- it acts as a representation of Maivand inside the OS
+- it can trigger app-opening flows and guided recruiter/client journeys
+- the shell highlights it with a visible draggable widget on desktop load
 
 ---
 
@@ -193,10 +212,10 @@
 **Description:** Refine interactions, ensure style consistency, optimize performance, and finalize documentation.
 
 * [ ] Review window animations and interactions
-* [ ] Ensure style consistency
+* [ ] Ensure style consistency across apps with different personalities
 * [ ] Test responsiveness and performance
-* [ ] Clean up code
-* [ ] Document development decisions in Roadmap
+* [ ] Clean up code and interaction edge cases
+* [x] Document development decisions in Roadmap
 
 ---
 

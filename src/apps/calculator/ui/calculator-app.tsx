@@ -73,7 +73,7 @@ export function CalculatorApp({ processId }: AppComponentProps) {
   }, [handleKey]);
 
   return (
-    <div className="calculator-app flex h-full flex-col gap-4 rounded-[24px] p-4">
+    <div className="calculator-app flex h-full min-h-full flex-col gap-4 rounded-[24px] p-4">
       <section className="rounded-[24px] bg-white/72 p-5 shadow-panel">
         <p className="text-[11px] uppercase tracking-[0.24em] text-orange-700/55">Calculator</p>
         <p className="mt-2 text-xs text-orange-900/55">PID {processId.slice(0, 6)}</p>

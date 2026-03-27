@@ -4,7 +4,15 @@
 
 - **Description:** Define the structure, behavior, and visual design of each app module inside the OS. Each app lives in its own folder under `/apps`, has a main entry file, optional assets (icons, images), and exports a React component that the OS Window Manager can render dynamically.
 
-### terminal [x](but can be improved a lot to add more commands and features and redesign the UI)
+- **Expected app structure:**
+  - `index.ts`: app metadata and exported `appConfig`.
+  - `ui/`: application-specific interface.
+  - `model/`: local app state and non-system logic.
+  - `assets/` or icon files: visual assets for the app.
+
+- **expect**: each app is a big application with its own complex UI and functionality, not just a simple component. it should have its own state management and logic, and should be able to interact with the OS system (e.g., open other apps, fetch data from the Process Manager, etc.)
+
+### terminal [x] (improved)
 
 - **difficulty:** easy
 - **Description:** A command-line interface (CLI) that allows users to execute basic commands in the OS simulation.
@@ -22,8 +30,10 @@
   - Green monospaced text (`#00FF7F`)
   - Soft inset shadow around the terminal window for depth
   - Scrollable terminal area with neumorphic scrollbar
+- **improvements:** Add more commands and features, redesign the UI for better aesthetics and usability, such as a more modern terminal look with better typography and spacing. and auto completion for commands.
+and auto scrolling to the latest command output. for design inspiration, check docs/style/prompts/terminal.txt (strict)
 
-### system info
+### system info [x]
 
 - **difficulty:** easy-medium
 - **Description:** Displays real-time system metrics such as CPU usage, memory usage, running processes, and allows basic process management.
@@ -32,13 +42,13 @@
   - List active processes with CPU/memory footprint
   - Kill processes via interface
   - Expand to full-screen view on launch for better readability
+  - Optional: detailed process info on hover
 - **Integration:**
   - Registered in App Registry
-  - Fetches live data from Process Manager
+  - Fetches live data from Process Manager 
 - **Style:**
-  - Clean neumorphic cards for metrics
+  - check docs/style/prompts/newsprint.txt for design inspiration (strict)
   - Interactive charts (Framer Motion animated)
-  - Buttons with Extruded shadows for actions (kill process, refresh)
 
 ### portfolio [x]
 
@@ -52,23 +62,27 @@
   - Registered in App Registry
   - Fetches project data from JSON or Markdown files
 - **Style:**
-  - Neumorphic cards with subtle hover lift
+  - check docs/style/prompts/retro.txt for design inspiration
   - Smooth Framer Motion transitions for modals
   - Consistent iconography and typography
 
-### resume
+### resume [x]
 
 - **difficulty:** hard
 - **Description:** Interactive, timeline-based resume with clickable sections.
+- **Where to get info**: from `docs/maivand/info.json` and `docs/maivand/projects/info.json`
 - **Functionality:**
   - Sections for experience, education, skills
   - Expand/collapse for details
   - Downloadable PDF export option
+  - Clickable links to projects and social profiles
+  - Optional: interactive skill charts or graphs
+  - Full-screen toggle for better readability (default to full-screen on launch)
 - **Integration:**
   - OS windowed interface
+  - Registered in App Registry
 - **Style:**
-  - Vertical timeline with neumorphic "pillowed" cards
-  - Accent color for skill highlights and links
+  - check docs/style/prompts/retro.txt for design inspiration
 
 ### docs [x]
 
@@ -114,11 +128,13 @@
   - Input fields with `Inset Deep` shadows
   - Submit button with lift animation
   - Clean layout with padding and spacing
+- **improvements:** Add form validation and error handling, redesign the UI for better aesthetics and usability, such as a more modern contact form look with better typography and spacing. and add an animation for form submission success or failure. for design inspiration, check docs/style/prompts/sketch.txt (strict)
 
-### AI agent
+### AI agent [x]
 
 - **difficulty:** hard
-- **Description:** AI assistant that answers questions about projects, portfolio, and system usage.
+- **Description:** AI assistant that answers questions about projects, portfolio, and personal information. 
+he will answer as me not as a ai agent and will be able to open other apps on command (e.g., `open terminal`) and will be able to read the project context and info about me from the docs folder and info.json file to answer questions about my projects and personal portfolio.
 - **Functionality:**
   - Reads `docs/project` and `docs/maivand/info.json` for context
   - Can answer questions about projects and personal portfolio
@@ -127,10 +143,13 @@
   - Connected to OpenRouter model
   - Registered in App Registry
   - Uses Project Context Loader to pre-load documents
+  - Interacts with Process Manager to open apps on command
 - **Style:**
-  - Chat interface with neumorphic message bubbles
+  - check docs/style/prompts/sketch.txt for design inspiration
   - Floating assistant icon in OS dock
-  - Typing animation and smooth message appearance
+  - Typing animation and smooth message appearance with Framer Motion
+  - Neumorphic chat bubbles for messages
+  - Clean and modern interface for the chat window with good typography and spacing
 
 ### calculator [x]
 
@@ -147,7 +166,7 @@
   - Rounded edges and smooth hover effect
   - Neumorphic display area for input/output
 
-### notes [x]
+### notes [x] (improved)
 
 - **difficulty:** easy
 - **Description:** Note-taking application with simple CRUD functionality.
@@ -161,23 +180,11 @@
   - Soft inset cards for each note
   - Smooth drag-and-drop reorder
   - Floating "new note" button with neumorphic lift
+- **improvements:** Add more features like categorization, tagging, and local storage, and redesign the UI for better usability. for design inspiration, check docs/style/prompts/sketch.txt (strict) 
+- make it look like a real note-taking app with a sidebar for categories and tags, and a main area for note content. add smooth animations for creating and deleting notes, and make the UI more intuitive and visually appealing
+- add an animation/3d like a notebook is opening when the app is launched, and a page flip animation when switching between notes.
 
-### weather
-
-- **difficulty:** medium
-- **Description:** Displays weather forecasts for selected locations.
-- **Functionality:**
-  - Show current conditions and 5-day forecast
-  - Weather icons and animations
-  - Search cities and set default location
-- **Integration:**
-  - Fetches data from weather API
-- **Style:**
-  - Rounded neumorphic cards for each day
-  - Animated icon for weather condition
-  - Subtle shadow and background elevation for depth
-
-### clock [x](but can be improved a lot)
+### clock [x](but can be improved a lot to add more features like world clock, alarm, and redesign the UI for better aesthetics use some library like react-clock, and redesign the UI for better aesthetics) (improved)
 
 - **difficulty:** easy
 - **Description:** World clock displaying multiple timezones.
