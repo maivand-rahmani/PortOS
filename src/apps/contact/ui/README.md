@@ -4,4 +4,4 @@ Contact UI.
 
 ## Files
 
-- `contact-app.tsx`: validated contact form backed by the contact API route.
+- `contact-app.tsx`: redesigned contact workspace with profile details, validated form, and animated submission feedback.
