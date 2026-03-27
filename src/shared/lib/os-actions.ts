@@ -1,6 +1,11 @@
 import { useOSStore } from "@/processes";
+import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
 
 export async function openAppById(appId: string) {
+  return useOSStore.getState().activateApp(appId);
+}
+
+export async function focusOrOpenAppById(appId: string) {
   return useOSStore.getState().activateApp(appId);
 }
 
@@ -14,6 +19,33 @@ export function minimizeWindowById(windowId: string) {
 
 export function terminateProcessById(processId: string) {
   useOSStore.getState().terminateProcess(processId);
+}
+
+export function focusWindowById(windowId: string) {
+  useOSStore.getState().focusWindow(windowId);
+}
+
+export function restoreWindowById(windowId: string) {
+  useOSStore.getState().restoreWindow(windowId);
+}
+
+export function maximizeWindowById(windowId: string) {
+  const state = useOSStore.getState();
+  const bounds = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    insetTop: 32,
+    insetRight: 24,
+    insetBottom: 132,
+    insetLeft: 24,
+  };
+
+  state.toggleWindowMaximize(windowId, bounds);
+}
+
+export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
+  dispatchAgentNotesPrefill(detail);
+  return useOSStore.getState().activateApp("notes");
 }
 
 export function getRuntimeSnapshot() {
