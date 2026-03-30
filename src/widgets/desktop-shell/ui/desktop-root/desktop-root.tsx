@@ -16,7 +16,6 @@ export function DesktopShell() {
   const {
     containerRef,
     apps,
-    processCount,
     bootPhase,
     bootProgress,
     selectedDesktopAppId,
@@ -25,6 +24,7 @@ export function DesktopShell() {
     dockApps,
     dockMenu,
     minimizedWindows,
+    statusBar,
     visibleWindows,
     clearDesktopSelection,
     closeDockMenu,
@@ -35,6 +35,7 @@ export function DesktopShell() {
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,
+    runStatusBarCommand,
     focusWindow,
     closeWindow,
     minimizeWindow,
@@ -62,7 +63,11 @@ export function DesktopShell() {
       <DesktopWallpaper />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(10,132,255,0.18),transparent_30%)]" />
 
-      <MacMenuBar processCount={processCount} />
+      <MacMenuBar
+        statusBar={statusBar}
+        onRunAction={runStatusBarCommand}
+        onOpenAgent={() => openDesktopApp("ai-agent")}
+      />
 
       <main className="relative h-screen w-full">
         <DesktopAiTeaser

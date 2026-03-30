@@ -6,7 +6,7 @@ Visual building blocks for the macOS-style desktop shell.
 
 - `desktop-root/`: top-level shell composition.
 - `desktop-wallpaper/`: desktop background and ambient layers.
-- `mac-menu-bar/`: top system bar.
+- `mac-menu-bar/`: persistent top system status bar with app actions, shell indicators, and AI access.
 - `desktop-icons/`: desktop icon field and icon composition.
 - `desktop-ai-teaser/`: left-side AI attraction widget that launches the agent and guided flows.
 - `desktop-icon/`: a single draggable/selectable desktop icon.
