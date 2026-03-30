@@ -93,6 +93,35 @@ export function buildNoteExcerpt(body: string) {
   return body.trim().replace(/\s+/g, " ").slice(0, 120);
 }
 
+export function buildNoteChecklistProgress(body: string) {
+  const checklistMatches = body.match(/^\s*- \[(?: |x|X)\].*$/gm) ?? [];
+
+  if (checklistMatches.length === 0) {
+    return null;
+  }
+
+  const completed = checklistMatches.filter((item) => /^\s*- \[(?:x|X)\]/.test(item)).length;
+
+  return {
+    total: checklistMatches.length,
+    completed,
+    remaining: checklistMatches.length - completed,
+    percent: Math.round((completed / checklistMatches.length) * 100),
+  };
+}
+
+export function duplicateNoteItem(note: NoteItem) {
+  const timestamp = createTimestamp();
+
+  return {
+    ...note,
+    id: crypto.randomUUID(),
+    title: `${note.title} copy`,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
 export function createPrefilledNote(input: {
   title: string;
   body: string;

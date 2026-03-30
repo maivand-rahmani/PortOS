@@ -6,6 +6,13 @@ export {
   type AgentNotesPrefillDetail,
 } from "./agent-os-events";
 export {
+  NOTES_EXTERNAL_REQUEST_EVENT,
+  consumeNotesExternalRequest,
+  dispatchNotesExternalRequest,
+  type NotesExternalRequestDetail,
+  type NotesExternalRequestMode,
+} from "./notes-os-events";
+export {
   TERMINAL_EXTERNAL_REQUEST_EVENT,
   consumePendingTerminalExternalRequest,
   dispatchTerminalExternalRequest,
@@ -22,6 +29,7 @@ export {
   minimizeWindowById,
   openAppById,
   openNotesWithPrefill,
+  openNotesWithRequest,
   openTerminalWithCommand,
   openTerminalWithRequest,
   restoreWindowById,

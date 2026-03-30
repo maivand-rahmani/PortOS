@@ -5,7 +5,7 @@ import NotesIcon from "./icon";
 export const notesAppConfig: AppConfig = {
   id: "notes",
   name: "Notes",
-  description: "A simple note-taking app with local persistence.",
+  description: "A notebook-style notes app with local persistence, tagging, and external draft intake.",
   icon: NotesIcon,
   tint: "#facc15",
   window: {
@@ -37,6 +37,11 @@ export const notesAppConfig: AppConfig = {
             id: "notes-open-ai-agent",
             label: "Open Maivand",
             command: { type: "open-app", appId: "ai-agent" },
+          },
+          {
+            id: "notes-open-calculator",
+            label: "Open Calculator",
+            command: { type: "open-app", appId: "calculator" },
           },
           {
             id: "notes-open-docs",

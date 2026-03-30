@@ -1,5 +1,6 @@
 import { useOSStore } from "@/processes";
 import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
+import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
 import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
 
 export async function openAppById(appId: string) {
@@ -47,6 +48,19 @@ export function maximizeWindowById(windowId: string) {
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
   dispatchAgentNotesPrefill(detail);
   return useOSStore.getState().activateApp("notes");
+}
+
+export async function openNotesWithRequest(detail: NotesExternalRequestDetail) {
+  const windowId = await useOSStore.getState().activateApp("notes");
+
+  if (windowId) {
+    dispatchNotesExternalRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
 }
 
 export async function openTerminalWithRequest(detail: TerminalExternalRequestDetail) {

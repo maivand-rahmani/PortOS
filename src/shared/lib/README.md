@@ -8,6 +8,7 @@ Non-visual shared utilities.
 - `cn.ts`: merges conditional class names and resolves Tailwind conflicts.
 - `index.ts`: barrel exports for shared utilities.
 - `docs.ts`: shared helpers for docs navigation and heading ids.
+- `notes-os-events.ts`: window-level request bridge for creating or updating notes from other apps.
 - `os-actions.ts`: runtime helpers that let apps open apps and manage windows/processes.
 - `project-data.ts`: typed access to profile basics used by the easy app set.
 - `terminal-os-events.ts`: typed window-level events for sending terminal requests into the active terminal window.

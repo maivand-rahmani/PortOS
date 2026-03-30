@@ -1,38 +1,48 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Kalam, Patrick_Hand } from "next/font/google";
 import {
-  Clock3,
-  NotebookPen,
-  Pin,
-  Search,
-  StickyNote,
-  Tag,
+  CheckSquare,
+   Clock3,
+  Copy,
+   NotebookPen,
+   Pin,
+   Search,
+   StickyNote,
+   Tag,
   Trash2,
 } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
 import {
   AGENT_NOTES_PREFILL_EVENT,
+  NOTES_EXTERNAL_REQUEST_EVENT,
   consumeAgentNotesPrefill,
+  consumeNotesExternalRequest,
   type AgentNotesPrefillDetail,
   cn,
 } from "@/shared/lib";
 
 import {
   buildNoteExcerpt,
+  buildNoteChecklistProgress,
   createPrefilledNote,
   createNoteItem,
+  duplicateNoteItem,
   formatNoteDate,
   readStoredNotes,
   saveNotes,
   type NoteItem,
   updateNoteTimestamp,
 } from "../model/notes-storage";
+import {
+  applyNotesExternalRequest,
+  type NotesExternalRequestDetail,
+} from "../model/notes-external-request";
 
 const markerFont = Kalam({
   subsets: ["latin"],
@@ -109,6 +119,10 @@ export function NotesApp({ windowId }: AppComponentProps) {
     () => notes.find((note) => note.id === selectedNoteId) ?? notes[0] ?? null,
     [notes, selectedNoteId],
   );
+  const activeChecklistProgress = useMemo(
+    () => (activeNote ? buildNoteChecklistProgress(activeNote.body) : null),
+    [activeNote],
+  );
 
   const pinnedCount = notes.filter((note) => note.isPinned).length;
   const untaggedCount = notes.filter((note) => note.tags.length === 0).length;
@@ -173,6 +187,36 @@ export function NotesApp({ windowId }: AppComponentProps) {
     setSaveStatus("Fresh page added");
   };
 
+  const duplicateActiveNote = useCallback(() => {
+    if (!activeNote) {
+      return;
+    }
+
+    const nextNote = duplicateNoteItem(activeNote);
+
+    updateNotes((current) => [nextNote, ...current]);
+    setActiveNoteId(nextNote.id);
+    setSaveStatus("Page duplicated");
+  }, [activeNote]);
+
+  const insertChecklistStarter = () => {
+    if (!activeNote) {
+      return;
+    }
+
+    const starter = ["- [ ] Capture next action", "- [ ] Add one follow-up detail", "- [ ] Mark complete when done"].join(
+      "\n",
+    );
+
+    updateActiveNote(
+      (note) => ({
+        ...note,
+        body: note.body.trim() ? `${note.body.trimEnd()}\n\n${starter}` : starter,
+      }),
+      "Checklist starter added",
+    );
+  };
+
   const deleteActiveNote = () => {
     if (!activeNote) {
       return;
@@ -186,6 +230,82 @@ export function NotesApp({ windowId }: AppComponentProps) {
     setActiveNoteId(fallbackNotes[0]?.id ?? null);
     setSaveStatus("Page removed");
   };
+
+  useEffect(() => {
+    const applyExternalRequest = (detail: NotesExternalRequestDetail | null) => {
+      if (!detail) {
+        return;
+      }
+
+      let nextActiveNoteId: string | null = null;
+
+      updateNotes((current) => {
+        const result = applyNotesExternalRequest(current, detail);
+
+        nextActiveNoteId = detail.selectAfterWrite === false ? null : result.note.id;
+
+        return result.notes;
+      });
+
+      if (nextActiveNoteId) {
+        setActiveNoteId(nextActiveNoteId);
+      }
+
+      setSaveStatus(
+        detail.mode === "upsert"
+          ? `Updated from ${detail.source ?? "external request"}`
+          : `Added from ${detail.source ?? "external request"}`,
+      );
+    };
+
+    const handleExternalRequest = (event: Event) => {
+      const detail = (event as CustomEvent<NotesExternalRequestDetail>).detail;
+
+      if (detail.targetWindowId && detail.targetWindowId !== windowId) {
+        return;
+      }
+
+      applyExternalRequest(detail);
+    };
+
+    applyExternalRequest(consumeNotesExternalRequest(windowId));
+    window.addEventListener(NOTES_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
+
+    return () => {
+      window.removeEventListener(NOTES_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
+    };
+  }, [windowId]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      if (event.key.toLowerCase() !== "d" || !activeNote) {
+        return;
+      }
+
+      const target = event.target;
+
+      if (target instanceof HTMLElement) {
+        const tagName = target.tagName.toLowerCase();
+
+        if (tagName === "input" || tagName === "textarea" || target.isContentEditable) {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      duplicateActiveNote();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeNote, duplicateActiveNote]);
 
   return (
     <motion.div
@@ -222,7 +342,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
                     Scribbles, plans, and half-finished thoughts.
                   </h2>
                   <p className="mt-3 max-w-2xl text-lg leading-7 text-[#2d2d2d]/75 md:text-xl">
-                    Keep quick capture pages, pin the important ones, and sort the pile with tags.
+                    Keep quick capture pages, pin the important ones, sort the pile with tags, and track checklists inline.
                   </p>
                 </div>
 
@@ -433,7 +553,19 @@ export function NotesApp({ windowId }: AppComponentProps) {
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3">
+                       <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={duplicateActiveNote}
+                          className="min-h-[44px] cursor-pointer border-[3px] border-[#2d2d2d] bg-white px-4 py-2 text-lg text-[#2d2d2d] shadow-[4px_4px_0px_0px_#2d2d2d] transition duration-150 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#2d2d2d] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2d5da1]/25"
+                          style={{ borderRadius: wobbleRadii.chip }}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <Copy className="h-4 w-4" strokeWidth={2.5} />
+                            Duplicate
+                          </span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() =>
@@ -469,8 +601,8 @@ export function NotesApp({ windowId }: AppComponentProps) {
                     </div>
                   </div>
 
-                  <div className="relative border-b-[3px] border-dashed border-[#2d2d2d] px-5 py-4 md:px-7">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                   <div className="relative border-b-[3px] border-dashed border-[#2d2d2d] px-5 py-4 md:px-7">
+                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                       <label
                         className="flex min-h-[52px] items-center gap-3 border-[3px] border-[#2d2d2d] bg-white px-4 shadow-[4px_4px_0px_0px_#2d2d2d]"
                         style={{ borderRadius: wobbleRadii.card }}
@@ -504,12 +636,56 @@ export function NotesApp({ windowId }: AppComponentProps) {
                         ) : (
                           <span className="self-center text-lg text-[#2d2d2d]/55">Add a few tags to sort this page later.</span>
                         )}
+                       </div>
+                     </div>
+                   </div>
+
+                  <div className="relative border-b-[3px] border-dashed border-[#2d2d2d] px-5 py-4 md:px-7">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-[#2d2d2d]">
+                          <CheckSquare className="h-5 w-5 text-[#2d5da1]" strokeWidth={2.5} />
+                          <p className={cn("text-2xl", markerFont.className)}>Checklist pulse</p>
+                        </div>
+                        {activeChecklistProgress ? (
+                          <>
+                            <div
+                              className="mt-3 h-4 overflow-hidden border-[2px] border-[#2d2d2d] bg-white"
+                              style={{ borderRadius: wobbleRadii.chip }}
+                            >
+                              <motion.div
+                                animate={{ width: `${activeChecklistProgress.percent}%` }}
+                                transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
+                                className="h-full bg-[#32d74b]"
+                              />
+                            </div>
+                            <p className="mt-2 text-lg text-[#2d2d2d]/70">
+                              {activeChecklistProgress.completed} of {activeChecklistProgress.total} done, {activeChecklistProgress.remaining} left.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-2 text-lg text-[#2d2d2d]/70">
+                            Use markdown checklist rows like `- [ ]` and `- [x]` to track progress on the page.
+                          </p>
+                        )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={insertChecklistStarter}
+                        className="min-h-[44px] cursor-pointer border-[3px] border-[#2d2d2d] bg-[#e8f0ff] px-4 py-2 text-lg text-[#2d5da1] shadow-[4px_4px_0px_0px_#2d2d2d] transition duration-150 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#2d2d2d] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2d5da1]/25"
+                        style={{ borderRadius: wobbleRadii.chip }}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <CheckSquare className="h-4 w-4" strokeWidth={2.5} />
+                          Add checklist starter
+                        </span>
+                      </button>
                     </div>
                   </div>
 
-                  <div className="relative min-h-0 flex-1 px-5 py-5 md:px-7 md:py-6">
-                    <textarea
+                   <div className="relative min-h-0 flex-1 px-5 py-5 md:px-7 md:py-6">
+                     <textarea
                       value={activeNote.body}
                       onChange={(event) => updateActiveNote((note) => ({ ...note, body: event.target.value }))}
                       placeholder="Write freely. Draft a plan, dump ideas, or leave yourself a note for later."
