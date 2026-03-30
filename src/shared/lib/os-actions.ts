@@ -4,6 +4,7 @@ import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-ev
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
 import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
 import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "./resume-os-events";
+import { dispatchSystemInfoExternalRequest, type SystemInfoExternalRequestDetail } from "./system-info-os-events";
 import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
 
 export async function openAppById(appId: string) {
@@ -97,6 +98,19 @@ export async function openPortfolioWithFocus(detail: PortfolioFocusRequest) {
 
   if (windowId) {
     dispatchPortfolioFocusRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
+}
+
+export async function openSystemInfoWithRequest(detail: SystemInfoExternalRequestDetail) {
+  const windowId = await useOSStore.getState().activateApp("system-info");
+
+  if (windowId) {
+    dispatchSystemInfoExternalRequest({
       ...detail,
       targetWindowId: windowId,
     });

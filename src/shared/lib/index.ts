@@ -34,6 +34,13 @@ export {
   type ResumeSectionTarget,
 } from "./resume-os-events";
 export {
+  SYSTEM_INFO_EXTERNAL_REQUEST_EVENT,
+  consumeSystemInfoExternalRequest,
+  dispatchSystemInfoExternalRequest,
+  type SystemInfoExternalRequestDetail,
+  type SystemInfoExternalSection,
+} from "./system-info-os-events";
+export {
   TERMINAL_EXTERNAL_REQUEST_EVENT,
   consumePendingTerminalExternalRequest,
   dispatchTerminalExternalRequest,
@@ -54,6 +61,7 @@ export {
   openNotesWithRequest,
   openPortfolioWithFocus,
   openResumeWithFocus,
+  openSystemInfoWithRequest,
   openTerminalWithCommand,
   openTerminalWithRequest,
   restoreWindowById,

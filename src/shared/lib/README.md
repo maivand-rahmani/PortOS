@@ -14,6 +14,7 @@ Non-visual shared utilities.
 - `portfolio-os-events.ts`: typed window-level requests for focusing the Portfolio app on a case study or handoff mode.
 - `project-data.ts`: typed access to profile basics used by the easy app set.
 - `resume-os-events.ts`: typed window-level requests for focusing the Resume app on a lens, section, or project.
+- `system-info-os-events.ts`: typed window-level requests for steering System Info toward a process, window, or incident snapshot.
 - `terminal-os-events.ts`: typed window-level events for sending terminal requests into the active terminal window.
 
 Utilities here should remain framework-light and reusable across features, widgets, and apps.

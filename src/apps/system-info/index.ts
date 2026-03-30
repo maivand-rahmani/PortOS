@@ -5,7 +5,7 @@ import SystemInfoIcon from "./icon";
 export const systemInfoAppConfig: AppConfig = {
   id: "system-info",
   name: "System Info",
-  description: "Live runtime metrics, process list, and window activity.",
+  description: "Live runtime metrics, diagnostics, and actionable process and window incident workflows.",
   icon: SystemInfoIcon,
   tint: "#111111",
   window: {
@@ -16,7 +16,7 @@ export const systemInfoAppConfig: AppConfig = {
     launchMaximized: true,
   },
   statusBar: {
-    info: "Inspect runtime processes, windows, and installed apps.",
+    info: "Inspect runtime processes, spotlight windows, and export incident snapshots.",
     sections: [
       {
         id: "system-info",
