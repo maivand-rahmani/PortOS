@@ -2,6 +2,7 @@ import { useOSStore } from "@/processes";
 import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
 import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
+import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
 import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "./resume-os-events";
 import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
 
@@ -83,6 +84,19 @@ export async function openResumeWithFocus(detail: ResumeFocusRequest) {
 
   if (windowId) {
     dispatchResumeFocusRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
+}
+
+export async function openPortfolioWithFocus(detail: PortfolioFocusRequest) {
+  const windowId = await useOSStore.getState().activateApp("portfolio");
+
+  if (windowId) {
+    dispatchPortfolioFocusRequest({
       ...detail,
       targetWindowId: windowId,
     });

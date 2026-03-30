@@ -2,6 +2,10 @@ import maivandInfo from "../../../../docs/maivand/info.json";
 import portfolioInfo from "../../../../docs/maivand/projects/info.json";
 import portfolioPresentation from "../../../../docs/maivand/projects/portfolio.json";
 
+import { buildProjectHandoffs, type PortfolioProjectHandoff } from "./handoffs";
+
+export type { PortfolioProjectHandoff } from "./handoffs";
+
 type ProfileProject = {
   name: string;
   type?: string;
@@ -111,6 +115,7 @@ export type PortfolioProject = {
   gallery: PortfolioProjectImage[];
   links: PortfolioProjectLink[];
   filterTokens: string[];
+  handoffs: PortfolioProjectHandoff[];
 };
 
 const profile = maivandInfo as ProfileInfo;
@@ -200,6 +205,7 @@ function normalizeCatalogProject(
       ...(source.tags ?? []).map((tag) => tag.toLowerCase()),
       ...stack.map((tag) => tag.toLowerCase()),
     ]),
+    handoffs: [],
   };
 }
 
@@ -239,6 +245,7 @@ function normalizeProfileProject(
       ...entry.tags.map((tag) => tag.toLowerCase()),
       ...(source.stack ?? []).map((tag) => tag.toLowerCase()),
     ]),
+    handoffs: [],
   };
 }
 
@@ -266,7 +273,11 @@ function normalizeProject(entry: PortfolioPresentationEntry) {
 export const portfolioProjects = presentation.projects
   .slice()
   .sort((left, right) => left.sortOrder - right.sortOrder)
-  .map(normalizeProject);
+  .map(normalizeProject)
+  .map((project) => ({
+    ...project,
+    handoffs: buildProjectHandoffs(project),
+  }));
 
 export const portfolioFilters = unique([
   "all",

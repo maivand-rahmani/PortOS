@@ -19,6 +19,13 @@ export {
   type NotesExternalRequestMode,
 } from "./notes-os-events";
 export {
+  PORTFOLIO_FOCUS_REQUEST_EVENT,
+  consumePortfolioFocusRequest,
+  dispatchPortfolioFocusRequest,
+  type PortfolioFocusRequest,
+  type PortfolioHandoffTarget,
+} from "./portfolio-os-events";
+export {
   RESUME_FOCUS_REQUEST_EVENT,
   consumeResumeFocusRequest,
   dispatchResumeFocusRequest,
@@ -45,6 +52,7 @@ export {
   openClockWithFocus,
   openNotesWithPrefill,
   openNotesWithRequest,
+  openPortfolioWithFocus,
   openResumeWithFocus,
   openTerminalWithCommand,
   openTerminalWithRequest,

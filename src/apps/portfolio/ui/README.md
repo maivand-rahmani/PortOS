@@ -4,4 +4,5 @@ Portfolio UI.
 
 ## Files
 
-- `portfolio-app.tsx`: industrial project browser with filter controls, device preview, and detail modules.
+- `portfolio-app.tsx`: compatibility export for the main workstation UI.
+- `portfolio-workstation/`: modular portfolio workstation shell, detail modules, and cross-app handoff controls.
