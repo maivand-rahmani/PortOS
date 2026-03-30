@@ -5,17 +5,17 @@ import ContactIcon from "./icon";
 export const contactAppConfig: AppConfig = {
   id: "contact",
   name: "Contact",
-  description: "Working contact form and contact information.",
+  description: "Contextual contact workspace with reusable outreach flows and real OS handoff actions.",
   icon: ContactIcon,
   tint: "#0ea5e9",
   window: {
-    width: 620,
-    height: 520,
-    minWidth: 440,
-    minHeight: 360,
+    width: 920,
+    height: 680,
+    minWidth: 720,
+    minHeight: 520,
   },
   statusBar: {
-    info: "Reach Maivand through real contact details and form actions.",
+    info: "Build outreach drafts, hand them off across the OS, and send a validated message.",
     sections: [
       {
         id: "contact",
@@ -26,6 +26,22 @@ export const contactAppConfig: AppConfig = {
             label: "New Window",
             command: { type: "new-window" },
             info: "Open another contact workspace.",
+          },
+        ],
+      },
+      {
+        id: "handoff",
+        label: "Handoff",
+        actions: [
+          {
+            id: "contact-open-notes",
+            label: "Open Notes",
+            command: { type: "open-app", appId: "notes" },
+          },
+          {
+            id: "contact-open-ai-agent",
+            label: "Open AI Agent",
+            command: { type: "open-app", appId: "ai-agent" },
           },
         ],
       },
