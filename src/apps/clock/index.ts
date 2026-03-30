@@ -15,6 +15,39 @@ export const clockAppConfig: AppConfig = {
     minHeight: 620,
     launchMaximized: true,
   },
+  statusBar: {
+    info: "Track saved cities with live world times.",
+    sections: [
+      {
+        id: "clock",
+        label: "Clock",
+        actions: [
+          {
+            id: "clock-new-window",
+            label: "New Window",
+            command: { type: "new-window" },
+            info: "Open another world clock view.",
+          },
+        ],
+      },
+      {
+        id: "related",
+        label: "Related",
+        actions: [
+          {
+            id: "clock-open-system-info",
+            label: "Open System Info",
+            command: { type: "open-app", appId: "system-info" },
+          },
+          {
+            id: "clock-open-settings",
+            label: "Open Settings",
+            command: { type: "open-app", appId: "settings" },
+          },
+        ],
+      },
+    ],
+  },
   load: async () => {
     const appModule = await import("./ui/clock-app");
 

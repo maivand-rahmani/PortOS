@@ -14,6 +14,39 @@ export const portfolioAppConfig: AppConfig = {
     minWidth: 900,
     minHeight: 620,
   },
+  statusBar: {
+    info: "Explore selected work, case studies, and project outcomes.",
+    sections: [
+      {
+        id: "portfolio",
+        label: "Portfolio",
+        actions: [
+          {
+            id: "portfolio-new-window",
+            label: "New Window",
+            command: { type: "new-window" },
+            info: "Compare multiple case studies side by side.",
+          },
+        ],
+      },
+      {
+        id: "related",
+        label: "Related",
+        actions: [
+          {
+            id: "portfolio-open-resume",
+            label: "Open Resume",
+            command: { type: "open-app", appId: "resume" },
+          },
+          {
+            id: "portfolio-open-contact",
+            label: "Open Contact",
+            command: { type: "open-app", appId: "contact" },
+          },
+        ],
+      },
+    ],
+  },
   load: async () => {
     const appModule = await import("./ui/portfolio-app");
 

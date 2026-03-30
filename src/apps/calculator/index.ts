@@ -14,6 +14,34 @@ export const calculatorAppConfig: AppConfig = {
     minWidth: 340,
     minHeight: 500,
   },
+  statusBar: {
+    info: "Evaluate expressions in a compact focused workspace.",
+    sections: [
+      {
+        id: "calculator",
+        label: "Calculator",
+        actions: [
+          {
+            id: "calculator-new-window",
+            label: "New Window",
+            command: { type: "new-window" },
+            info: "Open a separate calculation pad.",
+          },
+        ],
+      },
+      {
+        id: "related",
+        label: "Related",
+        actions: [
+          {
+            id: "calculator-open-notes",
+            label: "Open Notes",
+            command: { type: "open-app", appId: "notes" },
+          },
+        ],
+      },
+    ],
+  },
   load: async () => {
     const appModule = await import("./ui/calculator-app");
 

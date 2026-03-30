@@ -15,6 +15,39 @@ export const aiAgentAppConfig: AppConfig = {
     minHeight: 620,
     launchMaximized: true,
   },
+  statusBar: {
+    info: "Answers from local portfolio context and can open PortOS apps.",
+    sections: [
+      {
+        id: "maivand",
+        label: "Maivand",
+        actions: [
+          {
+            id: "ai-agent-new-window",
+            label: "New Window",
+            command: { type: "new-window" },
+            info: "Start another assistant session.",
+          },
+        ],
+      },
+      {
+        id: "navigate",
+        label: "Navigate",
+        actions: [
+          {
+            id: "ai-agent-open-portfolio",
+            label: "Open Portfolio",
+            command: { type: "open-app", appId: "portfolio" },
+          },
+          {
+            id: "ai-agent-open-contact",
+            label: "Open Contact",
+            command: { type: "open-app", appId: "contact" },
+          },
+        ],
+      },
+    ],
+  },
   load: async () => {
     const appModule = await import("./ui/ChatWindow");
 

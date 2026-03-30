@@ -4,7 +4,7 @@ Home for isolated application modules that the OS can load dynamically.
 
 ## Expected app structure
 
-- `index.ts`: app metadata and exported `appConfig`.
+- `index.ts`: app metadata and exported `appConfig`, including optional declarative `statusBar` sections for shell actions.
 - `ui/`: application-specific interface.
 - `model/`: local app state and non-system logic.
 - `assets/` or icon files: visual assets for the app.

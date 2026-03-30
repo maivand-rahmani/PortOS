@@ -15,6 +15,39 @@ export const systemInfoAppConfig: AppConfig = {
     minHeight: 620,
     launchMaximized: true,
   },
+  statusBar: {
+    info: "Inspect runtime processes, windows, and installed apps.",
+    sections: [
+      {
+        id: "system-info",
+        label: "System Info",
+        actions: [
+          {
+            id: "system-info-new-window",
+            label: "New Window",
+            command: { type: "new-window" },
+            info: "Open another monitoring view.",
+          },
+        ],
+      },
+      {
+        id: "tools",
+        label: "Tools",
+        actions: [
+          {
+            id: "system-info-open-settings",
+            label: "Open Settings",
+            command: { type: "open-app", appId: "settings" },
+          },
+          {
+            id: "system-info-open-terminal",
+            label: "Open Terminal",
+            command: { type: "open-app", appId: "terminal" },
+          },
+        ],
+      },
+    ],
+  },
   load: async () => {
     const appModule = await import("./ui/system-info-app");
 
