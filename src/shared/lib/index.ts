@@ -19,6 +19,14 @@ export {
   type NotesExternalRequestMode,
 } from "./notes-os-events";
 export {
+  RESUME_FOCUS_REQUEST_EVENT,
+  consumeResumeFocusRequest,
+  dispatchResumeFocusRequest,
+  type ResumeFocusRequest,
+  type ResumeLensTarget,
+  type ResumeSectionTarget,
+} from "./resume-os-events";
+export {
   TERMINAL_EXTERNAL_REQUEST_EVENT,
   consumePendingTerminalExternalRequest,
   dispatchTerminalExternalRequest,
@@ -37,6 +45,7 @@ export {
   openClockWithFocus,
   openNotesWithPrefill,
   openNotesWithRequest,
+  openResumeWithFocus,
   openTerminalWithCommand,
   openTerminalWithRequest,
   restoreWindowById,

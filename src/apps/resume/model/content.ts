@@ -1,3 +1,5 @@
+import type { ResumeLensTarget } from "@/shared/lib";
+
 import maivandInfo from "../../../../docs/maivand/info.json";
 import projectsInfo from "../../../../docs/maivand/projects/info.json";
 
@@ -107,6 +109,17 @@ export type ResumeLink = {
   value: string;
 };
 
+export type ResumeLens = {
+  id: ResumeLensTarget;
+  label: string;
+  signal: string;
+  summary: string;
+  recommendedSection: ResumeSectionId;
+  recommendedProjectId?: string;
+  focusSkills: string[];
+  talkingPoints: string[];
+};
+
 export type ResumeTimelineProject = {
   id: string;
   badge: string;
@@ -125,6 +138,12 @@ export type ResumeSkill = {
   label: string;
   score: number;
   note: string;
+};
+
+export type ResumeQuickStat = {
+  label: string;
+  value: string;
+  detail: string;
 };
 
 const profile = maivandInfo as RawProfileInfo;
@@ -233,6 +252,101 @@ const coreSkills = Object.entries(profile.skills.frontend.core)
   }))
   .sort((left, right) => right.score - left.score);
 
+const topSkillLabels = coreSkills.slice(0, 5).map((skill) => skill.label);
+
+const quickStats: ResumeQuickStat[] = [
+  {
+    label: "Shipped products",
+    value: String(profile.projects.length),
+    detail: "Real portfolio work with architecture and delivery tradeoffs.",
+  },
+  {
+    label: "Current study year",
+    value: String(profile.education.year),
+    detail: "Actively studying while building portfolio-grade systems.",
+  },
+  {
+    label: "Learning focus",
+    value: `${profile.learning.current_focus.length}`,
+    detail: "TypeScript, patterns, AI-assisted development, and algorithms.",
+  },
+];
+
+const defaultProjectId = commerceProject?.slug ?? chatClientProject?.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? undefined;
+
+const resumeLenses: ResumeLens[] = [
+  {
+    id: "balanced",
+    label: "Balanced profile",
+    signal: "Best first-pass review",
+    summary: "Shows technical range, honesty about current level, and clear product ambition without overstating experience.",
+    recommendedSection: "overview",
+    recommendedProjectId: defaultProjectId,
+    focusSkills: topSkillLabels,
+    talkingPoints: [
+      "Honest junior+ positioning with real shipped work instead of inflated job history.",
+      "Strong architecture-first mindset for early-career level.",
+      "Open to both freelance work and a first strong full-time role.",
+    ],
+  },
+  {
+    id: "frontend",
+    label: "Frontend delivery",
+    signal: "UI systems + performance",
+    summary: "Highlights hands-on React, Next.js, Tailwind, and UI system work with practical product delivery experience.",
+    recommendedSection: "skills",
+    recommendedProjectId: commerceProject?.slug,
+    focusSkills: ["JavaScript", "React", "Next.js", "HTML/CSS", "Tailwind"],
+    talkingPoints: [
+      "Builds modular interfaces with an eye on performance and scale.",
+      "Comfortable with modern React and Next.js product workflows.",
+      "Learns through real implementation, not just tutorials.",
+    ],
+  },
+  {
+    id: "product",
+    label: "Product engineering",
+    signal: "Systems + tradeoffs",
+    summary: "Centers architecture decisions, real-world constraints, and product usefulness over decorative frontend work.",
+    recommendedSection: "playbook",
+    recommendedProjectId: commerceProject?.slug,
+    focusSkills: ["System Design", "Design Patterns", "React", "Next.js", "Git"],
+    talkingPoints: [
+      "Makes decisions by comparing existing products and practical constraints.",
+      "Values maintainability and structure over hacks.",
+      "Thinks in workflows, runtime state, and user value.",
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI-assisted builder",
+    signal: "AI as workflow multiplier",
+    summary: "Shows how AI is used as part of product execution, context handling, and faster iteration instead of as a gimmick.",
+    recommendedSection: "timeline",
+    recommendedProjectId: chatClientProject ? chatClientProject.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : defaultProjectId,
+    focusSkills: ["AI Tools", "JavaScript", "Next.js", "System Design"],
+    talkingPoints: [
+      "Uses AI to validate ideas, speed up exploration, and sharpen implementation.",
+      "Already built projects where AI changes the product experience, not just the coding process.",
+      "Understands the limits of AI and treats it as part of a broader system.",
+    ],
+  },
+  {
+    id: "growth",
+    label: "Growth trajectory",
+    signal: "High-learning candidate",
+    summary: "Optimized for hiring teams that care about rate of learning, ownership potential, and clear improvement direction.",
+    recommendedSection: "education",
+    recommendedProjectId: defaultProjectId,
+    focusSkills: ["TypeScript", "Design Patterns", "System Design", "AI Tools"],
+    talkingPoints: [
+      "Still early, but already shipping portfolio-grade work.",
+      "Very explicit about strengths, gaps, and what is being learned next.",
+      "Best fit for teams that reward momentum and coachability.",
+    ],
+  },
+];
+
 export const resumeContent = {
   profile: {
     name: profile.personal.name,
@@ -244,6 +358,8 @@ export const resumeContent = {
     journey: "1.5 years into programming, still studying, building toward a first real product engineering role.",
     studyStatus: `Year ${profile.education.year} student in ${profile.education.program}`,
   },
+  quickStats,
+  lenses: resumeLenses,
   links: [
     ...(profile.links?.github
       ? [

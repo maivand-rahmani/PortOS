@@ -2,6 +2,7 @@ import { useOSStore } from "@/processes";
 import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
 import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
+import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "./resume-os-events";
 import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
 
 export async function openAppById(appId: string) {
@@ -69,6 +70,19 @@ export async function openNotesWithRequest(detail: NotesExternalRequestDetail) {
 
   if (windowId) {
     dispatchNotesExternalRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
+}
+
+export async function openResumeWithFocus(detail: ResumeFocusRequest) {
+  const windowId = await useOSStore.getState().activateApp("resume");
+
+  if (windowId) {
+    dispatchResumeFocusRequest({
       ...detail,
       targetWindowId: windowId,
     });

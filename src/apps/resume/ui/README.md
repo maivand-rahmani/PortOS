@@ -4,4 +4,5 @@ Resume UI.
 
 ## Files
 
-- `resume-app.tsx`: industrial resume dossier with navigator, skills, and timeline modules.
+- `resume-app.tsx`: compatibility export for the main resume workspace.
+- `resume-workstation/`: modular recruiter-mode workspace, external focus handling, and shared presentational pieces.
