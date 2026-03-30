@@ -5,17 +5,17 @@ import CalculatorIcon from "./icon";
 export const calculatorAppConfig: AppConfig = {
   id: "calculator",
   name: "Calculator",
-  description: "A working calculator with expression evaluation.",
+  description: "A compact calculator with reusable tape history and Notes or AI handoff.",
   icon: CalculatorIcon,
   tint: "#f97316",
   window: {
     width: 400,
-    height: 560,
+    height: 720,
     minWidth: 340,
-    minHeight: 500,
+    minHeight: 620,
   },
   statusBar: {
-    info: "Evaluate expressions in a compact focused workspace.",
+    info: "Evaluate expressions, keep a working tape, and hand calculations off across the OS.",
     sections: [
       {
         id: "calculator",
@@ -37,6 +37,11 @@ export const calculatorAppConfig: AppConfig = {
             id: "calculator-open-notes",
             label: "Open Notes",
             command: { type: "open-app", appId: "notes" },
+          },
+          {
+            id: "calculator-open-ai-agent",
+            label: "Open AI Agent",
+            command: { type: "open-app", appId: "ai-agent" },
           },
         ],
       },

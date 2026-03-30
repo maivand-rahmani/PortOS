@@ -1,8 +1,15 @@
 export { cn } from "./cn";
 export {
   AGENT_NOTES_PREFILL_EVENT,
+  AI_AGENT_EXTERNAL_PROMPT_EVENT,
+  AI_AGENT_EXTERNAL_REQUEST_EVENT,
+  clearPendingAgentRequest,
   consumeAgentNotesPrefill,
+  consumePendingAgentRequest,
   dispatchAgentNotesPrefill,
+  dispatchAgentRequest,
+  normalizeAgentExternalRequest,
+  type AgentExternalRequest,
   type AgentNotesPrefillDetail,
 } from "./agent-os-events";
 export {
@@ -56,6 +63,7 @@ export {
   maximizeWindowById,
   minimizeWindowById,
   openAppById,
+  openAgentWithRequest,
   openClockWithFocus,
   openNotesWithPrefill,
   openNotesWithRequest,

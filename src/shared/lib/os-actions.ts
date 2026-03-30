@@ -1,5 +1,10 @@
 import { useOSStore } from "@/processes";
-import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
+import {
+  dispatchAgentNotesPrefill,
+  dispatchAgentRequest,
+  type AgentExternalRequest,
+  type AgentNotesPrefillDetail,
+} from "./agent-os-events";
 import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
 import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
@@ -52,6 +57,11 @@ export function maximizeWindowById(windowId: string) {
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
   dispatchAgentNotesPrefill(detail);
   return useOSStore.getState().activateApp("notes");
+}
+
+export async function openAgentWithRequest(input: AgentExternalRequest | string) {
+  dispatchAgentRequest(input);
+  return useOSStore.getState().activateApp("ai-agent");
 }
 
 export async function openClockWithFocus(detail: ClockFocusRequest) {
