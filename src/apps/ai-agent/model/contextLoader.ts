@@ -1,8 +1,5 @@
 import type { AppCommandAction, ParsedCommand } from "./commandParser";
 
-export const AI_AGENT_EXTERNAL_PROMPT_EVENT = "portos:ai-agent-external-prompt";
-const AI_AGENT_PENDING_PROMPT_KEY = "portos-ai-agent-pending-prompt";
-
 export type AgentChatRole = "user" | "assistant" | "system";
 
 export type AgentChatMessage = {
@@ -70,36 +67,6 @@ export function createWelcomeMessages() {
     ),
     createSystemMessage("Try: why should I hire you, run a live portfolio walkthrough, or I want to contact you."),
   ];
-}
-
-export function openAgentWithPrompt(prompt: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(AI_AGENT_PENDING_PROMPT_KEY, prompt);
-
-  window.dispatchEvent(
-    new CustomEvent<string>(AI_AGENT_EXTERNAL_PROMPT_EVENT, {
-      detail: prompt,
-    }),
-  );
-}
-
-export function consumePendingAgentPrompt() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const prompt = window.localStorage.getItem(AI_AGENT_PENDING_PROMPT_KEY);
-
-  if (!prompt) {
-    return null;
-  }
-
-  window.localStorage.removeItem(AI_AGENT_PENDING_PROMPT_KEY);
-
-  return prompt;
 }
 
 export function clearAgentHistory() {
@@ -188,4 +155,20 @@ export function buildPostActionSystemMessage(parsed: ParsedCommand) {
   }
 
   return null;
+}
+
+export function buildAgentRequestSummary(requestTitle?: string, sourceLabel?: string) {
+  if (requestTitle && sourceLabel) {
+    return `${requestTitle} from ${sourceLabel}`;
+  }
+
+  if (requestTitle) {
+    return requestTitle;
+  }
+
+  if (sourceLabel) {
+    return `Request from ${sourceLabel}`;
+  }
+
+  return "External request";
 }

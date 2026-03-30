@@ -5,7 +5,7 @@ import { useReducedMotion } from "framer-motion";
 
 import { getActiveRuntimeTarget, useOSStore } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
-import { openAgentWithPrompt } from "@/apps/ai-agent/model/contextLoader";
+import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
 import { BOOT_SEQUENCE, DESKTOP_AI_WIDGET, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
 import {

@@ -7,18 +7,25 @@ import { openAppById, openNotesWithPrefill } from "@/shared/lib";
 
 import { describeRequestedAction, parseAgentCommand } from "./commandParser";
 import {
+  buildAgentRequestSummary,
   buildAgentRuntimeSnapshot,
   buildPostActionSystemMessage,
   clearAgentHistory,
-  consumePendingAgentPrompt,
   createAssistantMessage,
   createSystemMessage,
   createUserMessage,
-  AI_AGENT_EXTERNAL_PROMPT_EVENT,
   readStoredAgentHistory,
   saveAgentHistory,
   type AgentChatMessage,
 } from "./contextLoader";
+import {
+  AI_AGENT_EXTERNAL_PROMPT_EVENT,
+  AI_AGENT_EXTERNAL_REQUEST_EVENT,
+  clearPendingAgentRequest,
+  consumePendingAgentRequest,
+  normalizeAgentExternalRequest,
+  type AgentExternalRequest,
+} from "./external";
 
 type RequestMessage = {
   id: string;
@@ -52,6 +59,8 @@ export function useAiAgent(processId: string) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeRequest, setActiveRequest] = useState<AgentExternalRequest | null>(null);
+  const [queuedRequests, setQueuedRequests] = useState<AgentExternalRequest[]>([]);
 
   const runtimeSnapshot = useMemo(
     () =>
@@ -83,7 +92,7 @@ export function useAiAgent(processId: string) {
     saveAgentHistory(messages);
   }, [messages]);
 
-  const suggestions = useMemo(
+  const baseSuggestions = useMemo(
     () => [
       "Open terminal",
       "Explain Portfolio OS architecture",
@@ -93,147 +102,180 @@ export function useAiAgent(processId: string) {
     [],
   );
 
-  const sendMessage = useCallback(async (forcedValue?: string) => {
-    const nextValue = (forcedValue ?? input).trim();
+  const suggestions = useMemo(() => {
+    const nextSuggestions = [...(activeRequest?.suggestions ?? []), ...baseSuggestions];
 
-    if (!nextValue || isStreaming) {
-      return;
-    }
+    return [...new Set(nextSuggestions)].slice(0, 6);
+  }, [activeRequest?.suggestions, baseSuggestions]);
 
-    setError(null);
+  const hasUserMessages = useMemo(
+    () => messages.some((message) => message.role === "user"),
+    [messages],
+  );
 
-    const userMessage = createUserMessage(nextValue);
-    const parsedCommand = parseAgentCommand(nextValue, apps);
-    const assistantMessage = createAssistantMessage("", {
-      action: parsedCommand.action,
-    });
-    const requestMessages = toRequestMessages([...messages, userMessage]);
+  const sendMessage = useCallback(
+    async (forcedValue?: string) => {
+      const nextValue = (forcedValue ?? input).trim();
 
-    setMessages((current) => [...current, userMessage, assistantMessage]);
-    setInput("");
-    setIsStreaming(true);
+      if (!nextValue || isStreaming) {
+        return;
+      }
 
-    try {
-      const response = await fetch("/api/ai-agent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: requestMessages,
-          runtime: runtimeSnapshot,
-          requestedAction: describeRequestedAction(parsedCommand),
-        }),
+      setError(null);
+
+      const userMessage = createUserMessage(nextValue);
+      const parsedCommand = parseAgentCommand(nextValue, apps);
+      const assistantMessage = createAssistantMessage("", {
+        action: parsedCommand.action,
       });
+      const requestMessages = toRequestMessages([...messages, userMessage]);
 
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "Agent request failed.");
-      }
+      setMessages((current) => [...current, userMessage, assistantMessage]);
+      setInput("");
+      setIsStreaming(true);
 
-      const sources = response.headers
-        .get("X-PortOS-Context")
-        ?.split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
-      const providerError = response.headers.get("X-PortOS-Provider-Error");
-      const usedFallback = response.headers.get("X-PortOS-Fallback") === "local-context";
-      const reader = response.body?.getReader();
+      try {
+        const response = await fetch("/api/ai-agent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: requestMessages,
+            runtime: runtimeSnapshot,
+            requestedAction: describeRequestedAction(parsedCommand),
+          }),
+        });
 
-      if (!reader) {
-        throw new Error("Streaming response unavailable.");
-      }
-
-      const decoder = new TextDecoder();
-      let finalText = "";
-
-      while (true) {
-        const chunk = await reader.read();
-
-        if (chunk.done) {
-          break;
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || "Agent request failed.");
         }
 
-        finalText += decoder.decode(chunk.value, { stream: true });
+        const sources = response.headers
+          .get("X-PortOS-Context")
+          ?.split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        const usedFallback = response.headers.get("X-PortOS-Fallback") === "local-context";
+        const reader = response.body?.getReader();
 
+        if (!reader) {
+          throw new Error("Streaming response unavailable.");
+        }
+
+        const decoder = new TextDecoder();
+        let finalText = "";
+
+        while (true) {
+          const chunk = await reader.read();
+
+          if (chunk.done) {
+            break;
+          }
+
+          finalText += decoder.decode(chunk.value, { stream: true });
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantMessage.id
+                ? {
+                    ...message,
+                    content: finalText,
+                    sources,
+                  }
+                : message,
+            ),
+          );
+        }
+
+        if (!finalText.trim()) {
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantMessage.id
+                ? {
+                    ...message,
+                    content: "I hit an empty response. Ask again and I will retry.",
+                    sources,
+                  }
+                : message,
+            ),
+          );
+        }
+
+        if (parsedCommand.action?.type === "OPEN_APP" && parsedCommand.action.payload.appId) {
+          await openAppById(parsedCommand.action.payload.appId);
+        }
+
+        if (parsedCommand.action?.type === "OPEN_TOUR") {
+          await openAppById("portfolio");
+          await openAppById("resume");
+          await openAppById("docs");
+        }
+
+        if (parsedCommand.action?.type === "OPEN_CONTACT_FLOW") {
+          await openAppById("contact");
+          await openAppById("resume");
+          await openAppById("portfolio");
+        }
+
+        if (parsedCommand.action?.type === "OPEN_NOTES_DRAFT") {
+          await openNotesWithPrefill({
+            title: parsedCommand.action.payload.noteTitle ?? "New agent draft",
+            body:
+              (parsedCommand.action.payload.noteBody ?? "") +
+              `Prompt: ${nextValue}\n\n`,
+            tags: parsedCommand.action.payload.noteTags,
+            pinned: false,
+          });
+        }
+
+        const postActionMessage = buildPostActionSystemMessage(parsedCommand);
+
+        if (postActionMessage && !usedFallback) {
+          setMessages((current) => [...current, postActionMessage]);
+        }
+      } catch (requestError) {
+        const message = requestError instanceof Error ? requestError.message : "Unknown agent error.";
+
+        setError(message);
         setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantMessage.id
-              ? {
-                  ...message,
-                  content: finalText,
-                  sources,
-                }
-              : message,
-          ),
+          current
+            .filter((entry) => entry.id !== assistantMessage.id)
+            .concat(createSystemMessage(`Agent error: ${message}`)),
         );
+      } finally {
+        setIsStreaming(false);
+      }
+    },
+    [apps, input, isStreaming, messages, runtimeSnapshot],
+  );
+
+  const applyExternalRequest = useCallback(
+    (incoming: AgentExternalRequest | string) => {
+      const request = normalizeAgentExternalRequest(incoming);
+
+      if (!request.prompt.trim()) {
+        return;
       }
 
-      if (!finalText.trim()) {
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantMessage.id
-              ? {
-                  ...message,
-                  content: "I hit an empty response. Ask again and I will retry.",
-                  sources,
-                }
-              : message,
-          ),
-        );
+      clearPendingAgentRequest();
+      setActiveRequest(request);
+
+      if (request.mode === "prefill") {
+        setInput(request.prompt);
+        return;
       }
 
-      if (parsedCommand.action?.type === "OPEN_APP" && parsedCommand.action.payload.appId) {
-        await openAppById(parsedCommand.action.payload.appId);
+      if (isStreaming) {
+        setQueuedRequests((current) => [...current, request]);
+        return;
       }
 
-      if (parsedCommand.action?.type === "OPEN_TOUR") {
-        await openAppById("portfolio");
-        await openAppById("resume");
-        await openAppById("docs");
-      }
-
-      if (parsedCommand.action?.type === "OPEN_CONTACT_FLOW") {
-        await openAppById("contact");
-        await openAppById("resume");
-        await openAppById("portfolio");
-      }
-
-      if (parsedCommand.action?.type === "OPEN_NOTES_DRAFT") {
-        await openNotesWithPrefill({
-          title: parsedCommand.action.payload.noteTitle ?? "New agent draft",
-          body:
-            (parsedCommand.action.payload.noteBody ?? "") +
-            `Prompt: ${nextValue}\n\n`,
-          tags: parsedCommand.action.payload.noteTags,
-          pinned: false,
-        });
-      }
-
-      const postActionMessage = buildPostActionSystemMessage(parsedCommand);
-
-      if (postActionMessage && !usedFallback) {
-        setMessages((current) => [...current, postActionMessage]);
-      }
-    } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "Unknown agent error.";
-
-      setError(message);
-      setMessages((current) =>
-        current
-          .filter((entry) => entry.id !== assistantMessage.id)
-          .concat(createSystemMessage(`Agent error: ${message}`)),
-      );
-    } finally {
-      setIsStreaming(false);
-    }
-  }, [
-    apps,
-    input,
-    isStreaming,
-    messages,
-    runtimeSnapshot,
-  ]);
+      void sendMessage(request.prompt);
+    },
+    [isStreaming, sendMessage],
+  );
 
   useEffect(() => {
     const handleExternalPrompt = (event: Event) => {
@@ -243,23 +285,53 @@ export function useAiAgent(processId: string) {
         return;
       }
 
-      void sendMessage(prompt);
+      applyExternalRequest(prompt);
+    };
+
+    const handleExternalRequest = (event: Event) => {
+      const request = (event as CustomEvent<AgentExternalRequest>).detail;
+
+      if (!request) {
+        return;
+      }
+
+      applyExternalRequest(request);
     };
 
     window.addEventListener(AI_AGENT_EXTERNAL_PROMPT_EVENT, handleExternalPrompt);
+    window.addEventListener(AI_AGENT_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
 
     return () => {
       window.removeEventListener(AI_AGENT_EXTERNAL_PROMPT_EVENT, handleExternalPrompt);
+      window.removeEventListener(AI_AGENT_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
     };
-  }, [sendMessage]);
+  }, [applyExternalRequest]);
 
   useEffect(() => {
-    const pendingPrompt = consumePendingAgentPrompt();
+    const pendingRequest = consumePendingAgentRequest();
 
-    if (pendingPrompt) {
-      void sendMessage(pendingPrompt);
+    if (pendingRequest) {
+      applyExternalRequest(pendingRequest);
     }
-  }, [sendMessage]);
+  }, [applyExternalRequest]);
+
+  useEffect(() => {
+    if (isStreaming || queuedRequests.length === 0) {
+      return;
+    }
+
+    const [nextRequest, ...rest] = queuedRequests;
+
+    setQueuedRequests(rest);
+    setActiveRequest(nextRequest);
+
+    if (nextRequest.mode === "prefill") {
+      setInput(nextRequest.prompt);
+      return;
+    }
+
+    void sendMessage(nextRequest.prompt);
+  }, [isStreaming, queuedRequests, sendMessage]);
 
   return {
     processId,
@@ -269,13 +341,27 @@ export function useAiAgent(processId: string) {
     isStreaming,
     error,
     suggestions,
+    hasUserMessages,
     runtimeSnapshot,
     sendMessage,
+    activeRequest,
+    queuedRequestCount: queuedRequests.length,
+    dismissActiveRequest: () => {
+      setActiveRequest(null);
+    },
+    openRequestSource: async () => {
+      if (activeRequest?.source?.appId) {
+        await openAppById(activeRequest.source.appId);
+      }
+    },
+    activeRequestSummary: buildAgentRequestSummary(activeRequest?.title, activeRequest?.source?.label),
     clearHistory: () => {
       const nextMessages = clearAgentHistory();
       setMessages(nextMessages);
       setError(null);
       setInput("");
+      setActiveRequest(null);
+      setQueuedRequests([]);
     },
   };
 }

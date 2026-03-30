@@ -5,7 +5,7 @@ import AiAgentIcon from "./icon";
 export const aiAgentAppConfig: AppConfig = {
   id: "ai-agent",
   name: "Maivand",
-  description: "Developer agent that answers from portfolio context and opens PortOS apps.",
+  description: "Developer agent that answers from portfolio context, accepts live handoffs, and opens PortOS apps.",
   icon: AiAgentIcon,
   tint: "#ff6b57",
   window: {
@@ -16,7 +16,7 @@ export const aiAgentAppConfig: AppConfig = {
     launchMaximized: true,
   },
   statusBar: {
-    info: "Answers from local portfolio context and can open PortOS apps.",
+    info: "Answers from local portfolio context, accepts handoffs, and can open PortOS apps.",
     sections: [
       {
         id: "maivand",
