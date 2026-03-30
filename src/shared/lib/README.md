@@ -5,6 +5,7 @@ Non-visual shared utilities.
 ## Files
 
 - `agent-os-events.ts`: window-level events used by the AI agent to prefill other apps.
+- `blog-os-events.ts`: window-level request bridge for focusing the Blog reader on a post or queued reading flow.
 - `cn.ts`: merges conditional class names and resolves Tailwind conflicts.
 - `clock-os-events.ts`: window-level request bridge for focusing a timezone inside the active Clock window.
 - `index.ts`: barrel exports for shared utilities.

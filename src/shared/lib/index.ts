@@ -13,6 +13,12 @@ export {
   type AgentNotesPrefillDetail,
 } from "./agent-os-events";
 export {
+  BLOG_FOCUS_REQUEST_EVENT,
+  consumeBlogFocusRequest,
+  dispatchBlogFocusRequest,
+  type BlogFocusRequest,
+} from "./blog-os-events";
+export {
   CLOCK_FOCUS_REQUEST_EVENT,
   consumeClockFocusRequest,
   dispatchClockFocusRequest,
@@ -64,6 +70,7 @@ export {
   minimizeWindowById,
   openAppById,
   openAgentWithRequest,
+  openBlogWithFocus,
   openClockWithFocus,
   openNotesWithPrefill,
   openNotesWithRequest,

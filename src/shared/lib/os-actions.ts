@@ -5,6 +5,7 @@ import {
   type AgentExternalRequest,
   type AgentNotesPrefillDetail,
 } from "./agent-os-events";
+import { dispatchBlogFocusRequest, type BlogFocusRequest } from "./blog-os-events";
 import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
 import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
@@ -62,6 +63,19 @@ export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
 export async function openAgentWithRequest(input: AgentExternalRequest | string) {
   dispatchAgentRequest(input);
   return useOSStore.getState().activateApp("ai-agent");
+}
+
+export async function openBlogWithFocus(detail: BlogFocusRequest) {
+  const windowId = await useOSStore.getState().activateApp("blog");
+
+  if (windowId) {
+    dispatchBlogFocusRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
 }
 
 export async function openClockWithFocus(detail: ClockFocusRequest) {

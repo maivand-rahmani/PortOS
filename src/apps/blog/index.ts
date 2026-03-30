@@ -5,17 +5,17 @@ import BlogIcon from "./icon";
 export const blogAppConfig: AppConfig = {
   id: "blog",
   name: "Blog",
-  description: "Personal blog reader with real posts.",
+  description: "Personal blog reader with queue, highlights, and app handoffs.",
   icon: BlogIcon,
   tint: "#7c3aed",
   window: {
-    width: 760,
-    height: 560,
-    minWidth: 520,
-    minHeight: 360,
+    width: 1120,
+    height: 700,
+    minWidth: 760,
+    minHeight: 520,
   },
   statusBar: {
-    info: "Read local writing and portfolio updates.",
+    info: "Read posts, save highlights, and route the best ideas into other apps.",
     sections: [
       {
         id: "blog",
@@ -33,6 +33,16 @@ export const blogAppConfig: AppConfig = {
         id: "related",
         label: "Related",
         actions: [
+          {
+            id: "blog-open-notes",
+            label: "Open Notes",
+            command: { type: "open-app", appId: "notes" },
+          },
+          {
+            id: "blog-open-agent",
+            label: "Open AI Agent",
+            command: { type: "open-app", appId: "ai-agent" },
+          },
           {
             id: "blog-open-portfolio",
             label: "Open Portfolio",

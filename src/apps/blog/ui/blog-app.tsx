@@ -1,14 +1,57 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
 import type { BlogPost } from "@/shared/lib/app-logic";
+import {
+  BLOG_FOCUS_REQUEST_EVENT,
+  consumeBlogFocusRequest,
+  openAgentWithRequest,
+  openNotesWithRequest,
+  openPortfolioWithFocus,
+  type BlogFocusRequest,
+} from "@/shared/lib";
 
-export function BlogApp({ processId }: AppComponentProps) {
+import { buildBlogAgentRequest, buildBlogNoteRequest, resolveBlogPortfolioFocus } from "../model/blog-handoffs";
+import {
+  addBlogHighlight,
+  createBlogHighlight,
+  ensurePostQueued,
+  getPostHighlights,
+  readStoredBlogReaderState,
+  removeBlogHighlight,
+  removePostFromQueue,
+  saveBlogReaderState,
+  toggleCompletedPost,
+  toggleQueuedPost,
+  type BlogReaderState,
+} from "../model/blog-reader-storage";
+import { BlogPostList } from "./blog-post-list";
+import { BlogPostView } from "./blog-post-view";
+import { BlogReaderHeader } from "./blog-reader-header";
+import { BlogReadingSidebar } from "./blog-reading-sidebar";
+
+type BlogPayload = {
+  posts: BlogPost[];
+};
+
+function describeRequestSource(source: string | undefined) {
+  if (!source) {
+    return "another app";
+  }
+
+  return source.replace(/[:_-]+/g, " ");
+}
+
+export function BlogApp({ processId, windowId }: AppComponentProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [query, setQuery] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [highlightDraft, setHighlightDraft] = useState("");
+  const [readerState, setReaderState] = useState<BlogReaderState>(() => readStoredBlogReaderState());
+  const [statusMessage, setStatusMessage] = useState("Search the archive, save takeaways, and move a useful post into Notes or the AI agent.");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const filteredPosts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -18,24 +61,53 @@ export function BlogApp({ processId }: AppComponentProps) {
     }
 
     return posts.filter((post) =>
-      [post.title, post.excerpt, post.body, ...post.tags].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      ),
+      [post.title, post.excerpt, post.body, ...post.tags].some((value) => value.toLowerCase().includes(normalizedQuery)),
     );
   }, [posts, query]);
 
-  const activePost = filteredPosts.find((post) => post.id === activePostId) ?? filteredPosts[0] ?? null;
+  const activePost = useMemo(
+    () => filteredPosts.find((post) => post.id === activePostId) ?? posts.find((post) => post.id === activePostId) ?? filteredPosts[0] ?? posts[0] ?? null,
+    [activePostId, filteredPosts, posts],
+  );
+
+  const activeHighlights = useMemo(() => getPostHighlights(readerState, activePost?.id), [activePost?.id, readerState]);
+  const queuedPosts = useMemo(
+    () => readerState.queuedPostIds.map((postId) => posts.find((post) => post.id === postId)).filter((post): post is BlogPost => Boolean(post)),
+    [posts, readerState.queuedPostIds],
+  );
+  const completedCount = readerState.completedPostIds.length;
+  const relatedPortfolio = activePost ? resolveBlogPortfolioFocus(activePost) : null;
+
+  useEffect(() => {
+    saveBlogReaderState(readerState);
+  }, [readerState]);
+
+  useEffect(() => {
+    setHighlightDraft("");
+  }, [activePost?.id]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadPosts() {
-      const response = await fetch("/api/blog");
-      const payload = (await response.json()) as { posts: BlogPost[] };
+      try {
+        const response = await fetch("/api/blog");
 
-      if (!cancelled) {
-        setPosts(payload.posts);
-        setActivePostId(payload.posts[0]?.id ?? null);
+        if (!response.ok) {
+          throw new Error(`Unable to load posts (${response.status})`);
+        }
+
+        const payload = (await response.json()) as BlogPayload;
+
+        if (!cancelled) {
+          setPosts(payload.posts);
+          setActivePostId((current) => current ?? payload.posts[0]?.id ?? null);
+          setLoadError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Unable to load posts.");
+        }
       }
     }
 
@@ -46,68 +118,181 @@ export function BlogApp({ processId }: AppComponentProps) {
     };
   }, []);
 
-  return (
-    <div className="blog-app flex h-full flex-col gap-4 rounded-[24px] p-4">
-      <div className="rounded-[24px] bg-white/80 p-4 shadow-panel">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-teal-700/60">Blog</p>
-        <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="text-sm text-teal-950/60">Reader session {processId.slice(0, 6)}</p>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search posts"
-            className="w-full rounded-full border border-teal-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-teal-400/60 lg:max-w-72"
-          />
-        </div>
-      </div>
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="min-h-0 overflow-auto rounded-[24px] bg-white/80 p-4 shadow-panel">
-          {filteredPosts.length > 0 ? (
-            <div className="space-y-3">
-              {filteredPosts.map((post) => {
-                const isActive = post.id === activePost?.id;
+  const applyFocusRequest = useCallback((request: BlogFocusRequest | null) => {
+    if (!request) {
+      return;
+    }
 
-                return (
-                  <button
-                    key={post.id}
-                    type="button"
-                    onClick={() => setActivePostId(post.id)}
-                    className={`w-full cursor-pointer rounded-[20px] border px-4 py-4 text-left transition duration-200 ${
-                      isActive
-                        ? "border-teal-500 bg-teal-50 text-teal-950"
-                        : "border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/60"
-                    }`}
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{post.publishedAt}</p>
-                    <p className="mt-2 font-display text-xl font-semibold text-slate-950">{post.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{post.excerpt}</p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No posts found.</p>
-          )}
-        </aside>
-        <article className="min-h-0 overflow-auto rounded-[24px] bg-white/80 p-5 shadow-panel">
-          {activePost ? (
-            <>
-              <p className="text-xs uppercase tracking-[0.22em] text-teal-700/55">{activePost.publishedAt}</p>
-              <h2 className="mt-3 font-display text-3xl font-semibold text-slate-950">{activePost.title}</h2>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {activePost.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-4 text-sm leading-7 text-slate-600">{activePost.excerpt}</p>
-              <p className="mt-6 text-sm leading-8 text-slate-700">{activePost.body}</p>
-            </>
-          ) : (
-            <p className="text-sm text-slate-500">No posts match your search.</p>
-          )}
-        </article>
+    if (request.query !== undefined) {
+      setQuery(request.query);
+    }
+
+    const requestedPostId = request.postId;
+
+    if (requestedPostId) {
+      setActivePostId(requestedPostId);
+
+      if (request.addToQueue) {
+        setReaderState((current) => ensurePostQueued(current, requestedPostId));
+      }
+    }
+
+    setStatusMessage(`Focused from ${describeRequestSource(request.source)}.`);
+  }, []);
+
+  useEffect(() => {
+    const pendingRequest = consumeBlogFocusRequest(windowId);
+
+    if (pendingRequest) {
+      applyFocusRequest(pendingRequest);
+    }
+  }, [applyFocusRequest, windowId]);
+
+  useEffect(() => {
+    const handleFocusRequest = (event: Event) => {
+      const detail = (event as CustomEvent<BlogFocusRequest>).detail;
+
+      if (detail.targetWindowId && detail.targetWindowId !== windowId) {
+        return;
+      }
+
+      applyFocusRequest(detail);
+    };
+
+    window.addEventListener(BLOG_FOCUS_REQUEST_EVENT, handleFocusRequest);
+
+    return () => {
+      window.removeEventListener(BLOG_FOCUS_REQUEST_EVENT, handleFocusRequest);
+    };
+  }, [applyFocusRequest, windowId]);
+
+  const toggleQueue = useCallback(() => {
+    if (!activePost) {
+      return;
+    }
+
+    const nextQueued = !readerState.queuedPostIds.includes(activePost.id);
+
+    setReaderState((current) => toggleQueuedPost(current, activePost.id));
+    setStatusMessage(nextQueued ? `Queued ${activePost.title}.` : `Removed ${activePost.title} from the queue.`);
+  }, [activePost, readerState.queuedPostIds]);
+
+  const toggleComplete = useCallback(() => {
+    if (!activePost) {
+      return;
+    }
+
+    const nextCompleted = !readerState.completedPostIds.includes(activePost.id);
+
+    setReaderState((current) => toggleCompletedPost(current, activePost.id));
+    setStatusMessage(nextCompleted ? `Marked ${activePost.title} as finished.` : `Moved ${activePost.title} back to active reading.`);
+  }, [activePost, readerState.completedPostIds]);
+
+  const saveHighlight = useCallback(
+    (input: { note?: string; quote?: string }, successMessage: string) => {
+      if (!activePost) {
+        return;
+      }
+
+      const highlight = createBlogHighlight({
+        postId: activePost.id,
+        quote: input.quote,
+        note: input.note,
+      });
+
+      if (!highlight) {
+        setStatusMessage("Write a note or save the excerpt before adding a highlight.");
+        return;
+      }
+
+      setReaderState((current) => addBlogHighlight(current, highlight));
+      setHighlightDraft("");
+      setStatusMessage(successMessage);
+    },
+    [activePost],
+  );
+
+  const sendToNotes = useCallback(async () => {
+    if (!activePost) {
+      return;
+    }
+
+    await openNotesWithRequest(buildBlogNoteRequest(activePost, activeHighlights));
+    setStatusMessage(`Sent ${activePost.title} to Notes as a reading brief.`);
+  }, [activeHighlights, activePost]);
+
+  const askAgent = useCallback(async () => {
+    if (!activePost) {
+      return;
+    }
+
+    await openAgentWithRequest(buildBlogAgentRequest(activePost, activeHighlights));
+    setStatusMessage(`Sent ${activePost.title} to the AI agent for follow-up.`);
+  }, [activeHighlights, activePost]);
+
+  const openRelatedPortfolio = useCallback(async () => {
+    if (!relatedPortfolio) {
+      return;
+    }
+
+    await openPortfolioWithFocus(relatedPortfolio.request);
+    setStatusMessage(`Opened ${relatedPortfolio.label} from the current post.`);
+  }, [relatedPortfolio]);
+
+  return (
+    <div className="blog-app flex h-full flex-col gap-4 rounded-[28px] p-4">
+      <BlogReaderHeader
+        processId={processId}
+        query={query}
+        onQueryChange={setQuery}
+        postCount={posts.length}
+        queuedCount={readerState.queuedPostIds.length}
+        completedCount={completedCount}
+        statusMessage={loadError ? `Load error: ${loadError}` : statusMessage}
+      />
+
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+        <BlogPostList
+          posts={filteredPosts}
+          activePostId={activePost?.id ?? null}
+          queuedPostIds={readerState.queuedPostIds}
+          completedPostIds={readerState.completedPostIds}
+          onSelect={setActivePostId}
+        />
+
+        <BlogPostView
+          post={activePost}
+          isQueued={activePost ? readerState.queuedPostIds.includes(activePost.id) : false}
+          isCompleted={activePost ? readerState.completedPostIds.includes(activePost.id) : false}
+          highlightDraft={highlightDraft}
+          highlightCount={activeHighlights.length}
+          relatedPortfolioLabel={relatedPortfolio?.label ?? null}
+          onHighlightDraftChange={setHighlightDraft}
+          onToggleQueue={toggleQueue}
+          onToggleComplete={toggleComplete}
+          onSaveExcerpt={() => saveHighlight({ quote: activePost?.excerpt }, `Saved the excerpt from ${activePost?.title ?? "this post"}.`)}
+          onSaveNote={() => saveHighlight({ note: highlightDraft }, `Saved your reading note for ${activePost?.title ?? "this post"}.`)}
+          onSendToNotes={sendToNotes}
+          onAskAgent={askAgent}
+          onOpenPortfolio={relatedPortfolio ? openRelatedPortfolio : null}
+        />
+
+        <BlogReadingSidebar
+          queuedPosts={queuedPosts}
+          activePostId={activePost?.id ?? null}
+          highlights={activeHighlights}
+          completedCount={completedCount}
+          totalCount={posts.length}
+          onSelectPost={setActivePostId}
+          onRemoveFromQueue={(postId) => {
+            setReaderState((current) => removePostFromQueue(current, postId));
+            setStatusMessage("Removed a post from the queue.");
+          }}
+          onRemoveHighlight={(highlightId) => {
+            setReaderState((current) => removeBlogHighlight(current, highlightId));
+            setStatusMessage("Deleted one saved highlight.");
+          }}
+        />
       </div>
     </div>
   );
