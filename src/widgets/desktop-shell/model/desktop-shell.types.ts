@@ -4,6 +4,8 @@ import type { AppConfig, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 import type { OSBootPhase, WindowResizeDirection } from "@/processes";
 
+import type { StatusBarModel } from "./status-bar";
+
 export type DesktopIconPosition = WindowPosition;
 
 export type DesktopIconMap = Record<string, DesktopIconPosition>;
@@ -79,6 +81,8 @@ export type DockMenuModel = {
 export type UseDesktopShellResult = {
   containerRef: RefObject<HTMLDivElement | null>;
   apps: AppConfig[];
+  activeApp: AppConfig | null;
+  activeWindow: WindowInstance | null;
   processCount: number;
   bootPhase: OSBootPhase;
   bootProgress: number;
@@ -89,6 +93,7 @@ export type UseDesktopShellResult = {
   dockApps: DockAppState[];
   dockMenu: DockMenuModel | null;
   minimizedWindows: WindowInstance[];
+  statusBar: StatusBarModel;
   visibleWindows: WindowRenderItem[];
   clearDesktopSelection: () => void;
   closeDockMenu: () => void;
@@ -99,6 +104,7 @@ export type UseDesktopShellResult = {
   beginDesktopIconDrag: (appId: string, pointer: WindowPosition) => void;
   openDockMenu: (appId: string, anchor: WindowPosition) => void;
   runDockMenuAction: (action: DockMenuAction) => void;
+  runStatusBarCommand: (actionId: string) => void;
   focusWindow: (windowId: string) => void;
   closeWindow: (windowId: string) => void;
   minimizeWindow: (windowId: string) => void;

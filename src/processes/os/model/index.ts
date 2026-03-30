@@ -28,10 +28,16 @@ export {
   appRegistryInitialState,
   indexAppConfigs,
 } from "./app-registry";
+export {
+  getActiveRuntimeTarget,
+  getProcessById,
+  getWindowById,
+} from "./runtime-selectors";
 export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { OSBootPhase, OSStore, OSRuntimeSnapshot } from "./store";
+export type { ActiveRuntimeTarget } from "./runtime-selectors";
 export type {
   WindowDragState,
   WindowManagerState,

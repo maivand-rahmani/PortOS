@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 
-import { useOSStore } from "@/processes";
+import { getActiveRuntimeTarget, useOSStore } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/contextLoader";
 
 import { BOOT_SEQUENCE, DESKTOP_AI_WIDGET, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
+import {
+  createStatusBarCommandRunner,
+  getStatusBarModel,
+  type StatusBarCommandContext,
+  type StatusBarModel,
+} from "./status-bar";
 import {
   clampDesktopIconPosition,
   getDockAppStates,
@@ -80,6 +86,28 @@ export function useDesktopShell(): UseDesktopShellResult {
         }))
         .filter((entry) => Boolean(entry.app)),
     [activeWindowId, appMap, dragWindowId, loadedApps, resizeWindowId, windows],
+  );
+
+  const activeRuntimeTarget = useMemo(
+    () =>
+      getActiveRuntimeTarget({
+        activeWindowId,
+        appMap,
+        processes,
+        windows,
+      }),
+    [activeWindowId, appMap, processes, windows],
+  );
+
+  const statusBar = useMemo<StatusBarModel>(
+    () =>
+      getStatusBarModel({
+        activeApp: activeRuntimeTarget.activeApp,
+        activeProcess: activeRuntimeTarget.activeProcess,
+        activeWindow: activeRuntimeTarget.activeWindow,
+        processCount: processes.length,
+      }),
+    [activeRuntimeTarget, processes.length],
   );
 
   const dockApps = useMemo(
@@ -319,6 +347,76 @@ export function useDesktopShell(): UseDesktopShellResult {
     void launchApp(appId, desktopBounds);
   };
 
+  const openStatusBarUrl = useCallback(
+    (href: string, target: "_blank" | "_self" = "_blank") => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const isRelativeUrl = href.startsWith("/");
+
+      if (isRelativeUrl) {
+        if (target === "_self") {
+          window.location.assign(href);
+          return;
+        }
+
+        window.open(href, target, "noopener,noreferrer");
+        return;
+      }
+
+      let parsedUrl: URL;
+
+      try {
+        parsedUrl = new URL(href);
+      } catch {
+        return;
+      }
+
+      const allowedProtocols = new Set(["http:", "https:", "mailto:", "tel:"]);
+
+      if (!allowedProtocols.has(parsedUrl.protocol)) {
+        return;
+      }
+
+      if (target === "_self") {
+        window.location.assign(parsedUrl.toString());
+        return;
+      }
+
+      window.open(parsedUrl.toString(), target, "noopener,noreferrer");
+    },
+    [],
+  );
+
+  const runStatusBarCommandWithContext = useMemo(
+    () =>
+      createStatusBarCommandRunner({
+        bounds: desktopBounds,
+        launchApp,
+        activateApp,
+        openUrl: openStatusBarUrl,
+      }),
+    [activateApp, desktopBounds, launchApp, openStatusBarUrl],
+  );
+
+  const runStatusBarCommand = (actionId: string) => {
+    const activeApp = statusBar.activeApp;
+    const action = statusBar.menu?.sections
+      .flatMap((section) => section.actions)
+      .find((entry) => entry.id === actionId);
+
+    if (!action) {
+      return;
+    }
+
+    const context: StatusBarCommandContext = {
+      activeApp,
+    };
+
+    void runStatusBarCommandWithContext(action.command, context);
+  };
+
   const beginDesktopIconDrag = (appId: string, pointer: WindowPosition) => {
     if (bootPhase !== "ready") {
       return;
@@ -456,6 +554,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   return {
     containerRef,
     apps,
+    activeApp: activeRuntimeTarget.activeApp,
+    activeWindow: activeRuntimeTarget.activeWindow,
     processCount: processes.length,
     bootPhase,
     bootProgress,
@@ -466,6 +566,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     dockApps,
     dockMenu,
     minimizedWindows,
+    statusBar,
     visibleWindows,
     clearDesktopSelection,
     closeDockMenu,
@@ -476,6 +577,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,
+    runStatusBarCommand,
     focusWindow,
     closeWindow,
     minimizeWindow,
