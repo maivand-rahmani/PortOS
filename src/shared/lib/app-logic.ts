@@ -20,6 +20,8 @@ export type TerminalResult = {
   openAppId?: string;
   nextPath?: string;
   clear?: boolean;
+  windowAction?: TerminalWindowAction;
+  processAction?: TerminalProcessAction;
 };
 
 type TerminalAppInfo = {
@@ -43,6 +45,18 @@ type RuntimeSnapshot = {
   activeWindowId: string | null;
   bootPhase: string;
   bootProgress: number;
+};
+
+export type TerminalWindowActionType = "focus" | "close" | "minimize" | "maximize" | "restore";
+
+export type TerminalWindowAction = {
+  type: TerminalWindowActionType;
+  targetWindowId: string;
+};
+
+export type TerminalProcessAction = {
+  type: "terminate";
+  targetProcessId: string;
 };
 
 type TerminalContext = {
@@ -176,6 +190,100 @@ function getTerminalRootEntries() {
   return ["apps/", "docs/", "profile.txt", "readme.txt", "runtime.txt"];
 }
 
+function formatWindowState(window: RuntimeSnapshot["windows"][number], activeWindowId: string | null) {
+  if (window.isMaximized) {
+    return "max";
+  }
+
+  if (window.isMinimized) {
+    return "min";
+  }
+
+  if (window.id === activeWindowId) {
+    return "focus";
+  }
+
+  return "open";
+}
+
+function resolveWindowTarget(runtime: RuntimeSnapshot | undefined, token: string | undefined) {
+  if (!runtime) {
+    return { error: "Runtime snapshot unavailable." } as const;
+  }
+
+  if (!token) {
+    return { error: "Window target required." } as const;
+  }
+
+  const normalized = token.toLowerCase();
+  const exactMatch = runtime.windows.find((window) => window.id === token);
+
+  if (exactMatch) {
+    return { window: exactMatch } as const;
+  }
+
+  const partialMatches = runtime.windows.filter(
+    (window) =>
+      window.id.toLowerCase().startsWith(normalized) ||
+      window.appId.toLowerCase() === normalized ||
+      window.title.toLowerCase().includes(normalized),
+  );
+
+  if (partialMatches.length === 0) {
+    return { error: `Window not found: ${token}` } as const;
+  }
+
+  if (partialMatches.length > 1) {
+    return {
+      error: `Window target is ambiguous: ${token}`,
+      suggestions: partialMatches.map(
+        (window) => `${window.id.slice(0, 6)} :: ${window.appId} :: ${window.title}`,
+      ),
+    } as const;
+  }
+
+  return { window: partialMatches[0] } as const;
+}
+
+function resolveProcessTarget(runtime: RuntimeSnapshot | undefined, token: string | undefined) {
+  if (!runtime) {
+    return { error: "Runtime snapshot unavailable." } as const;
+  }
+
+  if (!token) {
+    return { error: "Process target required." } as const;
+  }
+
+  const normalized = token.toLowerCase();
+  const exactMatch = runtime.processes.find((process) => process.id === token);
+
+  if (exactMatch) {
+    return { process: exactMatch } as const;
+  }
+
+  const partialMatches = runtime.processes.filter(
+    (process) =>
+      process.id.toLowerCase().startsWith(normalized) ||
+      process.appId.toLowerCase() === normalized ||
+      process.name.toLowerCase().includes(normalized),
+  );
+
+  if (partialMatches.length === 0) {
+    return { error: `Process not found: ${token}` } as const;
+  }
+
+  if (partialMatches.length > 1) {
+    return {
+      error: `Process target is ambiguous: ${token}`,
+      suggestions: partialMatches.map(
+        (process) => `${process.id.slice(0, 8)} :: ${process.appId} :: ${process.name}`,
+      ),
+    } as const;
+  }
+
+  return { process: partialMatches[0] } as const;
+}
+
 function getProfileFileLines() {
   const profile = getProfileBasics() as {
     name?: string;
@@ -197,7 +305,7 @@ function getTerminalFileContents(pathName: string, availableApps: TerminalAppInf
   if (pathName === "/readme.txt") {
     return [
       "Available commands:",
-      "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date",
+      "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, focus, minimize, maximize, restore, close, kill",
     ];
   }
 
@@ -270,7 +378,7 @@ export function runTerminalCommand(
     case "help":
       return {
         output: [
-          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, clear, whoami, tree, ps, windows, sysinfo",
+          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, clear, whoami, tree, ps, windows, sysinfo, focus, minimize, maximize, restore, close, kill",
         ],
       };
     case "clear":
@@ -421,6 +529,47 @@ export function runTerminalCommand(
       return {
         output: [`Opening ${match.name}...`],
         openAppId: match.id,
+      };
+    }
+    case "focus":
+    case "close":
+    case "minimize":
+    case "maximize":
+    case "restore": {
+      const target = resolveWindowTarget(runtime, args[0]);
+
+      if ("error" in target) {
+        return {
+          output: [target.error, ...(target.suggestions ?? [])],
+        };
+      }
+
+      return {
+        output: [
+          `${command} ${target.window.title} (${target.window.id.slice(0, 6)})`,
+          `Current state: ${formatWindowState(target.window, runtime?.activeWindowId ?? null)}`,
+        ],
+        windowAction: {
+          type: command,
+          targetWindowId: target.window.id,
+        },
+      };
+    }
+    case "kill": {
+      const target = resolveProcessTarget(runtime, args[0]);
+
+      if ("error" in target) {
+        return {
+          output: [target.error, ...(target.suggestions ?? [])],
+        };
+      }
+
+      return {
+        output: [`Terminating ${target.process.name} (${target.process.id.slice(0, 8)})...`],
+        processAction: {
+          type: "terminate",
+          targetProcessId: target.process.id,
+        },
       };
     }
     default:

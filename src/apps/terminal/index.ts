@@ -5,7 +5,7 @@ import TerminalIcon from "./icon";
 export const terminalAppConfig: AppConfig = {
   id: "terminal",
   name: "Terminal",
-  description: "Simple terminal emulator with real command handling.",
+  description: "Shell-style terminal with runtime inspection, control commands, and external command bridging.",
   icon: TerminalIcon,
   tint: "#16a34a",
   window: {
@@ -15,7 +15,7 @@ export const terminalAppConfig: AppConfig = {
     minHeight: 360,
   },
   statusBar: {
-    info: "Runs local shell-style commands and opens PortOS apps.",
+    info: "Runs shell-style commands, controls runtime windows/processes, and accepts external commands.",
     sections: [
       {
         id: "terminal",

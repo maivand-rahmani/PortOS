@@ -1,5 +1,6 @@
 import { useOSStore } from "@/processes";
 import { dispatchAgentNotesPrefill, type AgentNotesPrefillDetail } from "./agent-os-events";
+import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
 
 export async function openAppById(appId: string) {
   return useOSStore.getState().activateApp(appId);
@@ -46,6 +47,27 @@ export function maximizeWindowById(windowId: string) {
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
   dispatchAgentNotesPrefill(detail);
   return useOSStore.getState().activateApp("notes");
+}
+
+export async function openTerminalWithRequest(detail: TerminalExternalRequestDetail) {
+  const windowId = await useOSStore.getState().activateApp("terminal");
+
+  if (windowId) {
+    dispatchTerminalExternalRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
+}
+
+export async function openTerminalWithCommand(command: string, options?: Omit<TerminalExternalRequestDetail, "command">) {
+  return openTerminalWithRequest({
+    command,
+    execute: options?.execute,
+    source: options?.source,
+  });
 }
 
 export function getRuntimeSnapshot() {

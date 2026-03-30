@@ -10,5 +10,6 @@ Non-visual shared utilities.
 - `docs.ts`: shared helpers for docs navigation and heading ids.
 - `os-actions.ts`: runtime helpers that let apps open apps and manage windows/processes.
 - `project-data.ts`: typed access to profile basics used by the easy app set.
+- `terminal-os-events.ts`: typed window-level events for sending terminal requests into the active terminal window.
 
 Utilities here should remain framework-light and reusable across features, widgets, and apps.

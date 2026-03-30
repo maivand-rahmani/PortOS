@@ -1,20 +1,39 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Command, CornerDownLeft, History, MonitorCog, Sparkles } from "lucide-react";
+import { Bolt, Command, CornerDownLeft, History, MonitorCog, Sparkles, WandSparkles } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
 import { useOSStore } from "@/processes";
-import { cn, getRuntimeSnapshot, openAppById } from "@/shared/lib";
+import {
+  closeWindowById,
+  cn,
+  focusWindowById,
+  getRuntimeSnapshot,
+  maximizeWindowById,
+  minimizeWindowById,
+  openAppById,
+  restoreWindowById,
+  TERMINAL_EXTERNAL_REQUEST_EVENT,
+  terminateProcessById,
+  type TerminalExternalRequestDetail,
+} from "@/shared/lib";
 import { runTerminalCommand } from "@/shared/lib/app-logic";
 
-type TerminalEntry = {
-  id: string;
-  kind: "system" | "command" | "output" | "error";
-  text: string;
-};
+import {
+  buildCommandSuggestions,
+  buildRecentCommands,
+  buildRuntimeQuickActions,
+  buildTerminalBridgeMessage,
+  createInitialTerminalHistory,
+  createTerminalEntry,
+  pushCommandHistory,
+  readPendingTerminalExternalRequest,
+  type TerminalEntry,
+  type TerminalQuickAction,
+} from "../model/terminal-session";
 
 const PROMPT_USER = "guest@portos";
 const BASE_COMMANDS = [
@@ -33,37 +52,39 @@ const BASE_COMMANDS = [
   "ps",
   "windows",
   "sysinfo",
+  "focus",
+  "minimize",
+  "maximize",
+  "restore",
+  "close",
+  "kill",
 ] as const;
 
-export function TerminalApp({ processId }: AppComponentProps) {
+export function TerminalApp({ processId, windowId }: AppComponentProps) {
   const apps = useOSStore((state) => state.apps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
   const [value, setValue] = useState("");
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [currentPath, setCurrentPath] = useState("/");
-  const [history, setHistory] = useState<TerminalEntry[]>([
-    createEntry("system", `PortOS terminal ${processId.slice(0, 6)}`),
-    createEntry("system", "Type `help` to see available commands."),
-  ]);
+  const [history, setHistory] = useState<TerminalEntry[]>(() => createInitialTerminalHistory(processId));
+  const [recentCommands, setRecentCommands] = useState<string[]>([]);
+  const [bridgeStatus, setBridgeStatus] = useState("Ready for local input");
   const commandHistoryRef = useRef<string[]>([]);
   const historyContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const availableApps = useMemo(
-    () => apps.map((app) => ({ id: app.id, name: app.name })),
+    () => apps.map((app) => ({ id: app.id, name: app.name, description: app.description })),
     [apps],
   );
 
-  const commandSuggestions = useMemo(() => {
-    const allCommands = [...BASE_COMMANDS, ...availableApps.map((app) => `open ${app.id}`)];
-    const query = value.trim().toLowerCase();
+  const commandSuggestions = useMemo(
+    () => buildCommandSuggestions(BASE_COMMANDS, availableApps.map((app) => app.id), value),
+    [availableApps, value],
+  );
 
-    if (!query) {
-      return allCommands.slice(0, 6);
-    }
-
-    return allCommands.filter((item) => item.startsWith(query)).slice(0, 6);
-  }, [availableApps, value]);
+  const runtimeQuickActions = useMemo(() => buildRuntimeQuickActions(currentPath), [currentPath]);
+  const recentQuickActions = useMemo(() => buildRecentCommands(recentCommands), [recentCommands]);
 
   useEffect(() => {
     const container = historyContainerRef.current;
@@ -75,42 +96,161 @@ export function TerminalApp({ processId }: AppComponentProps) {
   }, [history]);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, [activeWindowId]);
+    if (activeWindowId === windowId) {
+      inputRef.current?.focus();
+    }
+  }, [activeWindowId, windowId]);
 
-  const runCommand = async () => {
-    const command = value.trim();
+  const applyRuntimeActions = useCallback(async (commandText: string) => {
+    const runtime = getRuntimeSnapshot();
+    const [command, target] = commandText.trim().split(/\s+/, 2);
 
     if (!command) {
       return;
     }
 
-    const result = runTerminalCommand(command, availableApps, currentPath, {
-      runtime: getRuntimeSnapshot(),
-    });
+    if (command === "maximize") {
+      const targetWindow = runtime.windows.find(
+        (window) => window.id === target || window.id.startsWith(target ?? "") || window.appId === target,
+      );
 
-    const nextEntries = result.output.map((line) =>
-      createEntry(line.toLowerCase().includes("not found") || line.toLowerCase().includes("unknown") ? "error" : "output", line),
-    );
+      if (targetWindow && !targetWindow.isMaximized) {
+        maximizeWindowById(targetWindow.id);
+      }
 
-    setHistory((current) => [
-      ...(result.clear
-        ? [createEntry("system", `PortOS terminal ${processId.slice(0, 6)}`)]
-        : current),
-      createEntry("command", `${PROMPT_USER}:${currentPath}$ ${command}`),
-      ...nextEntries,
-    ]);
-    setValue("");
-    commandHistoryRef.current = [...commandHistoryRef.current, command];
+      return;
+    }
+
+    if (command === "restore") {
+      const targetWindow = runtime.windows.find(
+        (window) => window.id === target || window.id.startsWith(target ?? "") || window.appId === target,
+      );
+
+      if (!targetWindow) {
+        return;
+      }
+
+      if (targetWindow.isMinimized) {
+        restoreWindowById(targetWindow.id);
+        return;
+      }
+
+      if (targetWindow.isMaximized) {
+        maximizeWindowById(targetWindow.id);
+      }
+
+      return;
+    }
+  }, []);
+
+  const executeCommand = useCallback(
+    async (rawCommand?: string) => {
+      const command = (rawCommand ?? value).trim();
+
+      if (!command) {
+        return;
+      }
+
+      const result = runTerminalCommand(command, availableApps, currentPath, {
+        runtime: getRuntimeSnapshot(),
+      });
+      const nextEntries: TerminalEntry[] = [];
+
+      for (const maybeLine of result.output) {
+        if (typeof maybeLine !== "string") {
+          continue;
+        }
+
+        const normalized = maybeLine.toLowerCase();
+        const kind: TerminalEntry["kind"] = normalized.includes("not found") || normalized.includes("unknown") || normalized.includes("ambiguous")
+          ? "error"
+          : "output";
+
+        nextEntries.push(createTerminalEntry(kind, maybeLine));
+      }
+
+      setHistory((current) => [
+        ...(result.clear ? [createTerminalEntry("system", `PortOS terminal ${processId.slice(0, 6)}`)] : current),
+        createTerminalEntry("command", `${PROMPT_USER}:${currentPath}$ ${command}`),
+        ...nextEntries,
+      ]);
+      setValue("");
+      setRecentCommands((current) => pushCommandHistory(current, command));
+      commandHistoryRef.current = pushCommandHistory(commandHistoryRef.current, command);
+      setHistoryIndex(null);
+
+      if (result.nextPath) {
+        setCurrentPath(result.nextPath);
+      }
+
+      if (result.windowAction) {
+        if (result.windowAction.type === "focus") {
+          focusWindowById(result.windowAction.targetWindowId);
+        }
+
+        if (result.windowAction.type === "minimize") {
+          minimizeWindowById(result.windowAction.targetWindowId);
+        }
+
+        if (result.windowAction.type === "close") {
+          closeWindowById(result.windowAction.targetWindowId);
+        }
+
+        await applyRuntimeActions(`${result.windowAction.type} ${result.windowAction.targetWindowId}`);
+      }
+
+      if (result.processAction?.type === "terminate") {
+        terminateProcessById(result.processAction.targetProcessId);
+      }
+
+      if (result.openAppId) {
+        await openAppById(result.openAppId);
+      }
+    },
+    [applyRuntimeActions, availableApps, currentPath, processId, value],
+  );
+
+  useEffect(() => {
+    const applyExternalRequest = (request: TerminalExternalRequestDetail | null) => {
+      if (!request || request.targetWindowId !== windowId) {
+        return;
+      }
+
+      setBridgeStatus(buildTerminalBridgeMessage(request));
+      setHistory((current) => [...current, createTerminalEntry("system", buildTerminalBridgeMessage(request))]);
+
+      if (request.execute) {
+        void executeCommand(request.command);
+        return;
+      }
+
+      setValue(request.command);
+      setHistoryIndex(null);
+      inputRef.current?.focus();
+    };
+
+    const handleExternalRequest = (event: Event) => {
+      applyExternalRequest((event as CustomEvent<TerminalExternalRequestDetail>).detail);
+    };
+
+    applyExternalRequest(readPendingTerminalExternalRequest(windowId));
+
+    window.addEventListener(TERMINAL_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
+
+    return () => {
+      window.removeEventListener(TERMINAL_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
+    };
+  }, [executeCommand, windowId]);
+
+  const applyQuickAction = (action: TerminalQuickAction, mode: "prefill" | "run") => {
+    if (mode === "run") {
+      void executeCommand(action.command);
+      return;
+    }
+
+    setValue(action.command);
     setHistoryIndex(null);
-
-    if (result.nextPath) {
-      setCurrentPath(result.nextPath);
-    }
-
-    if (result.openAppId) {
-      await openAppById(result.openAppId);
-    }
+    inputRef.current?.focus();
   };
 
   return (
@@ -122,7 +262,7 @@ export function TerminalApp({ processId }: AppComponentProps) {
         </div>
         <span>{processId.slice(0, 6)}</span>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 border-t border-[#0a0a0a] lg:grid-cols-[minmax(0,1fr)_250px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 border-t border-[#0a0a0a] lg:grid-cols-[minmax(0,1fr)_278px]">
         <div className="flex min-h-0 flex-col border-b border-[#1f521f] lg:border-b-0 lg:border-r">
           <div
             ref={historyContainerRef}
@@ -159,7 +299,7 @@ export function TerminalApp({ processId }: AppComponentProps) {
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      void runCommand();
+                      void executeCommand();
                       return;
                     }
 
@@ -239,7 +379,7 @@ export function TerminalApp({ processId }: AppComponentProps) {
               </div>
               <button
                 type="button"
-                onClick={() => void runCommand()}
+                onClick={() => void executeCommand()}
                 className="terminal-action-button min-h-[44px] shrink-0 border border-[#33ff00] px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em]"
               >
                 Run
@@ -248,7 +388,7 @@ export function TerminalApp({ processId }: AppComponentProps) {
           </div>
         </div>
 
-        <aside className="flex min-h-0 overflow-auto flex-col bg-[#040704] text-[#8be870]">
+        <aside className="terminal-side-panel terminal-scroll flex min-h-0 overflow-auto flex-col bg-[#040704] text-[#8be870]">
           <div className="border-b border-[#1f521f] px-4 py-3 text-xs uppercase tracking-[0.2em]">
             Session
           </div>
@@ -264,6 +404,14 @@ export function TerminalApp({ processId }: AppComponentProps) {
               <PanelLine label="Path" value={currentPath} />
               <PanelLine label="History" value={String(history.filter((entry) => entry.kind === "command").length)} />
             </SidePanel>
+
+            <SidePanel title="Bridge" icon={Bolt}>
+              <p className="text-xs uppercase tracking-[0.16em] text-[#b7ffab]">{bridgeStatus}</p>
+            </SidePanel>
+
+            <QuickActionPanel title="Recent" icon={History} actions={recentQuickActions} onAction={applyQuickAction} emptyLabel="No recent commands yet" />
+
+            <QuickActionPanel title="Quick Run" icon={WandSparkles} actions={runtimeQuickActions} onAction={applyQuickAction} />
 
             <div className="border border-[#1f521f] px-3 py-3 text-xs uppercase tracking-[0.18em] text-[#33ff00] [text-shadow:0_0_5px_rgba(51,255,0,0.45)]">
               <div className="flex items-center gap-2">
@@ -298,6 +446,62 @@ function SidePanel({
   );
 }
 
+function QuickActionPanel({
+  title,
+  icon: Icon,
+  actions,
+  onAction,
+  emptyLabel,
+}: {
+  title: string;
+  icon: typeof Command;
+  actions: TerminalQuickAction[];
+  onAction: (action: TerminalQuickAction, mode: "prefill" | "run") => void;
+  emptyLabel?: string;
+}) {
+  return (
+    <div className="border border-[#1f521f] bg-black px-3 py-3 [text-shadow:0_0_5px_rgba(51,255,0,0.35)]">
+      <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[#33ff00]">
+        <Icon className="h-4 w-4" strokeWidth={2} />
+        <span>{title}</span>
+      </div>
+
+      {actions.length === 0 ? (
+        <p className="text-xs uppercase tracking-[0.16em] text-[#6fbf64]">{emptyLabel ?? "No actions available"}</p>
+      ) : (
+        <div className="space-y-2">
+          {actions.map((action) => (
+            <div key={action.id} className="terminal-quick-action border border-[#1f521f] p-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-xs uppercase tracking-[0.16em] text-[#33ff00]">{action.label}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#6fbf64]">{action.description}</p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onAction(action, "prefill")}
+                    className="terminal-mini-button px-2 py-1 text-[10px] uppercase tracking-[0.16em]"
+                  >
+                    Fill
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAction(action, "run")}
+                    className="terminal-mini-button terminal-mini-button--primary px-2 py-1 text-[10px] uppercase tracking-[0.16em]"
+                  >
+                    Run
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PanelLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 text-xs uppercase tracking-[0.16em]">
@@ -305,12 +509,4 @@ function PanelLine({ label, value }: { label: string; value: string }) {
       <span className="text-right text-[#b7ffab]">{value}</span>
     </div>
   );
-}
-
-function createEntry(kind: TerminalEntry["kind"], text: string): TerminalEntry {
-  return {
-    id: crypto.randomUUID(),
-    kind,
-    text,
-  };
 }
