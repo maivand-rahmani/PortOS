@@ -4,4 +4,5 @@ Clock UI.
 
 ## Files
 
-- `clock-app.tsx`: animated fullscreen world clock dashboard with searchable timezone directory, favorites, hero instrument panel, and tracked city wall.
+- `clock-app.tsx`: barrel export for the composed clock workspace.
+- `clock-app/`: split clock UI modules for spotlight, planner, favorites, search results, and analog dial rendering.

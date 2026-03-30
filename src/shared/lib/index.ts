@@ -6,6 +6,12 @@ export {
   type AgentNotesPrefillDetail,
 } from "./agent-os-events";
 export {
+  CLOCK_FOCUS_REQUEST_EVENT,
+  consumeClockFocusRequest,
+  dispatchClockFocusRequest,
+  type ClockFocusRequest,
+} from "./clock-os-events";
+export {
   NOTES_EXTERNAL_REQUEST_EVENT,
   consumeNotesExternalRequest,
   dispatchNotesExternalRequest,
@@ -28,6 +34,7 @@ export {
   maximizeWindowById,
   minimizeWindowById,
   openAppById,
+  openClockWithFocus,
   openNotesWithPrefill,
   openNotesWithRequest,
   openTerminalWithCommand,

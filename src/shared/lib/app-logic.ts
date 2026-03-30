@@ -116,14 +116,14 @@ export function calculateExpression(expression: string) {
   return Number.isInteger(result) ? String(result) : result.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-export function buildFormattedWorldClockTime(timeZone: string, use24Hour: boolean) {
+export function buildFormattedWorldClockTime(timeZone: string, use24Hour: boolean, value: number | Date = Date.now()) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: !use24Hour,
     timeZone,
-  }).format(new Date());
+  }).format(value instanceof Date ? value : new Date(value));
 }
 
 export const blogPosts: BlogPost[] = [

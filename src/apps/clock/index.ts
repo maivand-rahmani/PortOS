@@ -5,7 +5,7 @@ import ClockIcon from "./icon";
 export const clockAppConfig: AppConfig = {
   id: "clock",
   name: "Clock",
-  description: "A world clock app with search, favorites, and live updates.",
+  description: "A world clock app with search, favorites, spotlight focus, and planning tools.",
   icon: ClockIcon,
   tint: "#0f172a",
   window: {
@@ -16,7 +16,7 @@ export const clockAppConfig: AppConfig = {
     launchMaximized: true,
   },
   statusBar: {
-    info: "Track saved cities with live world times.",
+    info: "Track saved cities, compare local offsets, and plan meetings.",
     sections: [
       {
         id: "clock",
