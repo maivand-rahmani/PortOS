@@ -14,15 +14,22 @@ import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
 import { DesktopWallpaper } from "../desktop-wallpaper";
 import { MacDock } from "../mac-dock";
 import { MacMenuBar } from "../mac-menu-bar";
+import { NotificationCenterPanel } from "../notification-center-panel/notification-center-panel";
+import { NotificationToasts } from "../notification-toasts/notification-toasts";
 import { DockMenu } from "../dock-menu";
 import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
   const [isSpotlightOpen, setSpotlightOpen] = useState(false);
+  const [isNotificationCenterOpen, setNotificationCenterOpen] = useState(false);
 
   const toggleSpotlight = useCallback(() => {
     setSpotlightOpen((prev) => !prev);
+  }, []);
+
+  const toggleNotificationCenter = useCallback(() => {
+    setNotificationCenterOpen((prev) => !prev);
   }, []);
 
   const {
@@ -61,10 +68,26 @@ export function DesktopShell() {
   } = useDesktopShell();
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
+  const appMap = useOSStore((state) => state.appMap);
+  const notifications = useOSStore((state) => state.notifications);
+  const activeToastIds = useOSStore((state) => state.activeToastIds);
+  const pushNotification = useOSStore((state) => state.pushNotification);
+  const dismissToast = useOSStore((state) => state.dismissToast);
+  const removeNotification = useOSStore((state) => state.removeNotification);
+  const markNotificationRead = useOSStore((state) => state.markNotificationRead);
+  const markAllNotificationsRead = useOSStore((state) => state.markAllNotificationsRead);
+  const clearAllNotifications = useOSStore((state) => state.clearAllNotifications);
   const registerShortcut = useOSStore((state) => state.registerShortcut);
   const unregisterShortcut = useOSStore((state) => state.unregisterShortcut);
   const shouldReduceMotion = useReducedMotion();
   const isBooting = bootPhase !== "ready";
+  const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
+  const hasReadyNotification = notifications.some(
+    (item) => item.title === "PortOS is ready" && item.appId === undefined,
+  );
+  const activeToasts = activeToastIds
+    .map((id) => notifications.find((item) => item.id === id) ?? null)
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   // OS-level keyboard shortcut system
   useKeyboardShortcuts();
@@ -85,6 +108,42 @@ export function DesktopShell() {
 
     return () => unregisterShortcut("os:spotlight");
   }, [isBooting, registerShortcut, unregisterShortcut, toggleSpotlight]);
+
+  useEffect(() => {
+    if (bootPhase !== "ready" || hasReadyNotification) {
+      return;
+    }
+
+    pushNotification({
+      title: "PortOS is ready",
+      body: "Spotlight search, app switching, and system tools are now available.",
+      level: "success",
+    });
+  }, [bootPhase, hasReadyNotification, pushNotification]);
+
+  useEffect(() => {
+    if (activeToasts.length === 0) {
+      return undefined;
+    }
+
+    const timeoutIds = activeToasts.map((toast, index) =>
+      window.setTimeout(() => {
+        dismissToast(toast.id);
+      }, 4200 + index * 180),
+    );
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [activeToasts, dismissToast]);
+
+  useEffect(() => {
+    if (!isNotificationCenterOpen) {
+      return;
+    }
+
+    markAllNotificationsRead();
+  }, [isNotificationCenterOpen, markAllNotificationsRead]);
 
   return (
     <div
@@ -113,6 +172,8 @@ export function DesktopShell() {
           statusBar={statusBar}
           onRunAction={runStatusBarCommand}
           onOpenAgent={() => openDesktopApp("ai-agent")}
+          notificationCount={unreadNotificationCount}
+          onToggleNotifications={toggleNotificationCenter}
         />
       </motion.div>
 
@@ -204,6 +265,25 @@ export function DesktopShell() {
           />
         ) : null}
       </AnimatePresence>
+
+      <NotificationToasts
+        toasts={activeToasts}
+        appMap={appMap}
+        onDismiss={dismissToast}
+        onOpenCenter={() => setNotificationCenterOpen(true)}
+      />
+
+      <NotificationCenterPanel
+        isOpen={isNotificationCenterOpen}
+        notifications={notifications}
+        unreadCount={unreadNotificationCount}
+        appMap={appMap}
+        onClose={() => setNotificationCenterOpen(false)}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllNotificationsRead}
+        onRemove={removeNotification}
+        onClearAll={clearAllNotifications}
+      />
 
       <SpotlightOverlay
         isOpen={isSpotlightOpen}

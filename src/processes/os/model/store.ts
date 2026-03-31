@@ -62,6 +62,17 @@ import {
   type ProcessManagerState,
 } from "./process-manager";
 import {
+  clearAllNotificationsModel,
+  dismissToastModel,
+  markAllReadModel,
+  markNotificationReadModel,
+  notificationManagerInitialState,
+  pushNotificationModel,
+  removeNotificationModel,
+  type NotificationManagerState,
+  type NotificationLevel,
+} from "./notification-manager";
+import {
   shortcutManagerInitialState,
   registerShortcutModel,
   registerShortcutsModel,
@@ -126,6 +137,7 @@ export type OSStore = AppRegistryState &
   ProcessManagerState &
   WindowManagerState &
   FileSystemManagerState &
+  NotificationManagerState &
   ShortcutManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
@@ -191,6 +203,18 @@ export type OSStore = AppRegistryState &
     fsPaste: (targetParentId: string) => Promise<void>;
     fsClearClipboard: () => void;
     fsSetActiveFile: (nodeId: string | null) => void;
+    // Notifications
+    pushNotification: (input: {
+      title: string;
+      body?: string;
+      level?: NotificationLevel;
+      appId?: string;
+    }) => void;
+    dismissToast: (notificationId: string) => void;
+    removeNotification: (notificationId: string) => void;
+    markNotificationRead: (notificationId: string) => void;
+    markAllNotificationsRead: () => void;
+    clearAllNotifications: () => void;
     // Shortcuts
     registerShortcut: (shortcut: Shortcut) => void;
     registerShortcuts: (shortcuts: Shortcut[]) => void;
@@ -250,6 +274,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
+  ...notificationManagerInitialState,
   ...shortcutManagerInitialState,
   bootPhase: "off",
   bootProgress: 0,
@@ -1006,6 +1031,53 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
   fsSetActiveFile: (nodeId) => {
     set({ fsActiveFileId: nodeId });
+  },
+
+  // ── Notification Actions ───────────────────────────
+
+  pushNotification: (input) => {
+    const next = pushNotificationModel(get(), input);
+
+    set({
+      notifications: next.notifications,
+      activeToastIds: next.activeToastIds,
+    });
+  },
+
+  dismissToast: (notificationId) => {
+    const next = dismissToastModel(get(), notificationId);
+
+    set({ activeToastIds: next.activeToastIds });
+  },
+
+  removeNotification: (notificationId) => {
+    const next = removeNotificationModel(get(), notificationId);
+
+    set({
+      notifications: next.notifications,
+      activeToastIds: next.activeToastIds,
+    });
+  },
+
+  markNotificationRead: (notificationId) => {
+    const next = markNotificationReadModel(get(), notificationId);
+
+    set({ notifications: next.notifications });
+  },
+
+  markAllNotificationsRead: () => {
+    const next = markAllReadModel(get());
+
+    set({ notifications: next.notifications });
+  },
+
+  clearAllNotifications: () => {
+    const next = clearAllNotificationsModel();
+
+    set({
+      notifications: next.notifications,
+      activeToastIds: next.activeToastIds,
+    });
   },
 
   // ── Shortcut Actions ───────────────────────────────

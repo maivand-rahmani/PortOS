@@ -17,5 +17,8 @@ Visual building blocks for the macOS-style desktop shell.
 - `dock-minimized-button/`: dock restore button for minimized windows.
 - `dock-menu/`: dock context menu for app and window commands.
 - `boot-overlay/`: startup overlay shown before the desktop is ready.
+- `snap-guide-overlay/`: live snap target preview shown while dragging windows near desktop edges.
+- `notification-toasts/`: stacked transient toast surface for incoming system notifications.
+- `notification-center-panel/`: right-side persistent notification history panel opened from the menu bar.
 
 Each UI folder should stay small and focused on one visible shell responsibility.

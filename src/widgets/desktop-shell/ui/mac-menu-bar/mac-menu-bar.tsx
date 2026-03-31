@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   BatteryFull,
+  Bell,
   Bot,
   Volume2,
   Wifi,
@@ -15,6 +16,8 @@ type MacMenuBarProps = {
   statusBar: StatusBarModel;
   onRunAction?: (actionId: string) => void;
   onOpenAgent?: () => void;
+  notificationCount?: number;
+  onToggleNotifications?: () => void;
 };
 
 type MenuBarAction = {
@@ -50,7 +53,13 @@ const BASE_INDICATORS = [
   },
 ] as const;
 
-export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarProps) {
+export function MacMenuBar({
+  statusBar,
+  onRunAction,
+  onOpenAgent,
+  notificationCount = 0,
+  onToggleNotifications,
+}: MacMenuBarProps) {
   const shouldReduceMotion = useReducedMotion();
   const clock = useStatusClock();
   const menuActions = useMemo<MenuBarAction[]>(
@@ -151,6 +160,23 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
           onClick={onOpenAgent}
         >
           <Bot className="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="relative inline-flex h-5 w-5 items-center justify-center rounded-md text-inherit/88 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25"
+          title={
+            notificationCount > 0
+              ? `${notificationCount} unread notification${notificationCount === 1 ? "" : "s"}`
+              : "Open notification center"
+          }
+          aria-label="Open notification center"
+          onClick={onToggleNotifications}
+        >
+          <Bell className="h-4 w-4" aria-hidden="true" />
+          {notificationCount > 0 ? (
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_12px_rgba(14,165,233,0.8)]" />
+          ) : null}
         </button>
 
         {processStatus ? (

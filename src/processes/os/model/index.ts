@@ -68,6 +68,16 @@ export {
   clearSearchModel,
 } from "./file-system";
 export {
+  clearAllNotificationsModel,
+  dismissToastModel,
+  getUnreadCount,
+  markAllReadModel,
+  markNotificationReadModel,
+  notificationManagerInitialState,
+  pushNotificationModel,
+  removeNotificationModel,
+} from "./notification-manager";
+export {
   shortcutManagerInitialState,
   registerShortcutModel,
   registerShortcutsModel,
@@ -79,7 +89,12 @@ export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { FileSystemManagerState } from "./file-system";
+export type { NotificationManagerState } from "./notification-manager";
 export type { ShortcutManagerState } from "./shortcut-manager";
+export type {
+  NotificationLevel,
+  OSNotification,
+} from "./notification-manager";
 export type {
   Shortcut,
   ShortcutModifier,
