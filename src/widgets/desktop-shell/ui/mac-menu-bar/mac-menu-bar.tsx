@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  AppWindow,
   BatteryFull,
   Bell,
   Bot,
@@ -18,6 +19,7 @@ type MacMenuBarProps = {
   onOpenAgent?: () => void;
   notificationCount?: number;
   onToggleNotifications?: () => void;
+  onOpenAppSwitcher?: () => void;
 };
 
 type MenuBarAction = {
@@ -59,6 +61,7 @@ export function MacMenuBar({
   onOpenAgent,
   notificationCount = 0,
   onToggleNotifications,
+  onOpenAppSwitcher,
 }: MacMenuBarProps) {
   const shouldReduceMotion = useReducedMotion();
   const clock = useStatusClock();
@@ -160,6 +163,16 @@ export function MacMenuBar({
           onClick={onOpenAgent}
         >
           <Bot className="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-md text-inherit/88 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25"
+          title="Open app switcher"
+          aria-label="Open app switcher"
+          onClick={onOpenAppSwitcher}
+        >
+          <AppWindow className="h-4 w-4" aria-hidden="true" />
         </button>
 
         <button

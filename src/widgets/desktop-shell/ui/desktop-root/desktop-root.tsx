@@ -5,9 +5,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { useOSStore } from "@/processes";
 import { SpotlightOverlay } from "@/features/spotlight-search";
+import { useAppSwitcher } from "../../model/use-app-switcher";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
 import { useDefaultShortcuts } from "../../model/use-default-shortcuts";
+import { AppSwitcherOverlay } from "../app-switcher-overlay/app-switcher-overlay";
 import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
 import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
@@ -88,6 +90,32 @@ export function DesktopShell() {
   const activeToasts = activeToastIds
     .map((id) => notifications.find((item) => item.id === id) ?? null)
     .filter((item): item is NonNullable<typeof item> => item !== null);
+  const appSwitcher = useAppSwitcher({
+    bootReady: bootPhase === "ready",
+    dockApps,
+    onActivateApp: openDesktopApp,
+  });
+  const {
+    isOpen: isAppSwitcherOpen,
+    selectedAppId: selectedSwitcherAppId,
+    switcherApps,
+    openAppSwitcher: showAppSwitcher,
+    previewApp: previewSwitcherApp,
+    activateSelectedApp,
+  } = appSwitcher;
+
+  const openAppSwitcher = useCallback(() => {
+    if (switcherApps.length === 0) {
+      pushNotification({
+        title: "No running apps",
+        body: "Launch an app first to use the switcher. Use Spotlight or the dock to open one.",
+        level: "info",
+      });
+      return;
+    }
+
+    showAppSwitcher();
+  }, [pushNotification, showAppSwitcher, switcherApps.length]);
 
   // OS-level keyboard shortcut system
   useKeyboardShortcuts();
@@ -172,6 +200,7 @@ export function DesktopShell() {
           statusBar={statusBar}
           onRunAction={runStatusBarCommand}
           onOpenAgent={() => openDesktopApp("ai-agent")}
+          onOpenAppSwitcher={openAppSwitcher}
           notificationCount={unreadNotificationCount}
           onToggleNotifications={toggleNotificationCenter}
         />
@@ -283,6 +312,14 @@ export function DesktopShell() {
         onMarkAllRead={markAllNotificationsRead}
         onRemove={removeNotification}
         onClearAll={clearAllNotifications}
+      />
+
+      <AppSwitcherOverlay
+        isOpen={isAppSwitcherOpen}
+        apps={switcherApps}
+        selectedAppId={selectedSwitcherAppId}
+        onPreview={previewSwitcherApp}
+        onActivate={activateSelectedApp}
       />
 
       <SpotlightOverlay

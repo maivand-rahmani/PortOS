@@ -14,6 +14,7 @@ import type { Shortcut } from "@/processes";
  * - ⌘ Q  — Quit active app (close all its windows)
  * - ⌘ H  — Hide active app (minimize all its windows)
  * - ⌘ `  — Cycle to next window
+ * - ⌥ Tab — Open the in-browser app switcher fallback
  */
 export function useDefaultShortcuts(): void {
   const registerShortcuts = useOSStore((s) => s.registerShortcuts);
