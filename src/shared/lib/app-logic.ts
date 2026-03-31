@@ -1,3 +1,16 @@
+import type { AbsolutePath, FileSystemNode } from "@/entities/file-system";
+
+import {
+  listPath,
+  existsAtPath,
+  getNodeAtPath,
+  readFileAtPath,
+  createFileAtPath,
+  createDirectoryAtPath,
+  deleteAtPath,
+  moveToPath,
+  copyToPath,
+} from "./fs-actions";
 import { getProfileBasics } from "./project-data";
 
 export type BlogPost = {
@@ -62,42 +75,6 @@ export type TerminalProcessAction = {
 type TerminalContext = {
   runtime?: RuntimeSnapshot;
 };
-
-type TerminalDocsFile = {
-  name: string;
-  content: string[];
-};
-
-const TERMINAL_DOC_FILES: TerminalDocsFile[] = [
-  {
-    name: "overview.txt",
-    content: [
-      "PortOS currently focuses on the easy app set.",
-      "Use docs, blog, contact, calculator, notes, clock, and terminal to explore the system.",
-    ],
-  },
-  {
-    name: "project.txt",
-    content: [
-      "PortOS is a browser-based portfolio operating system.",
-      "The current milestone keeps only easy apps in the live registry.",
-    ],
-  },
-  {
-    name: "roadmap.txt",
-    content: [
-      "Current implementation pass: ship the easy applications first.",
-      "Medium and hard apps stay out of the registry until they are revisited.",
-    ],
-  },
-  {
-    name: "style.txt",
-    content: [
-      "Shell styling stays macOS-inspired.",
-      "Each app can keep a local theme as long as behavior stays real.",
-    ],
-  },
-];
 
 export function calculateExpression(expression: string) {
   const safeExpression = expression.replace(/[^0-9+\-*/().%\s]/g, "");
@@ -184,10 +161,6 @@ function normalizeTerminalPath(currentPath: string, targetPath: string) {
   });
 
   return `/${normalized.join("/")}`.replace(/\/+/g, "/") || "/";
-}
-
-function getTerminalRootEntries() {
-  return ["apps/", "docs/", "profile.txt", "readme.txt", "runtime.txt"];
 }
 
 function formatWindowState(window: RuntimeSnapshot["windows"][number], activeWindowId: string | null) {
@@ -301,84 +274,104 @@ function getProfileFileLines() {
   ];
 }
 
-function getTerminalFileContents(pathName: string, availableApps: TerminalAppInfo[]) {
-  if (pathName === "/readme.txt") {
-    return [
-      "Available commands:",
-      "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, focus, minimize, maximize, restore, close, kill",
-    ];
+// ── Real File System Helpers ────────────────────────────
+
+function formatNodeEntry(node: FileSystemNode): string {
+  return node.type === "directory" ? `${node.name}/` : node.name;
+}
+
+function listRealDirectory(path: string): string[] | null {
+  const absPath = path as AbsolutePath;
+
+  if (path === "/") {
+    // Root: show top-level directories from the real FS
+    const nodes = listPath(absPath);
+
+    return nodes.length > 0 ? nodes.map(formatNodeEntry) : null;
   }
 
-  if (pathName === "/profile.txt") {
-    return getProfileFileLines();
+  const node = getNodeAtPath(absPath);
+
+  if (!node || node.type !== "directory") {
+    return null;
   }
 
-  if (pathName === "/runtime.txt") {
-    return [
-      "PortOS runtime report",
-      "Use `sysinfo`, `ps`, and `windows` for live state.",
-    ];
+  const children = listPath(absPath);
+
+  return children.map(formatNodeEntry);
+}
+
+async function readRealFile(path: string): Promise<string[] | null> {
+  const absPath = path as AbsolutePath;
+  const node = getNodeAtPath(absPath);
+
+  if (!node || node.type !== "file") {
+    return null;
   }
 
-  if (pathName.startsWith("/apps/")) {
-    const fileName = pathName.replace("/apps/", "");
-    const appId = fileName.replace(/\.app$/, "");
-    const app = availableApps.find((item) => item.id === appId);
+  const content = await readFileAtPath(absPath);
 
-    if (!app || !fileName.endsWith(".app")) {
-      return null;
+  if (content === null) {
+    return ["(empty file)"];
+  }
+
+  return content.split("\n");
+}
+
+function buildTreeLines(
+  path: string,
+  prefix: string,
+  maxDepth: number,
+  currentDepth: number,
+): string[] {
+  const absPath = path as AbsolutePath;
+  const children = listPath(absPath);
+
+  if (children.length === 0) {
+    return [];
+  }
+
+  const lines: string[] = [];
+
+  children.forEach((child, index) => {
+    const isLast = index === children.length - 1;
+    const connector = isLast ? "`-- " : "|-- ";
+    const entry = formatNodeEntry(child);
+
+    lines.push(`${prefix}${connector}${entry}`);
+
+    if (child.type === "directory" && currentDepth < maxDepth) {
+      const childPath = path === "/" ? `/${child.name}` : `${path}/${child.name}`;
+      const childPrefix = prefix + (isLast ? "    " : "|   ");
+
+      lines.push(...buildTreeLines(childPath, childPrefix, maxDepth, currentDepth + 1));
     }
+  });
 
-    return [
-      `id: ${app.id}`,
-      `name: ${app.name}`,
-      `description: ${app.description ?? "No description"}`,
-    ];
-  }
-
-  if (pathName.startsWith("/docs/")) {
-    const fileName = pathName.replace("/docs/", "");
-    return TERMINAL_DOC_FILES.find((item) => item.name === fileName)?.content ?? null;
-  }
-
-  return null;
+  return lines;
 }
 
-function getTerminalDirectoryEntries(pathName: string, availableApps: TerminalAppInfo[]) {
-  if (pathName === "/") {
-    return getTerminalRootEntries();
-  }
+// ── Terminal Command Runner (async) ─────────────────────
 
-  if (pathName === "/apps") {
-    return availableApps.map((app) => `${app.id}.app`);
-  }
-
-  if (pathName === "/docs") {
-    return TERMINAL_DOC_FILES.map((file) => file.name);
-  }
-
-  return null;
-}
-
-export function runTerminalCommand(
+export async function runTerminalCommand(
   input: string,
   availableApps: TerminalAppInfo[],
   currentPath: string,
   context: TerminalContext = {},
-) {
+): Promise<TerminalResult> {
   const [command, ...args] = input.trim().split(/\s+/);
 
   const runtime = context.runtime;
 
   if (!command) {
-    return { output: [] } satisfies TerminalResult;
+    return { output: [] };
   }
 
   switch (command) {
     case "help":
       return {
         output: [
-          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, clear, whoami, tree, ps, windows, sysinfo, focus, minimize, maximize, restore, close, kill",
+          "help, pwd, ls [path], cd <path>, cat <file>, echo, apps, open <app-id>, date, clear, whoami, tree [path], mkdir <path>, touch <path>, rm <path>, mv <src> <dest>, cp <src> <dest>, ps, windows, sysinfo, focus, minimize, maximize, restore, close, kill",
         ],
       };
     case "clear":
@@ -390,19 +383,31 @@ export function runTerminalCommand(
       return { output: [currentPath] };
     case "ls": {
       const targetPath = normalizeTerminalPath(currentPath, args[0] ?? ".");
-      const entries = getTerminalDirectoryEntries(targetPath, availableApps);
+      const entries = listRealDirectory(targetPath);
 
       if (!entries) {
         return { output: [`Directory not found: ${targetPath}`] };
+      }
+
+      if (entries.length === 0) {
+        return { output: ["(empty directory)"] };
       }
 
       return { output: entries };
     }
     case "cd": {
       const targetPath = normalizeTerminalPath(currentPath, args[0] ?? "/");
-      const entries = getTerminalDirectoryEntries(targetPath, availableApps);
 
-      if (!entries) {
+      if (targetPath === "/") {
+        return {
+          output: [`Current directory: /`],
+          nextPath: "/",
+        };
+      }
+
+      const node = getNodeAtPath(targetPath as AbsolutePath);
+
+      if (!node || node.type !== "directory") {
         return { output: [`Directory not found: ${targetPath}`] };
       }
 
@@ -412,14 +417,100 @@ export function runTerminalCommand(
       };
     }
     case "cat": {
-      const targetPath = normalizeTerminalPath(currentPath, args[0] ?? "");
-      const fileContents = getTerminalFileContents(targetPath, availableApps);
+      if (!args[0]) {
+        return { output: ["Usage: cat <file>"] };
+      }
+
+      const targetPath = normalizeTerminalPath(currentPath, args[0]);
+      const fileContents = await readRealFile(targetPath);
 
       if (!fileContents) {
         return { output: [`File not found: ${targetPath}`] };
       }
 
       return { output: fileContents };
+    }
+    case "mkdir": {
+      if (!args[0]) {
+        return { output: ["Usage: mkdir <path>"] };
+      }
+
+      const targetPath = normalizeTerminalPath(currentPath, args[0]);
+
+      if (existsAtPath(targetPath as AbsolutePath)) {
+        return { output: [`Already exists: ${targetPath}`] };
+      }
+
+      const created = await createDirectoryAtPath(targetPath as AbsolutePath);
+
+      if (!created) {
+        return { output: [`Failed to create directory: ${targetPath}`] };
+      }
+
+      return { output: [`Created directory: ${targetPath}`] };
+    }
+    case "touch": {
+      if (!args[0]) {
+        return { output: ["Usage: touch <path>"] };
+      }
+
+      const targetPath = normalizeTerminalPath(currentPath, args[0]);
+
+      if (existsAtPath(targetPath as AbsolutePath)) {
+        return { output: [`Already exists: ${targetPath}`] };
+      }
+
+      const created = await createFileAtPath(targetPath as AbsolutePath, "");
+
+      if (!created) {
+        return { output: [`Failed to create file: ${targetPath}`] };
+      }
+
+      return { output: [`Created file: ${targetPath}`] };
+    }
+    case "rm": {
+      if (!args[0]) {
+        return { output: ["Usage: rm <path>"] };
+      }
+
+      const targetPath = normalizeTerminalPath(currentPath, args[0]);
+      const success = await deleteAtPath(targetPath as AbsolutePath);
+
+      if (!success) {
+        return { output: [`Not found: ${targetPath}`] };
+      }
+
+      return { output: [`Removed: ${targetPath}`] };
+    }
+    case "mv": {
+      if (!args[0] || !args[1]) {
+        return { output: ["Usage: mv <source> <destination>"] };
+      }
+
+      const srcPath = normalizeTerminalPath(currentPath, args[0]);
+      const destPath = normalizeTerminalPath(currentPath, args[1]);
+      const success = await moveToPath(srcPath as AbsolutePath, destPath as AbsolutePath);
+
+      if (!success) {
+        return { output: [`Failed to move: ${srcPath} -> ${destPath}`] };
+      }
+
+      return { output: [`Moved: ${srcPath} -> ${destPath}`] };
+    }
+    case "cp": {
+      if (!args[0] || !args[1]) {
+        return { output: ["Usage: cp <source> <destination>"] };
+      }
+
+      const srcPath = normalizeTerminalPath(currentPath, args[0]);
+      const destPath = normalizeTerminalPath(currentPath, args[1]);
+      const copied = await copyToPath(srcPath as AbsolutePath, destPath as AbsolutePath);
+
+      if (!copied) {
+        return { output: [`Failed to copy: ${srcPath} -> ${destPath}`] };
+      }
+
+      return { output: [`Copied: ${srcPath} -> ${destPath}`] };
     }
     case "echo":
       return { output: [args.join(" ")] };
@@ -433,29 +524,31 @@ export function runTerminalCommand(
       };
     case "tree": {
       const targetPath = normalizeTerminalPath(currentPath, args[0] ?? ".");
-      const rootEntries = getTerminalDirectoryEntries(targetPath, availableApps);
-
-      if (!rootEntries) {
-        return { output: [`Directory not found: ${targetPath}`] };
-      }
 
       if (targetPath === "/") {
+        const rootEntries = listRealDirectory("/");
+
+        if (!rootEntries) {
+          return { output: ["(empty filesystem)"] };
+        }
+
+        const treeLines = buildTreeLines("/", "", 3, 0);
+
         return {
-          output: [
-            "/",
-            "|- apps/",
-            ...availableApps.map((app) => `|  |- ${app.id}.app`),
-            "|- docs/",
-            ...TERMINAL_DOC_FILES.map((file) => `|  |- ${file.name}`),
-            "|- profile.txt",
-            "|- readme.txt",
-            "|- runtime.txt",
-          ],
+          output: ["/", ...treeLines],
         };
       }
 
+      const node = getNodeAtPath(targetPath as AbsolutePath);
+
+      if (!node || node.type !== "directory") {
+        return { output: [`Directory not found: ${targetPath}`] };
+      }
+
+      const treeLines = buildTreeLines(targetPath, "", 3, 0);
+
       return {
-        output: [targetPath, ...rootEntries.map((entry) => `|- ${entry}`)],
+        output: [targetPath, ...treeLines],
       };
     }
     case "ps": {
@@ -539,8 +632,10 @@ export function runTerminalCommand(
       const target = resolveWindowTarget(runtime, args[0]);
 
       if ("error" in target) {
+        const errorTarget = target as { error: string; suggestions?: string[] };
+
         return {
-          output: [target.error, ...(target.suggestions ?? [])],
+          output: [errorTarget.error, ...(errorTarget.suggestions ?? [])],
         };
       }
 
@@ -559,8 +654,10 @@ export function runTerminalCommand(
       const target = resolveProcessTarget(runtime, args[0]);
 
       if ("error" in target) {
+        const errorTarget = target as { error: string; suggestions?: string[] };
+
         return {
-          output: [target.error, ...(target.suggestions ?? [])],
+          output: [errorTarget.error, ...(errorTarget.suggestions ?? [])],
         };
       }
 

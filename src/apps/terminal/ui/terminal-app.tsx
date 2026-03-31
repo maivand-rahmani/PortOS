@@ -49,6 +49,11 @@ const BASE_COMMANDS = [
   "apps",
   "open",
   "tree",
+  "mkdir",
+  "touch",
+  "rm",
+  "mv",
+  "cp",
   "ps",
   "windows",
   "sysinfo",
@@ -151,7 +156,7 @@ export function TerminalApp({ processId, windowId }: AppComponentProps) {
         return;
       }
 
-      const result = runTerminalCommand(command, availableApps, currentPath, {
+      const result = await runTerminalCommand(command, availableApps, currentPath, {
         runtime: getRuntimeSnapshot(),
       });
       const nextEntries: TerminalEntry[] = [];

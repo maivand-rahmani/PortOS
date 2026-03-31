@@ -7,6 +7,7 @@ import {
 } from "./agent-os-events";
 import { dispatchBlogFocusRequest, type BlogFocusRequest } from "./blog-os-events";
 import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
+import { dispatchOpenFileRequest, type OpenFileRequest } from "./fs-os-events";
 import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
 import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
 import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "./resume-os-events";
@@ -58,6 +59,19 @@ export function maximizeWindowById(windowId: string) {
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
   dispatchAgentNotesPrefill(detail);
   return useOSStore.getState().activateApp("notes");
+}
+
+export async function openEditorWithFile(detail: Omit<OpenFileRequest, "targetWindowId">) {
+  const windowId = await useOSStore.getState().activateApp("editor");
+
+  if (windowId) {
+    dispatchOpenFileRequest({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+
+  return windowId;
 }
 
 export async function openAgentWithRequest(input: AgentExternalRequest | string) {

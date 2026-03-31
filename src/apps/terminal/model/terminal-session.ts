@@ -84,6 +84,12 @@ export function buildRuntimeQuickActions(currentPath: string): TerminalQuickActi
       command: `tree ${currentPath === "/" ? "." : currentPath}`,
       description: "Print the current directory tree.",
     },
+    {
+      id: "runtime-ls",
+      label: "ls",
+      command: "ls",
+      description: "List files in current directory.",
+    },
   ];
 }
 
