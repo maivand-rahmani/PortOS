@@ -34,7 +34,8 @@ export function DockAppButton({ item, onActivate, onOpenMenu }: DockAppButtonPro
       </span>
       <span
         className={cn(
-          "flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/28 bg-white/22 shadow-[0_12px_24px_rgba(12,18,30,0.26)] backdrop-blur-xl transition duration-200",
+          "flex items-center justify-center rounded-[18px] border border-white/28 bg-white/22 shadow-[0_12px_24px_rgba(12,18,30,0.26)] backdrop-blur-xl transition duration-200",
+          "h-[var(--dock-icon-size)] w-[var(--dock-icon-size)]",
           item.isFrontmost && "border-white/46 bg-white/28 shadow-[0_18px_32px_rgba(12,18,30,0.3)]",
         )}
       >

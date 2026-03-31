@@ -2,6 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 
+import { useOSStore } from "@/processes";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
@@ -44,6 +45,8 @@ export function DesktopShell() {
     beginWindowDrag,
     beginWindowResize,
   } = useDesktopShell();
+
+  const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
 
   return (
     <div
@@ -128,6 +131,7 @@ export function DesktopShell() {
         dockApps={dockApps}
         minimizedWindows={minimizedWindows}
         apps={apps}
+        autohide={dockAutohide}
         onActivateApp={openDesktopApp}
         onOpenMenu={openDockMenu}
         onRestoreWindow={restoreWindow}

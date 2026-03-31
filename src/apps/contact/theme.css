@@ -1,0 +1,18 @@
+.contact-app {
+  background:
+    radial-gradient(circle at 16px 16px, rgba(229, 224, 216, 0.66) 1.2px, transparent 1.3px),
+    linear-gradient(180deg, #fdfbf7 0%, #f7f0e6 100%);
+  background-size: 24px 24px, 100% 100%;
+}
+
+.contact-app__paper-lines {
+  background:
+    linear-gradient(90deg, transparent 72px, rgba(255, 77, 77, 0.22) 72px, rgba(255, 77, 77, 0.22) 75px, transparent 75px),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 35px,
+      rgba(45, 93, 161, 0.15) 35px,
+      rgba(45, 93, 161, 0.15) 37px
+    );
+}

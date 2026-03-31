@@ -1,3 +1,4 @@
+import { cn } from "@/shared/lib";
 import type { AppConfig } from "@/entities/app";
 import type { WindowInstance, WindowPosition } from "@/entities/window";
 
@@ -9,6 +10,7 @@ type MacDockProps = {
   dockApps: DockAppState[];
   minimizedWindows: WindowInstance[];
   apps: AppConfig[];
+  autohide?: boolean;
   onActivateApp: (appId: string) => void;
   onOpenMenu: (appId: string, anchor: WindowPosition) => void;
   onRestoreWindow: (windowId: string) => void;
@@ -18,6 +20,7 @@ export function MacDock({
   dockApps,
   minimizedWindows,
   apps,
+  autohide = false,
   onActivateApp,
   onOpenMenu,
   onRestoreWindow,
@@ -25,7 +28,12 @@ export function MacDock({
   const appMap = new Map(apps.map((app) => [app.id, app]));
 
   return (
-    <footer className="pointer-events-none absolute inset-x-0 bottom-4 z-[500] flex justify-center px-4">
+    <footer
+      className={cn(
+        "pointer-events-none absolute inset-x-0 bottom-4 z-[500] flex justify-center px-4 transition-all duration-300",
+        autohide && "translate-y-[calc(100%+1rem)] hover:translate-y-0",
+      )}
+    >
       <div className="pointer-events-auto flex items-end gap-3 rounded-[28px] border border-white/26 bg-white/18 px-4 py-3 shadow-[0_30px_60px_rgba(8,14,26,0.24)] backdrop-blur-2xl">
         {dockApps.map((item) => (
           <DockAppButton

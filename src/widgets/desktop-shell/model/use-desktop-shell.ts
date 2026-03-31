@@ -7,6 +7,7 @@ import { getActiveRuntimeTarget, useOSStore } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
+import { runDataMigration } from "@/shared/lib/fs-migration";
 import { BOOT_SEQUENCE, DESKTOP_AI_WIDGET, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
 import {
   createStatusBarCommandRunner,
@@ -55,6 +56,8 @@ export function useDesktopShell(): UseDesktopShellResult {
 
   const setBootProgress = useOSStore((state) => state.setBootProgress);
   const completeBoot = useOSStore((state) => state.completeBoot);
+  const hydrateFileSystem = useOSStore((state) => state.hydrateFileSystem);
+  const hydrateSettings = useOSStore((state) => state.hydrateSettings);
   const activateApp = useOSStore((state) => state.activateApp);
   const focusWindow = useOSStore((state) => state.focusWindow);
   const closeWindow = useOSStore((state) => state.closeWindow);
@@ -201,6 +204,11 @@ export function useDesktopShell(): UseDesktopShellResult {
       return undefined;
     }
 
+    // Hydrate file system from IndexedDB during boot, then run data migration
+    hydrateFileSystem().then(() => runDataMigration());
+    // Hydrate settings and custom wallpaper from IndexedDB
+    void hydrateSettings();
+
     let stepIndex = 0;
 
     const advanceBoot = () => {
@@ -226,7 +234,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [bootPhase, completeBoot, setBootProgress, shouldReduceMotion]);
+  }, [bootPhase, completeBoot, hydrateFileSystem, hydrateSettings, setBootProgress, shouldReduceMotion]);
 
   useEffect(() => {
     if (!desktopBounds) {

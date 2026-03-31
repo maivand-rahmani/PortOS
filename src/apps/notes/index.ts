@@ -7,12 +7,14 @@ export const notesAppConfig: AppConfig = {
   name: "Notes",
   description: "A notebook-style notes app with local persistence, tagging, and external draft intake.",
   icon: NotesIcon,
+  
   tint: "#facc15",
   window: {
     width: 620,
     height: 520,
     minWidth: 420,
     minHeight: 340,
+    launchMaximized: true,
   },
   statusBar: {
     info: "Notes autosave locally in this browser.",

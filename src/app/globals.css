@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "../apps/themes.css";
 
+@custom-variant dark (&:is([data-theme="dark"] *), &[data-theme="dark"]);
+
 :root {
   --background: #f2f2f7;
   --foreground: #1c1c1e;
@@ -14,6 +16,35 @@
   --shadow-window: 0 32px 80px rgba(15, 23, 42, 0.2);
   --radius-panel: 24px;
   --radius-window: 32px;
+  --dock-icon-size: 56px;
+}
+
+[data-theme="dark"] {
+  --background: #1c1c1e;
+  --foreground: #f2f2f7;
+  --muted: rgba(235, 235, 245, 0.6);
+  --surface: rgba(44, 44, 46, 0.72);
+  --window: rgba(28, 28, 30, 0.95);
+  --border: rgba(255, 255, 255, 0.12);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.36);
+  --shadow-window: 0 32px 80px rgba(0, 0, 0, 0.48);
+}
+
+[data-reduced-transparency] {
+  --surface: rgba(242, 242, 247, 0.98);
+  --window: rgba(255, 255, 255, 0.99);
+  --border: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"][data-reduced-transparency] {
+  --surface: rgba(44, 44, 46, 0.98);
+  --window: rgba(28, 28, 30, 0.99);
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+[data-reduced-transparency] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 @theme inline {
@@ -30,6 +61,7 @@
   --radius-window: var(--radius-window);
   --shadow-panel: var(--shadow-panel);
   --shadow-window: var(--shadow-window);
+  --size-dock-icon: var(--dock-icon-size);
 }
 
 * {
@@ -38,6 +70,10 @@
 
 html {
   color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {

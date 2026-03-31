@@ -4,9 +4,11 @@ import { create } from "zustand";
 
 import { installedApps } from "@/apps";
 import type { AppConfig, AppConfigMap, LoadedAppMap } from "@/entities/app";
+import type { FileNode, FileSystemNode } from "@/entities/file-system";
 import type { ProcessInstance } from "@/entities/process";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
+import * as idb from "@/shared/lib/idb-storage";
 import {
   DEFAULT_WALLPAPER_ID,
   getStoredWallpaperId,
@@ -15,11 +17,43 @@ import {
   getWallpaperById,
 } from "@/shared/lib/wallpapers";
 import {
+  loadSettings,
+  saveSettings,
+  loadCustomWallpaper,
+  saveCustomWallpaper,
+} from "@/apps/settings/model/settings.idb";
+import {
+  DEFAULT_OS_SETTINGS,
+  ACCENT_COLOR_MAP,
+  DOCK_ICON_SIZE_MAP,
+  type OSSettings,
+  type AccentColor,
+} from "@/apps/settings/model/settings.types";
+import {
   createAppRegistryModel,
   indexAppConfigs,
   loadAppModule,
   type AppRegistryState,
 } from "./app-registry";
+import {
+  createFileSystemManagerModel,
+  hydrateFileSystemModel,
+  createFileModel,
+  createDirectoryModel,
+  deleteNodeModel,
+  renameNodeModel,
+  moveNodeModel,
+  copyNodeModel,
+  updateFileMetadataModel,
+  setCutModel,
+  setCopyModel,
+  clearClipboardModel,
+  searchNodesModel,
+  setSearchQueryModel,
+  setSearchResultsModel,
+  clearSearchModel,
+  type FileSystemManagerState,
+} from "./file-system";
 import {
   attachWindowToProcessModel,
   createProcessManagerModel,
@@ -70,14 +104,20 @@ export type OSRuntimeSnapshot = {
 
 export type OSStore = AppRegistryState &
   ProcessManagerState &
-  WindowManagerState & {
+  WindowManagerState &
+  FileSystemManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
     wallpaperId: Wallpaper["id"];
+    customWallpaperDataUrl: string | null;
+    osSettings: OSSettings;
     setBootProgress: (progress: number) => void;
     completeBoot: () => void;
     hydrateWallpaper: () => void;
     setWallpaper: (wallpaperId: Wallpaper["id"]) => void;
+    setCustomWallpaper: (dataUrl: string) => Promise<void>;
+    hydrateSettings: () => Promise<void>;
+    updateSettings: (patch: Partial<OSSettings>) => Promise<void>;
     launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     loadAppComponent: (appId: string) => Promise<LoadedAppMap[string] | null>;
@@ -98,9 +138,79 @@ export type OSStore = AppRegistryState &
     endWindowResize: () => void;
     resizeWindowsToBounds: (bounds: DesktopBounds) => void;
     terminateProcess: (processId: string) => void;
+    // File system
+    hydrateFileSystem: () => Promise<void>;
+    fsCreateFile: (
+      parentId: string,
+      name: string,
+      content?: string,
+    ) => Promise<FileNode | null>;
+    fsCreateDirectory: (
+      parentId: string,
+      name: string,
+    ) => Promise<FileSystemNode | null>;
+    fsReadContent: (nodeId: string) => Promise<string | null>;
+    fsWriteContent: (nodeId: string, content: string) => Promise<void>;
+    fsDeleteNode: (nodeId: string) => Promise<void>;
+    fsRenameNode: (nodeId: string, newName: string) => Promise<void>;
+    fsMoveNode: (nodeId: string, newParentId: string) => Promise<void>;
+    fsCopyNode: (
+      nodeId: string,
+      newParentId: string,
+    ) => Promise<FileSystemNode | null>;
+    fsSearch: (query: string) => void;
+    fsClearSearch: () => void;
+    fsCut: (nodeIds: string[]) => void;
+    fsCopy: (nodeIds: string[]) => void;
+    fsPaste: (targetParentId: string) => Promise<void>;
+    fsClearClipboard: () => void;
+    fsSetActiveFile: (nodeId: string | null) => void;
   };
 
 const defaultAppMap = indexAppConfigs(installedApps);
+
+// ── DOM Side-effects ──────────────────────────────────────────────────────────
+
+function applySettingsToDOM(settings: OSSettings): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const root = document.documentElement;
+
+  // Color scheme
+  const isDark =
+    settings.colorScheme === "dark" ||
+    (settings.colorScheme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  if (isDark) {
+    root.setAttribute("data-theme", "dark");
+  } else {
+    root.removeAttribute("data-theme");
+  }
+
+  // Accent color
+  const accent = ACCENT_COLOR_MAP[settings.accentColor as AccentColor];
+
+  if (accent) {
+    root.style.setProperty("--accent", accent.value);
+  }
+
+  // Dock icon size
+  const dockSize = DOCK_ICON_SIZE_MAP[settings.dockIconSize];
+
+  if (dockSize) {
+    root.style.setProperty("--dock-icon-size", `${dockSize.px}px`);
+  }
+
+  // Reduced transparency
+  if (settings.reduceTransparency) {
+    root.setAttribute("data-reduced-transparency", "");
+  } else {
+    root.removeAttribute("data-reduced-transparency");
+  }
+}
 
 export const useOSStore = create<OSStore>()((set, get) => ({
   ...createAppRegistryModel({
@@ -109,9 +219,12 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   }),
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
+  ...createFileSystemManagerModel(),
   bootPhase: "booting",
   bootProgress: 0,
   wallpaperId: DEFAULT_WALLPAPER_ID,
+  customWallpaperDataUrl: null,
+  osSettings: DEFAULT_OS_SETTINGS,
   setBootProgress: (progress) => {
     set({
       bootProgress: Math.max(0, Math.min(100, progress)),
@@ -144,6 +257,40 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     if (typeof window !== "undefined") {
       setStoredWallpaperId(normalizedWallpaperId);
     }
+  },
+  setCustomWallpaper: async (dataUrl) => {
+    set({ wallpaperId: "custom", customWallpaperDataUrl: dataUrl });
+
+    if (typeof window !== "undefined") {
+      setStoredWallpaperId("custom");
+      await saveCustomWallpaper(dataUrl);
+    }
+  },
+  hydrateSettings: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const [settings, customWallpaper] = await Promise.all([
+      loadSettings(),
+      loadCustomWallpaper(),
+    ]);
+
+    applySettingsToDOM(settings);
+
+    set({
+      osSettings: settings,
+      customWallpaperDataUrl: customWallpaper,
+    });
+  },
+  updateSettings: async (patch) => {
+    const current = get().osSettings;
+    const next = { ...current, ...patch };
+
+    applySettingsToDOM(next);
+    set({ osSettings: next });
+
+    await saveSettings(next);
   },
   loadAppComponent: async (appId) => {
     const currentApp = get().appMap[appId];
@@ -554,5 +701,231 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       dragState: nextWindowState.state.dragState,
       resizeState: nextWindowState.state.resizeState,
     });
+  },
+
+  // ── File System Actions ─────────────────────────────
+
+  hydrateFileSystem: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nodes = await idb.seedDefaultFileSystem();
+    const nextState = hydrateFileSystemModel(get(), nodes);
+
+    set({
+      fsNodes: nextState.fsNodes,
+      fsNodeMap: nextState.fsNodeMap,
+      fsChildMap: nextState.fsChildMap,
+      fsHydrated: nextState.fsHydrated,
+    });
+  },
+
+  fsCreateFile: async (parentId, name, content) => {
+    const result = createFileModel(get(), { parentId, name, content });
+
+    set({
+      fsNodes: result.state.fsNodes,
+      fsNodeMap: result.state.fsNodeMap,
+      fsChildMap: result.state.fsChildMap,
+    });
+
+    await idb.putNode(result.node);
+
+    if (content) {
+      await idb.putContent({
+        nodeId: result.node.id,
+        data: content,
+        encoding: "utf-8",
+        checksum: idb.computeChecksum(content),
+      });
+    }
+
+    return result.node;
+  },
+
+  fsCreateDirectory: async (parentId, name) => {
+    const result = createDirectoryModel(get(), { parentId, name });
+
+    set({
+      fsNodes: result.state.fsNodes,
+      fsNodeMap: result.state.fsNodeMap,
+      fsChildMap: result.state.fsChildMap,
+    });
+
+    await idb.putNode(result.node);
+
+    return result.node;
+  },
+
+  fsReadContent: async (nodeId) => {
+    const content = await idb.getContent(nodeId);
+
+    return content?.data ?? null;
+  },
+
+  fsWriteContent: async (nodeId, content) => {
+    const size = new Blob([content]).size;
+    const nextState = updateFileMetadataModel(get(), nodeId, { size });
+
+    set({
+      fsNodes: nextState.fsNodes,
+      fsNodeMap: nextState.fsNodeMap,
+      fsChildMap: nextState.fsChildMap,
+    });
+
+    const updatedNode = nextState.fsNodeMap[nodeId];
+
+    if (updatedNode) {
+      await idb.putNode(updatedNode);
+    }
+
+    await idb.putContent({
+      nodeId,
+      data: content,
+      encoding: "utf-8",
+      checksum: idb.computeChecksum(content),
+    });
+  },
+
+  fsDeleteNode: async (nodeId) => {
+    const result = deleteNodeModel(get(), nodeId);
+
+    set({
+      fsNodes: result.state.fsNodes,
+      fsNodeMap: result.state.fsNodeMap,
+      fsChildMap: result.state.fsChildMap,
+      fsActiveFileId: result.state.fsActiveFileId,
+      fsClipboard: result.state.fsClipboard,
+    });
+
+    await idb.deleteNodes(result.deletedIds);
+    await idb.deleteContents(result.deletedIds);
+  },
+
+  fsRenameNode: async (nodeId, newName) => {
+    const nextState = renameNodeModel(get(), nodeId, newName);
+
+    set({
+      fsNodes: nextState.fsNodes,
+      fsNodeMap: nextState.fsNodeMap,
+      fsChildMap: nextState.fsChildMap,
+    });
+
+    const updatedNode = nextState.fsNodeMap[nodeId];
+
+    if (updatedNode) {
+      await idb.putNode(updatedNode);
+    }
+  },
+
+  fsMoveNode: async (nodeId, newParentId) => {
+    const nextState = moveNodeModel(get(), nodeId, newParentId);
+
+    set({
+      fsNodes: nextState.fsNodes,
+      fsNodeMap: nextState.fsNodeMap,
+      fsChildMap: nextState.fsChildMap,
+    });
+
+    const updatedNode = nextState.fsNodeMap[nodeId];
+
+    if (updatedNode) {
+      await idb.putNode(updatedNode);
+    }
+  },
+
+  fsCopyNode: async (nodeId, newParentId) => {
+    const result = copyNodeModel(get(), nodeId, newParentId);
+
+    if (!result.newNode) {
+      return null;
+    }
+
+    set({
+      fsNodes: result.state.fsNodes,
+      fsNodeMap: result.state.fsNodeMap,
+      fsChildMap: result.state.fsChildMap,
+    });
+
+    await idb.putNode(result.newNode);
+
+    // Copy content if it is a file
+    if (result.newNode.type === "file") {
+      const sourceContent = await idb.getContent(nodeId);
+
+      if (sourceContent) {
+        await idb.putContent({
+          nodeId: result.newNode.id,
+          data: sourceContent.data,
+          encoding: sourceContent.encoding,
+          checksum: sourceContent.checksum,
+        });
+      }
+    }
+
+    return result.newNode;
+  },
+
+  fsSearch: (query) => {
+    const nextState = setSearchQueryModel(get(), query);
+    const results = searchNodesModel(nextState, query);
+    const withResults = setSearchResultsModel(nextState, results);
+
+    set({
+      fsSearchQuery: withResults.fsSearchQuery,
+      fsSearchResults: withResults.fsSearchResults,
+    });
+  },
+
+  fsClearSearch: () => {
+    const nextState = clearSearchModel(get());
+
+    set({
+      fsSearchQuery: nextState.fsSearchQuery,
+      fsSearchResults: nextState.fsSearchResults,
+    });
+  },
+
+  fsCut: (nodeIds) => {
+    const nextState = setCutModel(get(), nodeIds);
+
+    set({ fsClipboard: nextState.fsClipboard });
+  },
+
+  fsCopy: (nodeIds) => {
+    const nextState = setCopyModel(get(), nodeIds);
+
+    set({ fsClipboard: nextState.fsClipboard });
+  },
+
+  fsPaste: async (targetParentId) => {
+    const clipboard = get().fsClipboard;
+
+    if (!clipboard || clipboard.nodeIds.length === 0) {
+      return;
+    }
+
+    if (clipboard.operation === "copy") {
+      for (const nodeId of clipboard.nodeIds) {
+        await get().fsCopyNode(nodeId, targetParentId);
+      }
+    } else {
+      for (const nodeId of clipboard.nodeIds) {
+        await get().fsMoveNode(nodeId, targetParentId);
+      }
+
+      set({ fsClipboard: null });
+    }
+  },
+
+  fsClearClipboard: () => {
+    const nextState = clearClipboardModel(get());
+
+    set({ fsClipboard: nextState.fsClipboard });
+  },
+
+  fsSetActiveFile: (nodeId) => {
+    set({ fsActiveFileId: nodeId });
   },
 }));

@@ -8,16 +8,30 @@ import { getWallpaperById } from "@/shared/lib/wallpapers";
 
 export function DesktopWallpaper() {
   const wallpaperId = useOSStore((state) => state.wallpaperId);
+  const customWallpaperDataUrl = useOSStore((state) => state.customWallpaperDataUrl);
   const hydrateWallpaper = useOSStore((state) => state.hydrateWallpaper);
 
   useEffect(() => {
     hydrateWallpaper();
   }, [hydrateWallpaper]);
 
+  const isCustom = wallpaperId === "custom" && customWallpaperDataUrl;
+
+  if (isCustom) {
+    return (
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0 transition-all duration-700 ease-in-out bg-cover bg-center"
+          style={{ backgroundImage: `url(${customWallpaperDataUrl})` }}
+        />
+      </div>
+    );
+  }
+
   const wallpaper = getWallpaperById(wallpaperId);
 
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden">
       <div
         className="absolute inset-0 transition-all duration-700 ease-in-out"
         style={{ background: wallpaper.gradient }}
