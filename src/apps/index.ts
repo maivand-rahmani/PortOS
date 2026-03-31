@@ -6,6 +6,8 @@ import { calculatorAppConfig } from "./calculator";
 import { clockAppConfig } from "./clock";
 import { contactAppConfig } from "./contact";
 import { docsAppConfig } from "./docs";
+import { editorAppConfig } from "./editor";
+import { filesAppConfig } from "./files";
 import { notesAppConfig } from "./notes";
 import { portfolioAppConfig } from "./portfolio";
 import { resumeAppConfig } from "./resume";
@@ -25,6 +27,8 @@ export const installedApps: AppConfig[] = [
   calculatorAppConfig,
   notesAppConfig,
   clockAppConfig,
+  editorAppConfig,
+  filesAppConfig,
   settingsAppConfig,
 ];
 
@@ -39,4 +43,6 @@ export { systemInfoAppConfig };
 export { calculatorAppConfig };
 export { notesAppConfig };
 export { clockAppConfig };
+export { editorAppConfig };
+export { filesAppConfig };
 export { settingsAppConfig };
