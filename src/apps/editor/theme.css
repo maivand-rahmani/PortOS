@@ -1,0 +1,21 @@
+.editor-app {
+  --editor-bg: #faf5ff;
+  --editor-canvas-bg: #ffffff;
+  --editor-toolbar-bg: #f5f3ff;
+  --editor-border: #e9d5ff;
+  --editor-text: #1e1b4b;
+  --editor-text-secondary: #6b7280;
+  --editor-accent: #7c3aed;
+  --editor-accent-light: #ede9fe;
+  --editor-hover: #f3f0ff;
+  --editor-caret: #7c3aed;
+  --editor-selection: rgba(124, 58, 237, 0.15);
+  --editor-line-number: #c4b5fd;
+  --editor-gutter-bg: #faf5ff;
+  --editor-status-bg: #f5f3ff;
+  --editor-dirty-indicator: #f59e0b;
+  --editor-saved-indicator: #22c55e;
+  --editor-toolbar-height: 38px;
+  --editor-status-height: 26px;
+  --editor-preview-border: #e9d5ff;
+}
