@@ -3,11 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 
-import { getActiveRuntimeTarget, useOSStore } from "@/processes";
+import {
+  getActiveRuntimeTarget,
+  serializeSessionModel,
+  SESSION_STORAGE_KEY,
+  useOSStore,
+} from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
 import { runDataMigration } from "@/shared/lib/fs-migration";
+import * as idb from "@/shared/lib/idb-storage";
 import {
   BOOT_PHASE_DURATIONS,
   BOOT_PROGRESS_KEYFRAMES,
@@ -56,6 +62,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const processes = useOSStore((state) => state.processes);
   const loadedApps = useOSStore((state) => state.loadedApps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
+  const sessionHydrated = useOSStore((state) => state.sessionHydrated);
   const dragWindowId = useOSStore((state) => state.dragState?.windowId ?? null);
   const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
   const bootPhase = useOSStore((state) => state.bootPhase);
@@ -68,6 +75,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const completeBoot = useOSStore((state) => state.completeBoot);
   const hydrateFileSystem = useOSStore((state) => state.hydrateFileSystem);
   const hydrateSettings = useOSStore((state) => state.hydrateSettings);
+  const hydrateSession = useOSStore((state) => state.hydrateSession);
   const activateApp = useOSStore((state) => state.activateApp);
   const focusWindow = useOSStore((state) => state.focusWindow);
   const closeWindow = useOSStore((state) => state.closeWindow);
@@ -196,6 +204,33 @@ export function useDesktopShell(): UseDesktopShellResult {
 
     resizeWindowsToBounds(desktopBounds);
   }, [desktopBounds, resizeWindowsToBounds]);
+
+  useEffect(() => {
+    if (!desktopBounds || sessionHydrated) {
+      return;
+    }
+
+    void hydrateSession(desktopBounds);
+  }, [desktopBounds, hydrateSession, sessionHydrated]);
+
+  useEffect(() => {
+    if (!sessionHydrated || bootPhase !== "ready") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const snapshot = serializeSessionModel({
+        windows: useOSStore.getState().windows,
+        activeWindowId: useOSStore.getState().activeWindowId,
+      });
+
+      void idb.setMeta(SESSION_STORAGE_KEY, snapshot);
+    }, 260);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeWindowId, bootPhase, sessionHydrated, windows]);
 
   const aiWidgetPosition = useMemo(() => {
     if (customAiWidgetPosition) {

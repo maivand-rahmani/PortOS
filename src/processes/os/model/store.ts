@@ -62,6 +62,13 @@ import {
   type ProcessManagerState,
 } from "./process-manager";
 import {
+  restoreSessionModel,
+  sessionManagerInitialState,
+  SESSION_STORAGE_KEY,
+  type PersistedSessionState,
+  type SessionManagerState,
+} from "./session-manager";
+import {
   clearAllNotificationsModel,
   dismissToastModel,
   markAllReadModel,
@@ -137,6 +144,7 @@ export type OSStore = AppRegistryState &
   ProcessManagerState &
   WindowManagerState &
   FileSystemManagerState &
+  SessionManagerState &
   NotificationManagerState &
   ShortcutManagerState & {
     bootPhase: OSBootPhase;
@@ -154,6 +162,7 @@ export type OSStore = AppRegistryState &
     setWallpaper: (wallpaperId: Wallpaper["id"]) => void;
     setCustomWallpaper: (dataUrl: string) => Promise<void>;
     hydrateSettings: () => Promise<void>;
+    hydrateSession: (bounds: DesktopBounds) => Promise<void>;
     updateSettings: (patch: Partial<OSSettings>) => Promise<void>;
     launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
@@ -274,6 +283,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
+  ...sessionManagerInitialState,
   ...notificationManagerInitialState,
   ...shortcutManagerInitialState,
   bootPhase: "off",
@@ -347,6 +357,55 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({
       osSettings: settings,
       customWallpaperDataUrl: customWallpaper,
+    });
+  },
+  hydrateSession: async (bounds) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const rawSession = await idb.getMeta(SESSION_STORAGE_KEY);
+
+    if (!rawSession || typeof rawSession !== "object") {
+      set({ sessionHydrated: true });
+      return;
+    }
+
+    const session = rawSession as PersistedSessionState;
+
+    if (session.version !== 1 || !Array.isArray(session.windows)) {
+      set({ sessionHydrated: true });
+      return;
+    }
+
+    const restored = restoreSessionModel({
+      session,
+      bounds,
+      appMap: get().appMap,
+      windowState: {
+        windows: [],
+        activeWindowId: null,
+        nextZIndex: 100,
+        dragState: null,
+        resizeState: null,
+      },
+      processState: {
+        processes: [],
+      },
+    });
+
+    for (const window of restored.windows.windows) {
+      await get().loadAppComponent(window.appId);
+    }
+
+    set({
+      windows: restored.windows.windows,
+      activeWindowId: restored.windows.activeWindowId,
+      nextZIndex: restored.windows.nextZIndex,
+      dragState: restored.windows.dragState,
+      resizeState: restored.windows.resizeState,
+      processes: restored.processes.processes,
+      sessionHydrated: true,
     });
   },
   updateSettings: async (patch) => {

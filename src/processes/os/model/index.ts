@@ -68,6 +68,14 @@ export {
   clearSearchModel,
 } from "./file-system";
 export {
+  restoreSessionModel,
+  sanitizePersistedWindow,
+  serializeSessionModel,
+  sessionManagerInitialState,
+  SESSION_STORAGE_KEY,
+  SESSION_STORAGE_VERSION,
+} from "./session-manager";
+export {
   clearAllNotificationsModel,
   dismissToastModel,
   getUnreadCount,
@@ -89,6 +97,7 @@ export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { FileSystemManagerState } from "./file-system";
+export type { SessionManagerState, PersistedSessionState } from "./session-manager";
 export type { NotificationManagerState } from "./notification-manager";
 export type { ShortcutManagerState } from "./shortcut-manager";
 export type {

@@ -144,7 +144,7 @@
 
 * [x] Track multiple open windows
 * [x] Implement layering (bring to front)
-* [ ] Persist temporary window positions
+* [x] Persist temporary window positions
 * [x] Ensure smooth drag experience
 * [x] Add minimize/maximize/close buttons
 * [x] Support launch-maximized apps where needed
