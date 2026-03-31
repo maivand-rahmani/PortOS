@@ -76,6 +76,12 @@ export {
   SESSION_STORAGE_VERSION,
 } from "./session-manager";
 export {
+  cycleWorkspaceModel,
+  switchWorkspaceModel,
+  syncActiveWindowToWorkspace,
+  workspaceManagerInitialState,
+} from "./workspace-manager";
+export {
   clearAllNotificationsModel,
   dismissToastModel,
   getUnreadCount,
@@ -98,6 +104,11 @@ export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { FileSystemManagerState } from "./file-system";
 export type { SessionManagerState, PersistedSessionState } from "./session-manager";
+export type {
+  WorkspaceDefinition,
+  WorkspaceId,
+  WorkspaceManagerState,
+} from "./workspace-manager";
 export type { NotificationManagerState } from "./notification-manager";
 export type { ShortcutManagerState } from "./shortcut-manager";
 export type {

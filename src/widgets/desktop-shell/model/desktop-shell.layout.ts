@@ -1,5 +1,6 @@
 import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
+import type { WorkspaceId } from "@/entities/workspace";
 
 import { DESKTOP_ICON_FRAME, DESKTOP_ICON_SPACING, DESKTOP_INSETS } from "./desktop-shell.constants";
 import type { DockMenuEntry } from "./desktop-shell.types";
@@ -73,6 +74,7 @@ export function getDockAppStates(
   apps: AppConfig[],
   windows: WindowInstance[],
   activeWindowId: string | null,
+  currentWorkspaceId: WorkspaceId,
 ): DockAppState[] {
   return apps.map((app) => {
     const appWindows: DockWindowItem[] = windows
@@ -81,13 +83,17 @@ export function getDockAppStates(
       .map((window) => ({
         id: window.id,
         title: window.title,
+        workspaceId: window.workspaceId,
         isMinimized: window.isMinimized,
         isActive: window.id === activeWindowId,
         zIndex: window.zIndex,
       }));
-    const visibleWindows = appWindows.filter((window) => !window.isMinimized);
-    const minimizedWindows = appWindows.filter((window) => window.isMinimized);
-    const activeWindow = appWindows.find((window) => window.isActive) ?? null;
+    const currentWorkspaceWindows = appWindows.filter(
+      (window) => window.workspaceId === currentWorkspaceId,
+    );
+    const visibleWindows = currentWorkspaceWindows.filter((window) => !window.isMinimized);
+    const minimizedWindows = currentWorkspaceWindows.filter((window) => window.isMinimized);
+    const activeWindow = currentWorkspaceWindows.find((window) => window.isActive) ?? null;
 
     return {
       app,

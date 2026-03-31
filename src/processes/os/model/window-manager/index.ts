@@ -1,5 +1,6 @@
 import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
+import type { WorkspaceId } from "@/entities/workspace";
 
 import {
   clampWindowPosition,
@@ -27,6 +28,7 @@ type OpenWindowInput = {
   processId: string;
   instanceIndex: number;
   bounds?: DesktopBounds;
+  workspaceId: WorkspaceId;
 };
 
 type WindowDragInput = {
@@ -104,6 +106,7 @@ export function openWindowModel(
     id: crypto.randomUUID(),
     appId: input.app.id,
     processId: input.processId,
+    workspaceId: input.workspaceId,
     title: input.app.name,
     position: nextPosition,
     size,

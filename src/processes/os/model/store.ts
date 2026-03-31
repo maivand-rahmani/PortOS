@@ -69,6 +69,14 @@ import {
   type SessionManagerState,
 } from "./session-manager";
 import {
+  cycleWorkspaceModel,
+  switchWorkspaceModel,
+  syncActiveWindowToWorkspace,
+  workspaceManagerInitialState,
+  type WorkspaceId,
+  type WorkspaceManagerState,
+} from "./workspace-manager";
+import {
   clearAllNotificationsModel,
   dismissToastModel,
   markAllReadModel,
@@ -145,6 +153,7 @@ export type OSStore = AppRegistryState &
   WindowManagerState &
   FileSystemManagerState &
   SessionManagerState &
+  WorkspaceManagerState &
   NotificationManagerState &
   ShortcutManagerState & {
     bootPhase: OSBootPhase;
@@ -164,6 +173,8 @@ export type OSStore = AppRegistryState &
     hydrateSettings: () => Promise<void>;
     hydrateSession: (bounds: DesktopBounds) => Promise<void>;
     updateSettings: (patch: Partial<OSSettings>) => Promise<void>;
+    switchWorkspace: (workspaceId: WorkspaceId) => void;
+    cycleWorkspace: (direction: 1 | -1) => void;
     launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     loadAppComponent: (appId: string) => Promise<LoadedAppMap[string] | null>;
@@ -284,6 +295,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
   ...sessionManagerInitialState,
+  ...workspaceManagerInitialState,
   ...notificationManagerInitialState,
   ...shortcutManagerInitialState,
   bootPhase: "off",
@@ -405,6 +417,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       dragState: restored.windows.dragState,
       resizeState: restored.windows.resizeState,
       processes: restored.processes.processes,
+      currentWorkspaceId: session.currentWorkspaceId ?? get().currentWorkspaceId,
       sessionHydrated: true,
     });
   },
@@ -416,6 +429,40 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({ osSettings: next });
 
     await saveSettings(next);
+  },
+  switchWorkspace: (workspaceId) => {
+    const state = get();
+    const nextWorkspaceState = switchWorkspaceModel(state, workspaceId);
+    const nextActiveWindow = syncActiveWindowToWorkspace({
+      windows: state.windows,
+      activeWindowId: state.activeWindowId,
+      nextZIndex: state.nextZIndex,
+      dragState: state.dragState,
+      resizeState: state.resizeState,
+      currentWorkspaceId: nextWorkspaceState.currentWorkspaceId,
+    });
+
+    set({
+      currentWorkspaceId: nextWorkspaceState.currentWorkspaceId,
+      activeWindowId: nextActiveWindow.activeWindowId,
+    });
+  },
+  cycleWorkspace: (direction) => {
+    const state = get();
+    const nextWorkspaceState = cycleWorkspaceModel(state, direction);
+    const nextActiveWindow = syncActiveWindowToWorkspace({
+      windows: state.windows,
+      activeWindowId: state.activeWindowId,
+      nextZIndex: state.nextZIndex,
+      dragState: state.dragState,
+      resizeState: state.resizeState,
+      currentWorkspaceId: nextWorkspaceState.currentWorkspaceId,
+    });
+
+    set({
+      currentWorkspaceId: nextWorkspaceState.currentWorkspaceId,
+      activeWindowId: nextActiveWindow.activeWindowId,
+    });
   },
   loadAppComponent: async (appId) => {
     const currentApp = get().appMap[appId];
@@ -474,6 +521,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         processId: processResult.process.id,
         instanceIndex: currentState.windows.length,
         bounds,
+        workspaceId: currentState.currentWorkspaceId,
       },
     );
     const linkedProcesses = attachWindowToProcessModel(processResult.state, {
@@ -500,7 +548,10 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   activateApp: async (appId, bounds) => {
     const state = get();
     const appWindows = [...state.windows]
-      .filter((window) => window.appId === appId)
+      .filter(
+        (window) =>
+          window.appId === appId && window.workspaceId === state.currentWorkspaceId,
+      )
       .sort((left, right) => right.zIndex - left.zIndex);
     const visibleWindow = appWindows.find((window) => !window.isMinimized);
 
@@ -523,19 +574,26 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   },
   focusWindow: (windowId) => {
     const state = get();
+    const targetWindow = state.windows.find((window) => window.id === windowId);
+
+    if (!targetWindow) {
+      return;
+    }
+
     const nextWindowState = focusWindowModel(
       {
         windows: state.windows,
-      activeWindowId: state.activeWindowId,
-      nextZIndex: state.nextZIndex,
-      dragState: state.dragState,
-      resizeState: state.resizeState,
-    },
-    windowId,
-  );
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+        resizeState: state.resizeState,
+      },
+      windowId,
+    );
 
     set({
       windows: nextWindowState.windows,
+      currentWorkspaceId: targetWindow.workspaceId,
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
@@ -565,6 +623,12 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   },
   restoreWindow: (windowId) => {
     const state = get();
+    const targetWindow = state.windows.find((window) => window.id === windowId);
+
+    if (!targetWindow) {
+      return;
+    }
+
     const nextWindowState = restoreWindowModel(
       {
         windows: state.windows,
@@ -578,6 +642,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     set({
       windows: nextWindowState.windows,
+      currentWorkspaceId: targetWindow.workspaceId,
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,

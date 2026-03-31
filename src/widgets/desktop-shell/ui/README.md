@@ -21,5 +21,6 @@ Visual building blocks for the macOS-style desktop shell.
 - `notification-toasts/`: stacked transient toast surface for incoming system notifications.
 - `notification-center-panel/`: right-side persistent notification history panel opened from the menu bar.
 - `app-switcher-overlay/`: centered overlay for cycling between running apps from the shell.
+- `workspace-switcher/`: compact segmented control for switching virtual desktops.
 
 Each UI folder should stay small and focused on one visible shell responsibility.

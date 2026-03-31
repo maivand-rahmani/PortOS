@@ -8,6 +8,7 @@ Runtime state models and contracts for the OS core.
 - `process-manager/`: typed process state helpers for starting, linking, and stopping processes.
 - `app-registry/`: typed app metadata and lazy-loading helpers.
 - `session-manager/`: persisted window session serialization and restore helpers.
+- `workspace-manager/`: virtual desktop state and workspace switching helpers.
 - `notification-manager/`: typed notification state helpers for toast delivery, read state, and notification history.
 - `runtime-selectors.ts`: derived runtime lookup helpers for active app, window, and process state.
 - `store.ts`: Zustand runtime store that composes the managers into one OS state.

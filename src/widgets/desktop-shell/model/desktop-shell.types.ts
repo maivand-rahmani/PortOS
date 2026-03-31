@@ -2,7 +2,12 @@ import type { RefObject } from "react";
 
 import type { AppConfig, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
-import type { OSBootPhase, WindowResizeDirection, WindowSnapZone } from "@/processes";
+import type { WorkspaceDefinition, WorkspaceId } from "@/entities/workspace";
+import type {
+  OSBootPhase,
+  WindowResizeDirection,
+  WindowSnapZone,
+} from "@/processes";
 
 import type { StatusBarModel } from "./status-bar";
 
@@ -44,6 +49,7 @@ export type DockAppState = {
 export type DockWindowItem = {
   id: string;
   title: string;
+  workspaceId: WorkspaceId;
   isMinimized: boolean;
   isActive: boolean;
   zIndex: number;
@@ -94,6 +100,8 @@ export type UseDesktopShellResult = {
   dockApps: DockAppState[];
   dockMenu: DockMenuModel | null;
   minimizedWindows: WindowInstance[];
+  currentWorkspaceId: WorkspaceId;
+  workspaces: WorkspaceDefinition[];
   statusBar: StatusBarModel;
   visibleWindows: WindowRenderItem[];
   clearDesktopSelection: () => void;
@@ -106,6 +114,7 @@ export type UseDesktopShellResult = {
   openDockMenu: (appId: string, anchor: WindowPosition) => void;
   runDockMenuAction: (action: DockMenuAction) => void;
   runStatusBarCommand: (actionId: string) => void;
+  switchWorkspace: (workspaceId: WorkspaceId) => void;
   focusWindow: (windowId: string) => void;
   closeWindow: (windowId: string) => void;
   minimizeWindow: (windowId: string) => void;

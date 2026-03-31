@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import { useOSStore } from "@/processes";
+import { useOSStore, type Shortcut } from "@/processes";
 import { SpotlightOverlay } from "@/features/spotlight-search";
 import { useAppSwitcher } from "../../model/use-app-switcher";
 import { useDesktopShell } from "../../model/use-desktop-shell";
@@ -20,6 +20,7 @@ import { NotificationCenterPanel } from "../notification-center-panel/notificati
 import { NotificationToasts } from "../notification-toasts/notification-toasts";
 import { DockMenu } from "../dock-menu";
 import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
+import { WorkspaceSwitcher } from "../workspace-switcher/workspace-switcher";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
@@ -46,6 +47,8 @@ export function DesktopShell() {
     dockApps,
     dockMenu,
     minimizedWindows,
+    currentWorkspaceId,
+    workspaces,
     statusBar,
     visibleWindows,
     clearDesktopSelection,
@@ -58,6 +61,7 @@ export function DesktopShell() {
     openDockMenu,
     runDockMenuAction,
     runStatusBarCommand,
+    switchWorkspace,
     focusWindow,
     closeWindow,
     minimizeWindow,
@@ -150,6 +154,45 @@ export function DesktopShell() {
   }, [bootPhase, hasReadyNotification, pushNotification]);
 
   useEffect(() => {
+    if (isBooting) {
+      return undefined;
+    }
+
+    const shortcuts: Shortcut[] = [
+      {
+        id: "os:workspace-1",
+        label: "Switch to Desktop 1",
+        key: "1",
+        modifiers: ["ctrl", "alt"],
+        scope: "global" as const,
+        action: () => switchWorkspace("space-1"),
+      },
+      {
+        id: "os:workspace-2",
+        label: "Switch to Desktop 2",
+        key: "2",
+        modifiers: ["ctrl", "alt"],
+        scope: "global" as const,
+        action: () => switchWorkspace("space-2"),
+      },
+      {
+        id: "os:workspace-3",
+        label: "Switch to Desktop 3",
+        key: "3",
+        modifiers: ["ctrl", "alt"],
+        scope: "global" as const,
+        action: () => switchWorkspace("space-3"),
+      },
+    ];
+
+    shortcuts.forEach((shortcut) => registerShortcut(shortcut));
+
+    return () => {
+      shortcuts.forEach((shortcut) => unregisterShortcut(shortcut.id));
+    };
+  }, [isBooting, registerShortcut, switchWorkspace, unregisterShortcut]);
+
+  useEffect(() => {
     if (activeToasts.length === 0) {
       return undefined;
     }
@@ -205,6 +248,12 @@ export function DesktopShell() {
           onToggleNotifications={toggleNotificationCenter}
         />
       </motion.div>
+
+      <WorkspaceSwitcher
+        workspaces={workspaces}
+        currentWorkspaceId={currentWorkspaceId}
+        onSwitch={switchWorkspace}
+      />
 
       <main className="relative h-screen w-full">
         <DesktopAiTeaser

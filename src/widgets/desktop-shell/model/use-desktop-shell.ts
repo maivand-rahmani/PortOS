@@ -62,6 +62,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const processes = useOSStore((state) => state.processes);
   const loadedApps = useOSStore((state) => state.loadedApps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
+  const currentWorkspaceId = useOSStore((state) => state.currentWorkspaceId);
+  const workspaces = useOSStore((state) => state.workspaces);
   const sessionHydrated = useOSStore((state) => state.sessionHydrated);
   const dragWindowId = useOSStore((state) => state.dragState?.windowId ?? null);
   const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
@@ -77,6 +79,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const hydrateSettings = useOSStore((state) => state.hydrateSettings);
   const hydrateSession = useOSStore((state) => state.hydrateSession);
   const activateApp = useOSStore((state) => state.activateApp);
+  const switchWorkspace = useOSStore((state) => state.switchWorkspace);
   const focusWindow = useOSStore((state) => state.focusWindow);
   const closeWindow = useOSStore((state) => state.closeWindow);
   const minimizeWindow = useOSStore((state) => state.minimizeWindow);
@@ -98,6 +101,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const visibleWindows = useMemo<WindowRenderItem[]>(
     () =>
       [...windows]
+        .filter((window) => window.workspaceId === currentWorkspaceId)
         .filter((window) => !window.isMinimized)
         .sort((left, right) => left.zIndex - right.zIndex)
         .map((window) => ({
@@ -109,7 +113,15 @@ export function useDesktopShell(): UseDesktopShellResult {
           isResizing: resizeWindowId === window.id,
         }))
         .filter((entry) => Boolean(entry.app)),
-    [activeWindowId, appMap, dragWindowId, loadedApps, resizeWindowId, windows],
+    [
+      activeWindowId,
+      appMap,
+      currentWorkspaceId,
+      dragWindowId,
+      loadedApps,
+      resizeWindowId,
+      windows,
+    ],
   );
 
   const activeRuntimeTarget = useMemo(
@@ -135,8 +147,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   );
 
   const dockApps = useMemo(
-    () => getDockAppStates(apps, windows, activeWindowId),
-    [activeWindowId, apps, windows],
+    () => getDockAppStates(apps, windows, activeWindowId, currentWorkspaceId),
+    [activeWindowId, apps, currentWorkspaceId, windows],
   );
 
   const desktopIconPositions = useMemo(
@@ -145,8 +157,11 @@ export function useDesktopShell(): UseDesktopShellResult {
   );
 
   const minimizedWindows = useMemo(
-    () => windows.filter((window) => window.isMinimized),
-    [windows],
+    () =>
+      windows.filter(
+        (window) => window.isMinimized && window.workspaceId === currentWorkspaceId,
+      ),
+    [currentWorkspaceId, windows],
   );
 
   const getContainerPointer = (pointer: WindowPosition): WindowPosition => {
@@ -222,6 +237,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       const snapshot = serializeSessionModel({
         windows: useOSStore.getState().windows,
         activeWindowId: useOSStore.getState().activeWindowId,
+        currentWorkspaceId: useOSStore.getState().currentWorkspaceId,
       });
 
       void idb.setMeta(SESSION_STORAGE_KEY, snapshot);
@@ -230,7 +246,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activeWindowId, bootPhase, sessionHydrated, windows]);
+  }, [activeWindowId, bootPhase, currentWorkspaceId, sessionHydrated, windows]);
 
   const aiWidgetPosition = useMemo(() => {
     if (customAiWidgetPosition) {
@@ -699,6 +715,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     dockApps,
     dockMenu,
     minimizedWindows,
+    currentWorkspaceId,
+    workspaces,
     statusBar,
     visibleWindows,
     clearDesktopSelection,
@@ -711,6 +729,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     openDockMenu,
     runDockMenuAction,
     runStatusBarCommand,
+    switchWorkspace,
     focusWindow,
     closeWindow,
     minimizeWindow,

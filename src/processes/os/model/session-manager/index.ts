@@ -22,6 +22,7 @@ export const sessionManagerInitialState: SessionManagerState = {
 export function serializeSessionModel(input: {
   windows: WindowInstance[];
   activeWindowId: string | null;
+  currentWorkspaceId: PersistedSessionState["currentWorkspaceId"];
 }): PersistedSessionState {
   const orderedWindows = [...input.windows].sort((left, right) => left.zIndex - right.zIndex);
   const activeWindowIndex = orderedWindows.findIndex(
@@ -30,9 +31,11 @@ export function serializeSessionModel(input: {
 
   return {
     version: SESSION_STORAGE_VERSION,
+    currentWorkspaceId: input.currentWorkspaceId,
     activeWindowIndex: activeWindowIndex >= 0 ? activeWindowIndex : null,
     windows: orderedWindows.map((window) => ({
       appId: window.appId,
+      workspaceId: window.workspaceId,
       title: window.title,
       position: window.position,
       size: window.size,
@@ -115,6 +118,7 @@ export function restoreSessionModel(input: {
       id: windowId,
       appId: app.id,
       processId,
+      workspaceId: sanitizedWindow.workspaceId,
       title: sanitizedWindow.title,
       position: sanitizedWindow.position,
       size: sanitizedWindow.size,

@@ -1,3 +1,5 @@
+import type { WorkspaceId } from "./workspace";
+
 export type WindowPosition = {
   x: number;
   y: number;
@@ -26,6 +28,7 @@ export type WindowInstance = {
   id: string;
   appId: string;
   processId: string;
+  workspaceId: WorkspaceId;
   title: string;
   position: WindowPosition;
   size: WindowSize;
