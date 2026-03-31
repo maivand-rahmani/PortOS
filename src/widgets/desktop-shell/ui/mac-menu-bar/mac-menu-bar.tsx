@@ -71,19 +71,16 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
   const contextInfo = statusBar.info ?? DESKTOP_FALLBACK;
 
   return (
-    <header className="absolute inset-x-0 top-0 z-[600] flex h-[42px] items-center justify-between gap-3 border-b border-white/14 bg-[linear-gradient(180deg,rgba(21,27,38,0.72),rgba(14,18,27,0.54))] px-3 text-[13px] text-white shadow-[0_12px_48px_rgba(4,10,20,0.18)] backdrop-blur-2xl sm:px-5">
+    <header className="absolute inset-x-0 top-0 z-[600] flex h-7 items-center justify-between gap-3 border-b border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.14))] px-2.5 text-[12px] text-black/85 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2),0_1px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,18,20,0.4),rgba(18,18,20,0.22))] dark:text-white/92 sm:px-3.5">
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
-          <motion.span
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+          <span
             aria-hidden="true"
-            className={cn(
-              "h-2 w-2 rounded-full bg-white/80 shadow-[0_0_12px_rgba(255,255,255,0.45)]",
-              statusBar.activeApp ? "bg-[#9cd2ff] shadow-[0_0_14px_rgba(88,190,255,0.65)]" : undefined,
-            )}
-            animate={shouldReduceMotion ? undefined : { opacity: [0.55, 1, 0.55], scale: [1, 1.08, 1] }}
-            transition={{ duration: 2.8, ease: "easeInOut", repeat: Number.POSITIVE_INFINITY }}
-          />
-          <span className="max-w-[8.5rem] truncate font-semibold tracking-tight sm:max-w-none">
+            className="flex h-5 w-5 items-center justify-center rounded-md text-[14px] font-semibold text-inherit"
+          >
+            
+          </span>
+          <span className="max-w-[7rem] truncate font-semibold tracking-[-0.01em] sm:max-w-none">
             {statusBar.title}
           </span>
         </div>
@@ -91,7 +88,7 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
         {compactAction ? (
           <button
             type="button"
-            className="inline-flex h-7 max-w-[10.5rem] items-center rounded-full border border-white/14 bg-white/8 px-3 text-[11px] font-medium text-white/88 transition-colors duration-200 hover:bg-white/14 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 md:hidden"
+            className="inline-flex h-5 max-w-[9rem] items-center rounded-md px-2 text-[11px] font-medium text-inherit/90 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25 md:hidden"
             title={compactAction.info ?? compactAction.sectionLabel}
             onClick={() => onRunAction?.(compactAction.id)}
           >
@@ -99,24 +96,24 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
           </button>
         ) : (
           <span
-            className="inline-flex h-7 max-w-[11rem] items-center rounded-full border border-white/12 bg-white/7 px-3 text-[11px] text-white/68 md:hidden"
+            className="inline-flex h-5 max-w-[9.5rem] items-center rounded-md px-2 text-[11px] text-inherit/60 md:hidden"
             title={contextInfo}
           >
             <span className="truncate">{contextInfo}</span>
           </span>
         )}
 
-        <nav className="hidden min-w-0 flex-1 items-center gap-1 overflow-hidden md:flex">
+        <nav className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-hidden md:flex">
           {menuActions.length > 0 ? (
             menuActions.map((action, index) => {
               const showSeparator = index > 0 && action.sectionId !== menuActions[index - 1]?.sectionId;
 
               return (
-                <div key={action.id} className="flex min-w-0 shrink-0 items-center gap-1">
-                  {showSeparator ? <span className="text-white/28">/</span> : null}
+                <div key={action.id} className="flex min-w-0 shrink-0 items-center gap-0.5">
+                  {showSeparator ? <span className="mx-0.5 text-inherit/20">•</span> : null}
                   <button
                     type="button"
-                    className="inline-flex h-7 items-center rounded-full px-2.5 text-white/82 transition-colors duration-200 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                    className="inline-flex h-5 items-center rounded-md px-2 text-[12px] font-medium text-inherit/88 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25"
                     title={action.info ?? action.sectionLabel}
                     onClick={() => onRunAction?.(action.id)}
                   >
@@ -126,7 +123,7 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
               );
             })
           ) : (
-            <span className="truncate text-white/64">{contextInfo}</span>
+            <span className="truncate text-inherit/60">{contextInfo}</span>
           )}
         </nav>
 
@@ -137,7 +134,7 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
             animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="hidden min-w-0 max-w-[18rem] truncate rounded-full border border-white/12 bg-white/7 px-3 py-1 text-[11px] text-white/68 xl:block"
+            className="hidden min-w-0 max-w-[16rem] truncate rounded-md px-2 py-0.5 text-[11px] text-inherit/54 xl:block"
             title={contextInfo}
           >
             {contextInfo}
@@ -145,21 +142,20 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
         </AnimatePresence>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 text-white/86 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-0.5 text-inherit sm:gap-1">
         <button
           type="button"
-          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-white/14 bg-white/10 px-2.5 text-white transition-colors duration-200 hover:bg-white/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-md text-inherit/88 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25"
           title="Open Maivand AI agent"
           aria-label="Open Maivand AI agent"
           onClick={onOpenAgent}
         >
-          <Bot className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="hidden sm:inline">Maivand</span>
+          <Bot className="h-4 w-4" aria-hidden="true" />
         </button>
 
         {processStatus ? (
           <span
-            className="hidden rounded-full border border-white/10 bg-white/7 px-2.5 py-1 text-[11px] text-white/70 lg:inline-flex"
+            className="hidden rounded-md px-2 py-0.5 text-[11px] text-inherit/58 lg:inline-flex"
             title={processStatus.info}
           >
             {processStatus.label}
@@ -169,21 +165,21 @@ export function MacMenuBar({ statusBar, onRunAction, onOpenAgent }: MacMenuBarPr
         {BASE_INDICATORS.map(({ id, icon: Icon, label, info }) => (
           <span
             key={id}
-            className="inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-white/74 transition-colors duration-200 hover:text-white"
+            className="inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-inherit/78 transition-colors duration-150 hover:bg-black/8 hover:text-inherit dark:hover:bg-white/12"
             title={info}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden text-[11px] sm:inline">{label}</span>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden text-[11px] font-medium md:inline">{label}</span>
           </span>
         ))}
 
-        <span className="rounded-full border border-white/12 bg-white/9 px-2.5 py-1 text-[11px] font-medium text-white/90 sm:hidden">
+        <span className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-inherit/90 sm:hidden">
           {clock.compactLabel}
         </span>
 
-        <div className="hidden items-center gap-2 sm:flex">
-          <span className="text-white/66">{clock.dateLabel}</span>
-          <span className="rounded-full border border-white/12 bg-white/9 px-2.5 py-1 text-[11px] font-medium text-white/92">
+        <div className="hidden items-center gap-2 pl-1 sm:flex">
+          <span className="text-[11px] font-medium text-inherit/64">{clock.dateLabel}</span>
+          <span className="text-[12px] font-medium tracking-[0.01em] text-inherit/92">
             {clock.timeLabel}
           </span>
         </div>
