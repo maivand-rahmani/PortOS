@@ -219,7 +219,34 @@ Notes on the current AI agent state:
 
 ---
 
-## ✅ Completion Tracking
+## 10. Settings App Overhaul
+
+**Description:** Replace the stub Settings app with a fully functional, production-quality preferences panel with real behavior for every control.
+
+* [x] Fix wallpaper rendering bug — `DesktopWallpaper` was using `-z-10` which placed it behind the solid parent background. Fixed by removing `-z-10` so the wallpaper renders above the parent background color.
+* [x] Add custom wallpaper support — file input with `FileReader`, stored as Data URL in IDB metadata store under key `custom-wallpaper`.
+* [x] Define `OSSettings` type and `DEFAULT_OS_SETTINGS` in `src/apps/settings/model/settings.types.ts`.
+* [x] Add IDB persistence layer in `src/apps/settings/model/settings.idb.ts` (`loadSettings`, `saveSettings`, `loadCustomWallpaper`, `saveCustomWallpaper`).
+* [x] Extend `useOSStore` with `osSettings`, `customWallpaperDataUrl`, `hydrateSettings()`, `updateSettings()`, `setCustomWallpaper()`.
+* [x] Add `applySettingsToDOM()` helper — applies color scheme (`data-theme`), accent color (`--accent`), dock icon size (`--dock-icon-size`), and reduced transparency (`data-reduced-transparency`) to `document.documentElement`.
+* [x] Wire `hydrateSettings()` during boot sequence in `use-desktop-shell.ts`.
+* [x] Add dark mode CSS variant and dark token block to `globals.css` using `@custom-variant dark`.
+* [x] Add `--dock-icon-size` CSS variable and map into Tailwind `@theme inline`.
+* [x] Update `DockAppButton` to use `h-[var(--dock-icon-size)] w-[var(--dock-icon-size)]` instead of hardcoded `h-14 w-14`.
+* [x] Update `MacDock` to accept and apply `autohide` prop.
+* [x] Wire `autohide` from `osSettings.dockAutohide` in `desktop-root.tsx`.
+* [x] Create `use-settings-app.ts` hook — reads store, exposes typed updaters, `exportVfs`, `clearVfs`, `resetSettings`.
+* [x] Build 6 real settings sections:
+  * `WallpaperSection` — predefined grid + custom image upload tile
+  * `AppearanceSection` — Light/Dark/Auto scheme pills, 6 accent swatches, reduce transparency toggle
+  * `DockSection` — icon size segmented control + autohide toggle
+  * `AccessibilitySection` — reduce motion + reduce transparency toggles
+  * `StorageSection` — VFS stats, export to JSON, clear all with confirm dialog
+  * `GeneralSection` — live runtime stats, reset settings to defaults
+* [x] Rebuild `settings-app.tsx` with sidebar navigation and Framer Motion section transitions.
+* [x] Increase settings window to 900×600 (min 680×480).
+
+
 
 * Use `[x]` for done steps
 * Add notes for subtasks where needed
