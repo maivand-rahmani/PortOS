@@ -8,7 +8,14 @@ import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
 import { runDataMigration } from "@/shared/lib/fs-migration";
-import { BOOT_SEQUENCE, DESKTOP_AI_WIDGET, DESKTOP_INSETS, DOCK_MENU } from "./desktop-shell.constants";
+import {
+  BOOT_PHASE_DURATIONS,
+  BOOT_PROGRESS_KEYFRAMES,
+  BOOT_SESSION_KEY,
+  DESKTOP_AI_WIDGET,
+  DESKTOP_INSETS,
+  DOCK_MENU,
+} from "./desktop-shell.constants";
 import {
   createStatusBarCommandRunner,
   getStatusBarModel,
@@ -53,8 +60,11 @@ export function useDesktopShell(): UseDesktopShellResult {
   const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
   const bootPhase = useOSStore((state) => state.bootPhase);
   const bootProgress = useOSStore((state) => state.bootProgress);
+  const bootMessages = useOSStore((state) => state.bootMessages);
 
+  const setBootPhase = useOSStore((state) => state.setBootPhase);
   const setBootProgress = useOSStore((state) => state.setBootProgress);
+  const addBootMessage = useOSStore((state) => state.addBootMessage);
   const completeBoot = useOSStore((state) => state.completeBoot);
   const hydrateFileSystem = useOSStore((state) => state.hydrateFileSystem);
   const hydrateSettings = useOSStore((state) => state.hydrateSettings);
@@ -199,42 +209,105 @@ export function useDesktopShell(): UseDesktopShellResult {
     };
   }, [customAiWidgetPosition, desktopBounds]);
 
+  // ── Boot sequence state machine ──────────────────────────────────────────────
   useEffect(() => {
-    if (bootPhase !== "booting") {
+    if (bootPhase !== "off") {
       return undefined;
     }
 
-    // Hydrate file system from IndexedDB during boot, then run data migration
-    hydrateFileSystem().then(() => runDataMigration());
-    // Hydrate settings and custom wallpaper from IndexedDB
-    void hydrateSettings();
+    // Check sessionStorage for same-session revisit (auto-skip)
+    if (typeof window !== "undefined" && sessionStorage.getItem(BOOT_SESSION_KEY)) {
+      // Fast boot: skip cinematic sequence, still hydrate data
+      hydrateFileSystem().then(() => runDataMigration());
+      void hydrateSettings();
+      setBootProgress(100);
+      addBootMessage("System ready");
+      completeBoot();
+      return undefined;
+    }
 
-    let stepIndex = 0;
+    // Start the cinematic boot: power-on phase
+    setBootPhase("power-on");
+    return undefined;
+  }, [bootPhase, setBootPhase, setBootProgress, addBootMessage, completeBoot, hydrateFileSystem, hydrateSettings]);
 
-    const advanceBoot = () => {
-      const progress = BOOT_SEQUENCE[stepIndex];
+  useEffect(() => {
+    if (bootPhase !== "power-on") {
+      return undefined;
+    }
 
-      if (progress === undefined) {
-        completeBoot();
+    const duration = shouldReduceMotion ? 100 : BOOT_PHASE_DURATIONS["power-on"];
+    const timer = window.setTimeout(() => {
+      setBootPhase("logo");
+    }, duration);
 
-        return;
+    return () => window.clearTimeout(timer);
+  }, [bootPhase, setBootPhase, shouldReduceMotion]);
+
+  useEffect(() => {
+    if (bootPhase !== "logo") {
+      return undefined;
+    }
+
+    // Start hydration in parallel with logo animation
+    const hydrationPromise = hydrateFileSystem().then(() => runDataMigration());
+    const settingsPromise = hydrateSettings();
+
+    const duration = shouldReduceMotion ? 200 : BOOT_PHASE_DURATIONS.logo;
+    const timer = window.setTimeout(async () => {
+      // Wait for hydration to complete before moving to init
+      await Promise.all([hydrationPromise, settingsPromise]);
+      setBootPhase("init");
+    }, duration);
+
+    return () => window.clearTimeout(timer);
+  }, [bootPhase, setBootPhase, hydrateFileSystem, hydrateSettings, shouldReduceMotion]);
+
+  useEffect(() => {
+    if (bootPhase !== "init") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const runProgressSequence = async () => {
+      for (const keyframe of BOOT_PROGRESS_KEYFRAMES) {
+        if (cancelled) return;
+        addBootMessage(keyframe.message);
+        setBootProgress(keyframe.target);
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, shouldReduceMotion ? 60 : keyframe.duration),
+        );
       }
 
-      setBootProgress(progress);
-      stepIndex += 1;
+      if (!cancelled) {
+        setBootPhase("reveal");
+      }
     };
 
-    advanceBoot();
-
-    const intervalId = window.setInterval(
-      advanceBoot,
-      shouldReduceMotion ? 90 : 260,
-    );
+    void runProgressSequence();
 
     return () => {
-      window.clearInterval(intervalId);
+      cancelled = true;
     };
-  }, [bootPhase, completeBoot, hydrateFileSystem, hydrateSettings, setBootProgress, shouldReduceMotion]);
+  }, [bootPhase, setBootPhase, setBootProgress, addBootMessage, shouldReduceMotion]);
+
+  useEffect(() => {
+    if (bootPhase !== "reveal") {
+      return undefined;
+    }
+
+    const duration = shouldReduceMotion ? 200 : BOOT_PHASE_DURATIONS.reveal;
+    const timer = window.setTimeout(() => {
+      // Mark session as booted for auto-skip on revisit
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(BOOT_SESSION_KEY, "1");
+      }
+      completeBoot();
+    }, duration);
+
+    return () => window.clearTimeout(timer);
+  }, [bootPhase, completeBoot, shouldReduceMotion]);
 
   useEffect(() => {
     if (!desktopBounds) {
@@ -567,6 +640,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     processCount: processes.length,
     bootPhase,
     bootProgress,
+    bootMessages,
     desktopBounds,
     selectedDesktopAppId,
     desktopIconPositions,

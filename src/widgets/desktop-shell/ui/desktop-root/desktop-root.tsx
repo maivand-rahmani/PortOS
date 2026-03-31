@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { useOSStore } from "@/processes";
 import { useDesktopShell } from "../../model/use-desktop-shell";
@@ -19,6 +19,7 @@ export function DesktopShell() {
     apps,
     bootPhase,
     bootProgress,
+    bootMessages,
     selectedDesktopAppId,
     desktopIconPositions,
     aiWidgetPosition,
@@ -47,6 +48,8 @@ export function DesktopShell() {
   } = useDesktopShell();
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
+  const shouldReduceMotion = useReducedMotion();
+  const isBooting = bootPhase !== "ready";
 
   return (
     <div
@@ -66,29 +69,41 @@ export function DesktopShell() {
       <DesktopWallpaper />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(10,132,255,0.18),transparent_30%)]" />
 
-      <MacMenuBar
-        statusBar={statusBar}
-        onRunAction={runStatusBarCommand}
-        onOpenAgent={() => openDesktopApp("ai-agent")}
-      />
+      <motion.div
+        initial={shouldReduceMotion ? false : { y: -28, opacity: 0 }}
+        animate={isBooting ? { y: -28, opacity: 0 } : { y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.1 }}
+      >
+        <MacMenuBar
+          statusBar={statusBar}
+          onRunAction={runStatusBarCommand}
+          onOpenAgent={() => openDesktopApp("ai-agent")}
+        />
+      </motion.div>
 
       <main className="relative h-screen w-full">
         <DesktopAiTeaser
-          isBooting={bootPhase === "booting"}
+          isBooting={isBooting}
           position={aiWidgetPosition}
           onOpenAgent={() => openDesktopApp("ai-agent")}
           onRunPrompt={openAgentPrompt}
           onDragStart={beginAiWidgetDrag}
         />
 
-        <DesktopIcons
-          apps={apps}
-          positions={desktopIconPositions}
-          selectedAppId={selectedDesktopAppId}
-          onSelectApp={selectDesktopApp}
-          onOpenApp={openDesktopApp}
-          onDragStart={beginDesktopIconDrag}
-        />
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
+          animate={isBooting ? { opacity: 0, scale: 0.96 } : { opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.2 }}
+        >
+          <DesktopIcons
+            apps={apps}
+            positions={desktopIconPositions}
+            selectedAppId={selectedDesktopAppId}
+            onSelectApp={selectDesktopApp}
+            onOpenApp={openDesktopApp}
+            onDragStart={beginDesktopIconDrag}
+          />
+        </motion.div>
 
         <div className="absolute inset-0 pointer-events-none">
           <AnimatePresence>
@@ -127,18 +142,30 @@ export function DesktopShell() {
         </div>
       </main>
 
-      <MacDock
-        dockApps={dockApps}
-        minimizedWindows={minimizedWindows}
-        apps={apps}
-        autohide={dockAutohide}
-        onActivateApp={openDesktopApp}
-        onOpenMenu={openDockMenu}
-        onRestoreWindow={restoreWindow}
-      />
+      <motion.div
+        initial={shouldReduceMotion ? false : { y: 80, opacity: 0 }}
+        animate={isBooting ? { y: 80, opacity: 0 } : { y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.15 }}
+      >
+        <MacDock
+          dockApps={dockApps}
+          minimizedWindows={minimizedWindows}
+          apps={apps}
+          autohide={dockAutohide}
+          onActivateApp={openDesktopApp}
+          onOpenMenu={openDockMenu}
+          onRestoreWindow={restoreWindow}
+        />
+      </motion.div>
 
       <AnimatePresence>
-        {bootPhase === "booting" ? <BootOverlay progress={bootProgress} /> : null}
+        {isBooting ? (
+          <BootOverlay
+            phase={bootPhase}
+            progress={bootProgress}
+            messages={bootMessages}
+          />
+        ) : null}
       </AnimatePresence>
     </div>
   );

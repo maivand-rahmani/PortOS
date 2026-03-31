@@ -86,6 +86,7 @@ export type UseDesktopShellResult = {
   processCount: number;
   bootPhase: OSBootPhase;
   bootProgress: number;
+  bootMessages: string[];
   desktopBounds: DesktopBounds | null;
   selectedDesktopAppId: string | null;
   desktopIconPositions: DesktopIconMap;

@@ -89,7 +89,13 @@ const DEFAULT_LAUNCH_BOUNDS: DesktopBounds = {
   insetLeft: 24,
 };
 
-export type OSBootPhase = "booting" | "ready";
+export type OSBootPhase =
+  | "off"
+  | "power-on"
+  | "logo"
+  | "init"
+  | "reveal"
+  | "ready";
 
 export type OSRuntimeSnapshot = {
   apps: AppConfig[];
@@ -100,6 +106,7 @@ export type OSRuntimeSnapshot = {
   wallpaperId: Wallpaper["id"];
   bootPhase: OSBootPhase;
   bootProgress: number;
+  bootMessages: string[];
 };
 
 export type OSStore = AppRegistryState &
@@ -108,10 +115,13 @@ export type OSStore = AppRegistryState &
   FileSystemManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
+    bootMessages: string[];
     wallpaperId: Wallpaper["id"];
     customWallpaperDataUrl: string | null;
     osSettings: OSSettings;
+    setBootPhase: (phase: OSBootPhase) => void;
     setBootProgress: (progress: number) => void;
+    addBootMessage: (message: string) => void;
     completeBoot: () => void;
     hydrateWallpaper: () => void;
     setWallpaper: (wallpaperId: Wallpaper["id"]) => void;
@@ -220,15 +230,24 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
-  bootPhase: "booting",
+  bootPhase: "off",
   bootProgress: 0,
+  bootMessages: [],
   wallpaperId: DEFAULT_WALLPAPER_ID,
   customWallpaperDataUrl: null,
   osSettings: DEFAULT_OS_SETTINGS,
+  setBootPhase: (phase) => {
+    set({ bootPhase: phase });
+  },
   setBootProgress: (progress) => {
     set({
       bootProgress: Math.max(0, Math.min(100, progress)),
     });
+  },
+  addBootMessage: (message) => {
+    set((state) => ({
+      bootMessages: [...state.bootMessages, message],
+    }));
   },
   completeBoot: () => {
     set({

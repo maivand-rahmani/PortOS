@@ -5,7 +5,23 @@ export const DESKTOP_INSETS = {
   left: 24,
 } as const;
 
-export const BOOT_SEQUENCE = [18, 39, 63, 82, 100] as const;
+export const BOOT_PHASE_DURATIONS = {
+  "power-on": 600,
+  logo: 1400,
+  init: 2500,
+  reveal: 1000,
+} as const;
+
+export const BOOT_PROGRESS_KEYFRAMES = [
+  { target: 25, duration: 400, message: "Initializing kernel..." },
+  { target: 45, duration: 800, message: "Loading app registry [14 modules]" },
+  { target: 70, duration: 600, message: "Mounting file system..." },
+  { target: 75, duration: 300, message: "Hydrating settings..." },
+  { target: 88, duration: 300, message: "Starting window manager..." },
+  { target: 100, duration: 400, message: "System ready" },
+] as const;
+
+export const BOOT_SESSION_KEY = "portos-booted" as const;
 
 export const DESKTOP_ICON_FRAME = {
   width: 88,
