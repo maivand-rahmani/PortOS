@@ -1,8 +1,10 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { useOSStore } from "@/processes";
+import { SpotlightOverlay } from "@/features/spotlight-search";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
 import { useDefaultShortcuts } from "../../model/use-default-shortcuts";
@@ -17,6 +19,12 @@ import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
+  const [isSpotlightOpen, setSpotlightOpen] = useState(false);
+
+  const toggleSpotlight = useCallback(() => {
+    setSpotlightOpen((prev) => !prev);
+  }, []);
+
   const {
     containerRef,
     apps,
@@ -53,12 +61,30 @@ export function DesktopShell() {
   } = useDesktopShell();
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
+  const registerShortcut = useOSStore((state) => state.registerShortcut);
+  const unregisterShortcut = useOSStore((state) => state.unregisterShortcut);
   const shouldReduceMotion = useReducedMotion();
   const isBooting = bootPhase !== "ready";
 
   // OS-level keyboard shortcut system
   useKeyboardShortcuts();
   useDefaultShortcuts();
+
+  // Register Cmd+K spotlight shortcut
+  useEffect(() => {
+    if (isBooting) return;
+
+    registerShortcut({
+      id: "os:spotlight",
+      label: "Spotlight Search",
+      key: "k",
+      modifiers: ["meta"],
+      scope: "global",
+      action: toggleSpotlight,
+    });
+
+    return () => unregisterShortcut("os:spotlight");
+  }, [isBooting, registerShortcut, unregisterShortcut, toggleSpotlight]);
 
   return (
     <div
@@ -178,6 +204,13 @@ export function DesktopShell() {
           />
         ) : null}
       </AnimatePresence>
+
+      <SpotlightOverlay
+        isOpen={isSpotlightOpen}
+        onClose={() => setSpotlightOpen(false)}
+        onOpenApp={openDesktopApp}
+        onFocusWindow={focusWindow}
+      />
     </div>
   );
 }
