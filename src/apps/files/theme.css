@@ -1,0 +1,16 @@
+.files-app {
+  --files-sidebar-width: 200px;
+  --files-preview-width: 260px;
+  --files-toolbar-height: 40px;
+  --files-statusbar-height: 28px;
+  --files-bg: #f8fafc;
+  --files-sidebar-bg: #f1f5f9;
+  --files-border: #e2e8f0;
+  --files-text: #0f172a;
+  --files-text-secondary: #64748b;
+  --files-accent: #2563eb;
+  --files-accent-light: #dbeafe;
+  --files-hover: #e2e8f0;
+  --files-selected: #2563eb;
+  --files-selected-text: #ffffff;
+}
