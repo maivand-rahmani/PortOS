@@ -79,6 +79,9 @@ export function useDesktopShell(): UseDesktopShellResult {
   const beginWindowDrag = useOSStore((state) => state.beginWindowDrag);
   const updateWindowDrag = useOSStore((state) => state.updateWindowDrag);
   const endWindowDrag = useOSStore((state) => state.endWindowDrag);
+  const snapWindowToZone = useOSStore((state) => state.snapWindowToZone);
+  const windowSnapZone = useOSStore((state) => state.windowSnapZone);
+  const dragState = useOSStore((state) => state.dragState);
   const beginWindowResize = useOSStore((state) => state.beginWindowResize);
   const updateWindowResize = useOSStore((state) => state.updateWindowResize);
   const endWindowResize = useOSStore((state) => state.endWindowResize);
@@ -362,7 +365,19 @@ export function useDesktopShell(): UseDesktopShellResult {
     };
 
     const handlePointerUp = () => {
-      endWindowDrag();
+      // Apply snap if a zone was active when drag ended
+      const currentState = useOSStore.getState();
+
+      if (currentState.dragState && currentState.windowSnapZone && desktopBounds) {
+        const snapWindowId = currentState.dragState.windowId;
+        const zone = currentState.windowSnapZone;
+
+        endWindowDrag();
+        snapWindowToZone(snapWindowId, zone, desktopBounds);
+      } else {
+        endWindowDrag();
+      }
+
       endWindowResize();
       setDesktopIconDragState(null);
       setDesktopWidgetDragState(null);
@@ -381,6 +396,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     desktopWidgetDragState,
     endWindowDrag,
     endWindowResize,
+    snapWindowToZone,
     updateWindowDrag,
     updateWindowResize,
   ]);
@@ -667,5 +683,6 @@ export function useDesktopShell(): UseDesktopShellResult {
     toggleWindowMaximize: toggleDesktopWindowMaximize,
     beginWindowDrag: beginDesktopWindowDrag,
     beginWindowResize: beginDesktopWindowResize,
+    windowSnapZone,
   };
 }

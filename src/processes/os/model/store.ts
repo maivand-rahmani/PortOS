@@ -87,6 +87,11 @@ import {
   type WindowResizeDirection,
   type WindowManagerState,
 } from "./window-manager";
+import {
+  detectSnapZone,
+  getSnapFrame,
+  type WindowSnapZone,
+} from "./window-manager/window-manager.snap";
 
 const DEFAULT_LAUNCH_BOUNDS: DesktopBounds = {
   width: 1440,
@@ -128,6 +133,7 @@ export type OSStore = AppRegistryState &
     wallpaperId: Wallpaper["id"];
     customWallpaperDataUrl: string | null;
     osSettings: OSSettings;
+    windowSnapZone: WindowSnapZone | null;
     setBootPhase: (phase: OSBootPhase) => void;
     setBootProgress: (progress: number) => void;
     addBootMessage: (message: string) => void;
@@ -148,6 +154,7 @@ export type OSStore = AppRegistryState &
     beginWindowDrag: (windowId: string, pointer: WindowPosition) => void;
     updateWindowDrag: (pointer: WindowPosition, bounds: DesktopBounds) => void;
     endWindowDrag: () => void;
+    snapWindowToZone: (windowId: string, zone: WindowSnapZone, bounds: DesktopBounds) => void;
     beginWindowResize: (
       windowId: string,
       direction: WindowResizeDirection,
@@ -250,6 +257,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   wallpaperId: DEFAULT_WALLPAPER_ID,
   customWallpaperDataUrl: null,
   osSettings: DEFAULT_OS_SETTINGS,
+  windowSnapZone: null,
   setBootPhase: (phase) => {
     set({ bootPhase: phase });
   },
@@ -556,14 +564,20 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       },
     );
 
+    // Detect snap zone while dragging
+    const snapZone = state.dragState ? detectSnapZone(pointer, bounds) : null;
+
     set({
       windows: nextWindowState.windows,
       dragState: nextWindowState.dragState,
       resizeState: nextWindowState.resizeState,
+      windowSnapZone: snapZone,
     });
   },
   endWindowDrag: () => {
     const state = get();
+    const { dragState, windowSnapZone } = state;
+
     const nextWindowState = endWindowDragModel({
       windows: state.windows,
       activeWindowId: state.activeWindowId,
@@ -575,6 +589,38 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({
       dragState: nextWindowState.dragState,
       resizeState: nextWindowState.resizeState,
+      windowSnapZone: null,
+    });
+
+    // Snap frame is applied by the desktop shell which has access to bounds.
+    // The shell reads windowSnapZone before this action clears it.
+    // See use-desktop-shell.ts handlePointerUp.
+    void dragState;
+    void windowSnapZone;
+  },
+  snapWindowToZone: (windowId, zone, bounds) => {
+    const state = get();
+    const targetWindow = state.windows.find((w) => w.id === windowId);
+
+    if (!targetWindow) return;
+
+    const frame = getSnapFrame(zone, bounds);
+
+    set({
+      windows: state.windows.map((w) =>
+        w.id === windowId
+          ? {
+              ...w,
+              position: frame.position,
+              size: frame.size,
+              isMaximized: zone === "top",
+              restoredFrame:
+                zone === "top" && !w.restoredFrame
+                  ? { position: w.position, size: w.size }
+                  : w.restoredFrame,
+            }
+          : w,
+      ),
     });
   },
   beginWindowResize: (windowId, direction, pointer) => {

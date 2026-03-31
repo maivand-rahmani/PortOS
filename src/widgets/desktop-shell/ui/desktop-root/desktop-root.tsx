@@ -13,6 +13,7 @@ import { DesktopWallpaper } from "../desktop-wallpaper";
 import { MacDock } from "../mac-dock";
 import { MacMenuBar } from "../mac-menu-bar";
 import { DockMenu } from "../dock-menu";
+import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
@@ -47,6 +48,8 @@ export function DesktopShell() {
     toggleWindowMaximize,
     beginWindowDrag,
     beginWindowResize,
+    windowSnapZone,
+    desktopBounds,
   } = useDesktopShell();
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
@@ -112,6 +115,8 @@ export function DesktopShell() {
         </motion.div>
 
         <div className="absolute inset-0 pointer-events-none">
+          <SnapGuideOverlay zone={windowSnapZone} bounds={desktopBounds} />
+
           <AnimatePresence>
             {visibleWindows.map(
               ({ window, app, AppComponent, isActive, isDragging, isResizing }) => (

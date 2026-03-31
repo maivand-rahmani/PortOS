@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 
 import type { AppConfig, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
-import type { OSBootPhase, WindowResizeDirection } from "@/processes";
+import type { OSBootPhase, WindowResizeDirection, WindowSnapZone } from "@/processes";
 
 import type { StatusBarModel } from "./status-bar";
 
@@ -117,4 +117,5 @@ export type UseDesktopShellResult = {
     direction: WindowResizeDirection,
     pointer: WindowPosition,
   ) => void;
+  windowSnapZone: WindowSnapZone | null;
 };

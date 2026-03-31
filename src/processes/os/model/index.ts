@@ -92,3 +92,8 @@ export type {
   WindowResizeDirection,
   WindowResizeState,
 } from "./window-manager";
+export {
+  detectSnapZone,
+  getSnapFrame,
+} from "./window-manager/window-manager.snap";
+export type { WindowSnapZone } from "./window-manager/window-manager.snap";
