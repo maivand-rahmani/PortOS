@@ -64,6 +64,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const activeWindowId = useOSStore((state) => state.activeWindowId);
   const currentWorkspaceId = useOSStore((state) => state.currentWorkspaceId);
   const workspaces = useOSStore((state) => state.workspaces);
+  const fileDragState = useOSStore((state) => state.fileDragState);
+  const fileDropTarget = useOSStore((state) => state.fileDropTarget);
   const sessionHydrated = useOSStore((state) => state.sessionHydrated);
   const dragWindowId = useOSStore((state) => state.dragState?.windowId ?? null);
   const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
@@ -80,6 +82,10 @@ export function useDesktopShell(): UseDesktopShellResult {
   const hydrateSession = useOSStore((state) => state.hydrateSession);
   const activateApp = useOSStore((state) => state.activateApp);
   const switchWorkspace = useOSStore((state) => state.switchWorkspace);
+  const beginFileDrag = useOSStore((state) => state.beginFileDrag);
+  const updateFileDrag = useOSStore((state) => state.updateFileDrag);
+  const setFileDropTarget = useOSStore((state) => state.setFileDropTarget);
+  const endFileDrag = useOSStore((state) => state.endFileDrag);
   const focusWindow = useOSStore((state) => state.focusWindow);
   const closeWindow = useOSStore((state) => state.closeWindow);
   const minimizeWindow = useOSStore((state) => state.minimizeWindow);
@@ -411,6 +417,7 @@ export function useDesktopShell(): UseDesktopShellResult {
         });
       }
 
+      updateFileDrag(nextPointer);
       updateWindowDrag(nextPointer, desktopBounds);
       updateWindowResize(nextPointer, desktopBounds);
     };
@@ -429,6 +436,7 @@ export function useDesktopShell(): UseDesktopShellResult {
         endWindowDrag();
       }
 
+      endFileDrag();
       endWindowResize();
       setDesktopIconDragState(null);
       setDesktopWidgetDragState(null);
@@ -445,12 +453,14 @@ export function useDesktopShell(): UseDesktopShellResult {
     desktopBounds,
     desktopIconDragState,
     desktopWidgetDragState,
-    endWindowDrag,
-    endWindowResize,
-    snapWindowToZone,
-    updateWindowDrag,
-    updateWindowResize,
-  ]);
+      endWindowDrag,
+      endFileDrag,
+      endWindowResize,
+      snapWindowToZone,
+      updateFileDrag,
+      updateWindowDrag,
+      updateWindowResize,
+    ]);
 
   const clearDesktopSelection = () => {
     setSelectedDesktopAppId(null);
@@ -717,6 +727,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     minimizedWindows,
     currentWorkspaceId,
     workspaces,
+    fileDragNodeId: fileDragState?.nodeId ?? null,
+    fileDropTarget,
     statusBar,
     visibleWindows,
     clearDesktopSelection,
@@ -730,6 +742,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     runDockMenuAction,
     runStatusBarCommand,
     switchWorkspace,
+    beginFileDrag,
+    setFileDropTarget,
     focusWindow,
     closeWindow,
     minimizeWindow,

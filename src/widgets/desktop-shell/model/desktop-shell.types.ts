@@ -4,6 +4,7 @@ import type { AppConfig, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 import type { WorkspaceDefinition, WorkspaceId } from "@/entities/workspace";
 import type {
+  FileDropTarget,
   OSBootPhase,
   WindowResizeDirection,
   WindowSnapZone,
@@ -102,6 +103,8 @@ export type UseDesktopShellResult = {
   minimizedWindows: WindowInstance[];
   currentWorkspaceId: WorkspaceId;
   workspaces: WorkspaceDefinition[];
+  fileDragNodeId: string | null;
+  fileDropTarget: FileDropTarget | null;
   statusBar: StatusBarModel;
   visibleWindows: WindowRenderItem[];
   clearDesktopSelection: () => void;
@@ -115,6 +118,8 @@ export type UseDesktopShellResult = {
   runDockMenuAction: (action: DockMenuAction) => void;
   runStatusBarCommand: (actionId: string) => void;
   switchWorkspace: (workspaceId: WorkspaceId) => void;
+  beginFileDrag: (nodeId: string, pointer: WindowPosition) => void;
+  setFileDropTarget: (target: FileDropTarget | null) => void;
   focusWindow: (windowId: string) => void;
   closeWindow: (windowId: string) => void;
   minimizeWindow: (windowId: string) => void;

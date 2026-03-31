@@ -20,6 +20,7 @@ type FilesListProps = {
   onSetRenameValue: (value: string) => void;
   onContextMenu: (x: number, y: number, nodeId: string | null) => void;
   onClearSelection: () => void;
+  onItemPointerDown: (nodeId: string, event: React.PointerEvent) => void;
 };
 
 export function FilesList({
@@ -35,6 +36,7 @@ export function FilesList({
   onSetRenameValue,
   onContextMenu,
   onClearSelection,
+  onItemPointerDown,
 }: FilesListProps) {
   const handleBgContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -86,6 +88,7 @@ export function FilesList({
           onCommitRename={onCommitRename}
           onCancelRename={onCancelRename}
           onContextMenu={onContextMenu}
+          onItemPointerDown={onItemPointerDown}
         />
       ))}
     </div>
@@ -103,6 +106,7 @@ function ListRow({
   onCommitRename,
   onCancelRename,
   onContextMenu,
+  onItemPointerDown,
 }: {
   node: FileSystemNode;
   isSelected: boolean;
@@ -114,6 +118,7 @@ function ListRow({
   onCommitRename: () => void;
   onCancelRename: () => void;
   onContextMenu: (x: number, y: number, nodeId: string | null) => void;
+  onItemPointerDown: (nodeId: string, event: React.PointerEvent) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -169,6 +174,7 @@ function ListRow({
     <div
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onPointerDown={(event) => onItemPointerDown(node.id, event)}
       onContextMenu={handleContextMenu}
       className={cn(
         "grid cursor-pointer grid-cols-[1fr_100px_140px] items-center gap-2 border-b border-[var(--files-border)]/50 px-3 py-1.5 transition-colors",

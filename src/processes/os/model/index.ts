@@ -68,6 +68,13 @@ export {
   clearSearchModel,
 } from "./file-system";
 export {
+  beginFileDragModel,
+  endFileDragModel,
+  fileDragManagerInitialState,
+  setFileDropTargetModel,
+  updateFileDragModel,
+} from "./file-drag-manager";
+export {
   restoreSessionModel,
   sanitizePersistedWindow,
   serializeSessionModel,
@@ -103,6 +110,7 @@ export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { FileSystemManagerState } from "./file-system";
+export type { FileDragManagerState, FileDropTarget } from "./file-drag-manager";
 export type { SessionManagerState, PersistedSessionState } from "./session-manager";
 export type {
   WorkspaceDefinition,

@@ -18,7 +18,7 @@ import "../../theme.css";
 
 export function FilesApp({ windowId }: AppComponentProps) {
   const reduceMotion = useReducedMotion();
-  const files = useFilesApp();
+  const files = useFilesApp(windowId);
 
   if (!files.fsHydrated) {
     return (
@@ -106,6 +106,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
                   onSetRenameValue={files.setRenameValue}
                   onContextMenu={files.openContextMenu}
                   onClearSelection={files.clearSelection}
+                  onItemPointerDown={files.handleItemPointerDown}
                 />
               ) : (
                 <FilesList
@@ -121,6 +122,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
                   onSetRenameValue={files.setRenameValue}
                   onContextMenu={files.openContextMenu}
                   onClearSelection={files.clearSelection}
+                  onItemPointerDown={files.handleItemPointerDown}
                 />
               )}
             </div>

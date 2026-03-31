@@ -10,6 +10,7 @@ Runtime state models and contracts for the OS core.
 - `session-manager/`: persisted window session serialization and restore helpers.
 - `workspace-manager/`: virtual desktop state and workspace switching helpers.
 - `notification-manager/`: typed notification state helpers for toast delivery, read state, and notification history.
+- `file-drag-manager/`: shell-level file drag state and supported drop target helpers for cross-app file drops.
 - `runtime-selectors.ts`: derived runtime lookup helpers for active app, window, and process state.
 - `store.ts`: Zustand runtime store that composes the managers into one OS state.
 - `index.ts`: barrel exports for the runtime model layer.

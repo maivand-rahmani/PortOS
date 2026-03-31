@@ -20,6 +20,7 @@ type FilesGridProps = {
   onSetRenameValue: (value: string) => void;
   onContextMenu: (x: number, y: number, nodeId: string | null) => void;
   onClearSelection: () => void;
+  onItemPointerDown: (nodeId: string, event: React.PointerEvent) => void;
 };
 
 export function FilesGrid({
@@ -35,6 +36,7 @@ export function FilesGrid({
   onSetRenameValue,
   onContextMenu,
   onClearSelection,
+  onItemPointerDown,
 }: FilesGridProps) {
   const handleBgContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -79,6 +81,7 @@ export function FilesGrid({
             onCommitRename={onCommitRename}
             onCancelRename={onCancelRename}
             onContextMenu={onContextMenu}
+            onItemPointerDown={onItemPointerDown}
           />
         ))}
       </div>
@@ -97,6 +100,7 @@ function GridItem({
   onCommitRename,
   onCancelRename,
   onContextMenu,
+  onItemPointerDown,
 }: {
   node: FileSystemNode;
   isSelected: boolean;
@@ -108,6 +112,7 @@ function GridItem({
   onCommitRename: () => void;
   onCancelRename: () => void;
   onContextMenu: (x: number, y: number, nodeId: string | null) => void;
+  onItemPointerDown: (nodeId: string, event: React.PointerEvent) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -160,6 +165,7 @@ function GridItem({
     <div
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onPointerDown={(event) => onItemPointerDown(node.id, event)}
       onContextMenu={handleContextMenu}
       className={cn(
         "flex cursor-pointer flex-col items-center gap-1 rounded-lg p-2 transition-colors",

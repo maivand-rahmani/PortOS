@@ -36,6 +36,15 @@ import {
   type AppRegistryState,
 } from "./app-registry";
 import {
+  beginFileDragModel,
+  endFileDragModel,
+  fileDragManagerInitialState,
+  setFileDropTargetModel,
+  updateFileDragModel,
+  type FileDragManagerState,
+  type FileDropTarget,
+} from "./file-drag-manager";
+import {
   createFileSystemManagerModel,
   hydrateFileSystemModel,
   createFileModel,
@@ -152,6 +161,7 @@ export type OSStore = AppRegistryState &
   ProcessManagerState &
   WindowManagerState &
   FileSystemManagerState &
+  FileDragManagerState &
   SessionManagerState &
   WorkspaceManagerState &
   NotificationManagerState &
@@ -223,6 +233,10 @@ export type OSStore = AppRegistryState &
     fsPaste: (targetParentId: string) => Promise<void>;
     fsClearClipboard: () => void;
     fsSetActiveFile: (nodeId: string | null) => void;
+    beginFileDrag: (nodeId: string, pointer: WindowPosition) => void;
+    updateFileDrag: (pointer: WindowPosition) => void;
+    setFileDropTarget: (target: FileDropTarget | null) => void;
+    endFileDrag: () => void;
     // Notifications
     pushNotification: (input: {
       title: string;
@@ -294,6 +308,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
+  ...fileDragManagerInitialState,
   ...sessionManagerInitialState,
   ...workspaceManagerInitialState,
   ...notificationManagerInitialState,
@@ -1155,6 +1170,36 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
   fsSetActiveFile: (nodeId) => {
     set({ fsActiveFileId: nodeId });
+  },
+
+  beginFileDrag: (nodeId, pointer) => {
+    const next = beginFileDragModel(get(), { nodeId, pointer });
+
+    set({
+      fileDragState: next.fileDragState,
+      fileDropTarget: next.fileDropTarget,
+    });
+  },
+
+  updateFileDrag: (pointer) => {
+    const next = updateFileDragModel(get(), pointer);
+
+    set({ fileDragState: next.fileDragState });
+  },
+
+  setFileDropTarget: (target) => {
+    const next = setFileDropTargetModel(get(), target);
+
+    set({ fileDropTarget: next.fileDropTarget });
+  },
+
+  endFileDrag: () => {
+    const next = endFileDragModel();
+
+    set({
+      fileDragState: next.fileDragState,
+      fileDropTarget: next.fileDropTarget,
+    });
   },
 
   // ── Notification Actions ───────────────────────────

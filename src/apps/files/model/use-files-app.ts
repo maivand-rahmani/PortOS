@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useOSStore } from "@/processes";
 import type {
@@ -14,6 +14,10 @@ import {
   getChildrenModel,
   getRootNodesModel,
 } from "@/processes/os/model/file-system";
+import {
+  consumeFilesFocusNodeRequest,
+  FILES_EVENTS,
+} from "@/shared/lib/files-os-events";
 import { openEditorWithFile } from "@/shared/lib/os-actions";
 
 // ── Types ───────────────────────────────────────────────
@@ -94,7 +98,7 @@ const ROOT_DIR_IDS = [
   "dir-templates",
 ];
 
-export function useFilesApp() {
+export function useFilesApp(windowId: string) {
   const fsNodes = useOSStore((s) => s.fsNodes);
   const fsNodeMap = useOSStore((s) => s.fsNodeMap);
   const fsChildMap = useOSStore((s) => s.fsChildMap);
@@ -113,6 +117,7 @@ export function useFilesApp() {
   const fsCut = useOSStore((s) => s.fsCut);
   const fsCopy = useOSStore((s) => s.fsCopy);
   const fsPaste = useOSStore((s) => s.fsPaste);
+  const beginFileDrag = useOSStore((s) => s.beginFileDrag);
 
   const [state, setState] = useState<FilesAppState>({
     currentDirId: null,
@@ -128,6 +133,7 @@ export function useFilesApp() {
     showHidden: false,
     contextMenu: null,
   });
+  const hasMountedRef = useRef(false);
 
   // Navigate to root on hydrate
   useEffect(() => {
@@ -274,6 +280,37 @@ export function useFilesApp() {
     [fsNodeMap, navigateTo],
   );
 
+  const focusNode = useCallback(
+    (nodeId: string) => {
+      const node = fsNodeMap[nodeId];
+
+      if (!node) {
+        return;
+      }
+
+      if (node.type === "directory") {
+        navigateTo(node.id);
+
+        return;
+      }
+
+      const parentId = node.parentId;
+      const currentPath = parentId ? getNodePath(parentId, fsNodeMap) : "/";
+
+      setState((prev) => ({
+        ...prev,
+        currentDirId: parentId,
+        currentPath,
+        selectedNodeIds: new Set([node.id]),
+        renamingNodeId: null,
+        renameValue: "",
+        previewNodeId: null,
+        contextMenu: null,
+      }));
+    },
+    [fsNodeMap, navigateTo],
+  );
+
   // ── Selection ───────────────────────────────────────
 
   const selectNode = useCallback(
@@ -307,6 +344,60 @@ export function useFilesApp() {
       contextMenu: null,
     }));
   }, []);
+
+  const handleItemPointerDown = useCallback(
+    (nodeId: string, event: React.PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      const node = fsNodeMap[nodeId];
+
+      if (!node || node.type !== "file") {
+        return;
+      }
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const dragThreshold = 6;
+      let dragStarted = false;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        if (dragStarted) {
+          return;
+        }
+
+        const distance = Math.hypot(
+          moveEvent.clientX - startX,
+          moveEvent.clientY - startY,
+        );
+
+        if (distance < dragThreshold) {
+          return;
+        }
+
+        dragStarted = true;
+        beginFileDrag(nodeId, {
+          x: moveEvent.clientX,
+          y: moveEvent.clientY,
+        });
+        cleanup();
+      };
+
+      const handlePointerUp = () => {
+        cleanup();
+      };
+
+      const cleanup = () => {
+        window.removeEventListener("pointermove", handlePointerMove, true);
+        window.removeEventListener("pointerup", handlePointerUp, true);
+      };
+
+      window.addEventListener("pointermove", handlePointerMove, true);
+      window.addEventListener("pointerup", handlePointerUp, true);
+    },
+    [beginFileDrag, fsNodeMap],
+  );
 
   // ── CRUD Operations ─────────────────────────────────
 
@@ -512,6 +603,36 @@ export function useFilesApp() {
     setState((prev) => ({ ...prev, contextMenu: null }));
   }, []);
 
+  useEffect(() => {
+    if (!fsHydrated || hasMountedRef.current) {
+      return;
+    }
+
+    hasMountedRef.current = true;
+
+    const request = consumeFilesFocusNodeRequest(windowId);
+
+    if (request) {
+      focusNode(request.nodeId);
+    }
+  }, [focusNode, fsHydrated, windowId]);
+
+  useEffect(() => {
+    function handleFocusRequest() {
+      const request = consumeFilesFocusNodeRequest(windowId);
+
+      if (request) {
+        focusNode(request.nodeId);
+      }
+    }
+
+    window.addEventListener(FILES_EVENTS.FOCUS_NODE, handleFocusRequest);
+
+    return () => {
+      window.removeEventListener(FILES_EVENTS.FOCUS_NODE, handleFocusRequest);
+    };
+  }, [focusNode, windowId]);
+
   // ── Keyboard shortcuts ──────────────────────────────
 
   const handleKeyDown = useCallback(
@@ -615,6 +736,7 @@ export function useFilesApp() {
     selectNode,
     selectAll,
     clearSelection,
+    handleItemPointerDown,
 
     // CRUD
     createNewFile,

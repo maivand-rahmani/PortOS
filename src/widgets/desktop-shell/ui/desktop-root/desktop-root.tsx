@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import { useOSStore, type Shortcut } from "@/processes";
+import { useOSStore, type FileDropTarget, type Shortcut } from "@/processes";
 import { SpotlightOverlay } from "@/features/spotlight-search";
+import { getNodePath } from "@/processes/os/model/file-system";
+import { dispatchOpenFileRequest } from "@/shared/lib/fs-os-events";
+import { dispatchFilesFocusNodeRequest } from "@/shared/lib/files-os-events";
 import { useAppSwitcher } from "../../model/use-app-switcher";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
@@ -14,6 +17,7 @@ import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
 import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
 import { DesktopWallpaper } from "../desktop-wallpaper";
+import { FileDropOverlay } from "../file-drop-overlay/file-drop-overlay";
 import { MacDock } from "../mac-dock";
 import { MacMenuBar } from "../mac-menu-bar";
 import { NotificationCenterPanel } from "../notification-center-panel/notification-center-panel";
@@ -49,6 +53,8 @@ export function DesktopShell() {
     minimizedWindows,
     currentWorkspaceId,
     workspaces,
+    fileDragNodeId,
+    fileDropTarget,
     statusBar,
     visibleWindows,
     clearDesktopSelection,
@@ -62,6 +68,7 @@ export function DesktopShell() {
     runDockMenuAction,
     runStatusBarCommand,
     switchWorkspace,
+    setFileDropTarget,
     focusWindow,
     closeWindow,
     minimizeWindow,
@@ -75,6 +82,7 @@ export function DesktopShell() {
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
   const appMap = useOSStore((state) => state.appMap);
+  const fsNodeMap = useOSStore((state) => state.fsNodeMap);
   const notifications = useOSStore((state) => state.notifications);
   const activeToastIds = useOSStore((state) => state.activeToastIds);
   const pushNotification = useOSStore((state) => state.pushNotification);
@@ -120,6 +128,105 @@ export function DesktopShell() {
 
     showAppSwitcher();
   }, [pushNotification, showAppSwitcher, switcherApps.length]);
+
+  const resolveDropTarget = useCallback(
+    (targetAppId: string, windowId: string): FileDropTarget | null => {
+      if (targetAppId === "editor" || targetAppId === "files") {
+        return {
+          appId: targetAppId,
+          windowId,
+        };
+      }
+
+      return null;
+    },
+    [],
+  );
+
+  const handleFileDrop = useCallback(
+    async (dropTarget: FileDropTarget) => {
+      if (!fileDragNodeId) {
+        return;
+      }
+
+      const node = fsNodeMap[fileDragNodeId];
+
+      if (!node || node.type !== "file") {
+        return;
+      }
+
+      if (dropTarget.appId === "editor") {
+        focusWindow(dropTarget.windowId);
+        dispatchOpenFileRequest({
+          nodeId: node.id,
+          path: getNodePath(node.id, fsNodeMap),
+          mode: "edit",
+          source: "file-drag",
+          targetWindowId: dropTarget.windowId,
+        });
+        pushNotification({
+          title: `Opened ${node.name}`,
+          body: "File dropped into Editor.",
+          level: "success",
+          appId: "editor",
+        });
+        return;
+      }
+
+      if (dropTarget.appId === "files") {
+        focusWindow(dropTarget.windowId);
+        dispatchFilesFocusNodeRequest({
+          nodeId: node.id,
+          source: "file-drag",
+          targetWindowId: dropTarget.windowId,
+        });
+        pushNotification({
+          title: `Focused ${node.name}`,
+          body: "File revealed in Files.",
+          level: "success",
+          appId: "files",
+        });
+      }
+    },
+    [fileDragNodeId, focusWindow, fsNodeMap, pushNotification],
+  );
+
+  useEffect(() => {
+    if (!fileDragNodeId) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const hoveredWindow = [...visibleWindows]
+        .reverse()
+        .find(({ window }) => {
+          return (
+            event.clientX >= window.position.x &&
+            event.clientX <= window.position.x + window.size.width &&
+            event.clientY >= window.position.y &&
+            event.clientY <= window.position.y + window.size.height
+          );
+        });
+
+      setFileDropTarget(
+        hoveredWindow ? resolveDropTarget(hoveredWindow.window.appId, hoveredWindow.window.id) : null,
+      );
+    };
+
+    const handlePointerUp = () => {
+      if (fileDropTarget) {
+        void handleFileDrop(fileDropTarget);
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { capture: true });
+    window.addEventListener("pointerup", handlePointerUp, { capture: true });
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove, { capture: true });
+      window.removeEventListener("pointerup", handlePointerUp, { capture: true });
+    };
+  }, [fileDragNodeId, fileDropTarget, handleFileDrop, resolveDropTarget, setFileDropTarget, visibleWindows]);
 
   // OS-level keyboard shortcut system
   useKeyboardShortcuts();
@@ -281,6 +388,11 @@ export function DesktopShell() {
 
         <div className="absolute inset-0 pointer-events-none">
           <SnapGuideOverlay zone={windowSnapZone} bounds={desktopBounds} />
+          <FileDropOverlay
+            fileDragNodeId={fileDragNodeId}
+            fileDropTarget={fileDropTarget}
+            windows={visibleWindows}
+          />
 
           <AnimatePresence>
             {visibleWindows.map(
