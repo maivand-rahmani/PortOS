@@ -67,10 +67,23 @@ export {
   setSearchResultsModel,
   clearSearchModel,
 } from "./file-system";
+export {
+  shortcutManagerInitialState,
+  registerShortcutModel,
+  registerShortcutsModel,
+  unregisterShortcutModel,
+  matchShortcut,
+  formatShortcut,
+} from "./shortcut-manager";
 export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
 export type { FileSystemManagerState } from "./file-system";
+export type { ShortcutManagerState } from "./shortcut-manager";
+export type {
+  Shortcut,
+  ShortcutModifier,
+} from "./shortcut-manager/shortcut-manager.types";
 export type { OSBootPhase, OSStore, OSRuntimeSnapshot } from "./store";
 export type { ActiveRuntimeTarget } from "./runtime-selectors";
 export type {

@@ -4,6 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { useOSStore } from "@/processes";
 import { useDesktopShell } from "../../model/use-desktop-shell";
+import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
+import { useDefaultShortcuts } from "../../model/use-default-shortcuts";
 import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
 import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
@@ -50,6 +52,10 @@ export function DesktopShell() {
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
   const shouldReduceMotion = useReducedMotion();
   const isBooting = bootPhase !== "ready";
+
+  // OS-level keyboard shortcut system
+  useKeyboardShortcuts();
+  useDefaultShortcuts();
 
   return (
     <div

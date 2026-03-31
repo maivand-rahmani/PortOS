@@ -62,6 +62,14 @@ import {
   type ProcessManagerState,
 } from "./process-manager";
 import {
+  shortcutManagerInitialState,
+  registerShortcutModel,
+  registerShortcutsModel,
+  unregisterShortcutModel,
+  type ShortcutManagerState,
+} from "./shortcut-manager";
+import type { Shortcut } from "./shortcut-manager/shortcut-manager.types";
+import {
   beginWindowDragModel,
   beginWindowResizeModel,
   closeWindowModel,
@@ -112,7 +120,8 @@ export type OSRuntimeSnapshot = {
 export type OSStore = AppRegistryState &
   ProcessManagerState &
   WindowManagerState &
-  FileSystemManagerState & {
+  FileSystemManagerState &
+  ShortcutManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
     bootMessages: string[];
@@ -175,6 +184,10 @@ export type OSStore = AppRegistryState &
     fsPaste: (targetParentId: string) => Promise<void>;
     fsClearClipboard: () => void;
     fsSetActiveFile: (nodeId: string | null) => void;
+    // Shortcuts
+    registerShortcut: (shortcut: Shortcut) => void;
+    registerShortcuts: (shortcuts: Shortcut[]) => void;
+    unregisterShortcut: (shortcutId: string) => void;
   };
 
 const defaultAppMap = indexAppConfigs(installedApps);
@@ -230,6 +243,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   ...createProcessManagerModel(),
   ...createWindowManagerModel(),
   ...createFileSystemManagerModel(),
+  ...shortcutManagerInitialState,
   bootPhase: "off",
   bootProgress: 0,
   bootMessages: [],
@@ -946,5 +960,25 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
   fsSetActiveFile: (nodeId) => {
     set({ fsActiveFileId: nodeId });
+  },
+
+  // ── Shortcut Actions ───────────────────────────────
+
+  registerShortcut: (shortcut) => {
+    const next = registerShortcutModel(get(), shortcut);
+
+    set({ shortcuts: next.shortcuts });
+  },
+
+  registerShortcuts: (shortcuts) => {
+    const next = registerShortcutsModel(get(), shortcuts);
+
+    set({ shortcuts: next.shortcuts });
+  },
+
+  unregisterShortcut: (shortcutId) => {
+    const next = unregisterShortcutModel(get(), shortcutId);
+
+    set({ shortcuts: next.shortcuts });
   },
 }));
