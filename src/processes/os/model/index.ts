@@ -33,9 +33,44 @@ export {
   getProcessById,
   getWindowById,
 } from "./runtime-selectors";
+export {
+  createFileSystemManagerModel,
+  fileSystemManagerInitialState,
+  hydrateFileSystemModel,
+  createFileModel,
+  createDirectoryModel,
+  deleteNodeModel,
+  renameNodeModel,
+  moveNodeModel,
+  copyNodeModel,
+  updateFileMetadataModel,
+  setCutModel,
+  setCopyModel,
+  clearClipboardModel,
+  getChildrenModel,
+  getRootNodesModel,
+  buildNodeMap,
+  buildChildMap,
+  parsePath,
+  normalizePath,
+  joinPath,
+  getNodePath,
+  resolveNodeByPath,
+  getAncestors,
+  getDescendantIds,
+  validateNodeName,
+  isNameTakenInParent,
+  resolveUniqueName,
+  searchNodesModel,
+  searchContentModel,
+  setSearchQueryModel,
+  setSearchResultsModel,
+  clearSearchModel,
+} from "./file-system";
 export { useOSStore } from "./store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
+export type { FileSystemManagerState } from "./file-system";
 export type { OSBootPhase, OSStore, OSRuntimeSnapshot } from "./store";
 export type { ActiveRuntimeTarget } from "./runtime-selectors";
 export type {

@@ -83,3 +83,4 @@ export {
   terminateProcessById,
 } from "./os-actions";
 export { getProfileBasics } from "./project-data";
+export { runDataMigration, type MigrationResult } from "./fs-migration";
