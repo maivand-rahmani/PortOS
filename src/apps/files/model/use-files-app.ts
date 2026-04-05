@@ -135,13 +135,6 @@ export function useFilesApp(windowId: string) {
   });
   const hasMountedRef = useRef(false);
 
-  // Navigate to root on hydrate
-  useEffect(() => {
-    if (fsHydrated && state.currentDirId === null) {
-      setState((prev) => ({ ...prev, currentDirId: null, currentPath: "/" }));
-    }
-  }, [fsHydrated, state.currentDirId]);
-
   // ── Computed values ─────────────────────────────────
 
   const currentChildren = useMemo(() => {
@@ -162,13 +155,16 @@ export function useFilesApp(windowId: string) {
 
   const visibleChildren = useMemo(() => {
     let filtered = currentChildren;
+    const isSystemPath =
+      state.currentPath === "/System" || state.currentPath.startsWith("/System/");
+    const shouldShowHidden = state.showHidden || isSystemPath;
 
-    if (!state.showHidden) {
+    if (!shouldShowHidden) {
       filtered = filtered.filter((n) => !n.isHidden);
     }
 
     return sortNodes(filtered, state.sortConfig);
-  }, [currentChildren, state.showHidden, state.sortConfig]);
+  }, [currentChildren, state.currentPath, state.showHidden, state.sortConfig]);
 
   const breadcrumbTrail = useMemo(() => {
     if (!state.currentDirId || !fsNodeMap[state.currentDirId]) {
@@ -613,7 +609,9 @@ export function useFilesApp(windowId: string) {
     const request = consumeFilesFocusNodeRequest(windowId);
 
     if (request) {
-      focusNode(request.nodeId);
+      window.setTimeout(() => {
+        focusNode(request.nodeId);
+      }, 0);
     }
   }, [focusNode, fsHydrated, windowId]);
 

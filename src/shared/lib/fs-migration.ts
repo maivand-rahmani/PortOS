@@ -1,9 +1,25 @@
-import { useOSStore } from "@/processes/os/model/store";
-import { DEFAULT_DIR_IDS, getMeta, setMeta } from "./idb-storage";
+import type { AbsolutePath } from "@/entities/file-system";
+
+import { getMeta, setMeta } from "./idb-storage";
+import {
+  ensureDirectoryAtPath,
+  existsAtPath,
+  listPath,
+  readFileAtPath,
+  readJsonAtPath,
+  writeFileAtPathOrCreate,
+  writeJsonAtPath,
+} from "./fs-actions";
+import {
+  LEGACY_FILE_PATHS,
+  NOTES_FILE_EXTENSION,
+  PERSISTED_FILE_PATHS,
+  SYSTEM_USER_DIRECTORIES,
+} from "./fs-paths";
 
 // ── Migration Metadata ──────────────────────────────────
 
-const MIGRATION_META_KEY = "fs-migration-v1";
+const MIGRATION_META_KEY = "fs-migration-v2";
 
 // ── localStorage Keys ───────────────────────────────────
 
@@ -43,19 +59,42 @@ function safeReadString(key: string): string | null {
   return window.localStorage.getItem(key);
 }
 
-async function createMigratedFile(
-  parentDirId: string,
-  name: string,
-  content: string,
-): Promise<void> {
-  const store = useOSStore.getState();
-  const file = await store.fsCreateFile(parentDirId, name, content);
-
-  if (!file) {
-    return;
+async function copyFileIfMissing(
+  sourcePath: AbsolutePath,
+  targetPath: AbsolutePath,
+): Promise<boolean> {
+  if (existsAtPath(targetPath)) {
+    return false;
   }
 
-  // Content is already written by fsCreateFile, nothing extra needed
+  const content = await readFileAtPath(sourcePath);
+
+  if (content === null) {
+    return false;
+  }
+
+  await writeFileAtPathOrCreate(targetPath, content);
+
+  return true;
+}
+
+async function copyJsonFileIfMissing<T>(
+  sourcePath: AbsolutePath,
+  targetPath: AbsolutePath,
+): Promise<boolean> {
+  if (existsAtPath(targetPath)) {
+    return false;
+  }
+
+  const value = await readJsonAtPath<T>(sourcePath);
+
+  if (value === null) {
+    return false;
+  }
+
+  await writeJsonAtPath(targetPath, value);
+
+  return true;
 }
 
 // ── Note Migration ──────────────────────────────────────
@@ -105,6 +144,35 @@ function sanitizeFileName(name: string): string {
 }
 
 async function migrateNotes(): Promise<number> {
+  await ensureDirectoryAtPath(SYSTEM_USER_DIRECTORIES.notes);
+
+  const canonicalNotes = listPath(SYSTEM_USER_DIRECTORIES.notes).filter(
+    (node) => node.type === "file" && node.name.endsWith(NOTES_FILE_EXTENSION),
+  );
+
+  if (canonicalNotes.length > 0) {
+    return 0;
+  }
+
+  const legacyNotes = listPath(LEGACY_FILE_PATHS.notesDirectory).filter(
+    (node) => node.type === "file" && node.name.endsWith(NOTES_FILE_EXTENSION),
+  );
+
+  if (legacyNotes.length > 0) {
+    let migrated = 0;
+
+    for (const note of legacyNotes) {
+      const sourcePath = `${LEGACY_FILE_PATHS.notesDirectory}/${note.name}` as AbsolutePath;
+      const targetPath = `${SYSTEM_USER_DIRECTORIES.notes}/${note.name}` as AbsolutePath;
+
+      if (await copyFileIfMissing(sourcePath, targetPath)) {
+        migrated += 1;
+      }
+    }
+
+    return migrated;
+  }
+
   const notes = safeReadJSON<StoredNote[]>(LS_NOTES);
 
   if (!notes || notes.length === 0) {
@@ -120,8 +188,9 @@ async function migrateNotes(): Promise<number> {
 
     const fileName = `${sanitizeFileName(note.title)}.md`;
     const content = buildNoteMarkdown(note);
+    const targetPath = `${SYSTEM_USER_DIRECTORIES.notes}/${fileName}` as AbsolutePath;
 
-    await createMigratedFile(DEFAULT_DIR_IDS.documentsNotes, fileName, content);
+    await writeFileAtPathOrCreate(targetPath, content);
     migrated++;
   }
 
@@ -131,6 +200,16 @@ async function migrateNotes(): Promise<number> {
 // ── Blog Migration ──────────────────────────────────────
 
 async function migrateBlog(): Promise<boolean> {
+  if (
+    await copyJsonFileIfMissing<{
+      queuedPostIds: string[];
+      completedPostIds: string[];
+      highlights: unknown[];
+    }>(LEGACY_FILE_PATHS.blogReaderState, PERSISTED_FILE_PATHS.blogReaderState)
+  ) {
+    return true;
+  }
+
   const state = safeReadJSON<{
     queuedPostIds: string[];
     completedPostIds: string[];
@@ -141,13 +220,7 @@ async function migrateBlog(): Promise<boolean> {
     return false;
   }
 
-  const content = JSON.stringify(state, null, 2);
-
-  await createMigratedFile(
-    DEFAULT_DIR_IDS.documentsBlog,
-    "reader-state.json",
-    content,
-  );
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.blogReaderState, state);
 
   return true;
 }
@@ -155,19 +228,21 @@ async function migrateBlog(): Promise<boolean> {
 // ── Calculator Migration ────────────────────────────────
 
 async function migrateCalculator(): Promise<boolean> {
+  if (
+    await copyJsonFileIfMissing<unknown[]>(
+      LEGACY_FILE_PATHS.calculatorTape,
+      PERSISTED_FILE_PATHS.calculatorTape,
+    )
+  ) {
+    return true;
+  }
+
   const tape = safeReadJSON<unknown[]>(LS_CALCULATOR);
 
   if (!tape || tape.length === 0) {
     return false;
   }
-
-  const content = JSON.stringify(tape, null, 2);
-
-  await createMigratedFile(
-    DEFAULT_DIR_IDS.documentsCalculator,
-    "tape.json",
-    content,
-  );
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.calculatorTape, tape);
 
   return true;
 }
@@ -175,19 +250,21 @@ async function migrateCalculator(): Promise<boolean> {
 // ── AI Agent Migration ──────────────────────────────────
 
 async function migrateAiAgent(): Promise<boolean> {
+  if (
+    await copyJsonFileIfMissing<unknown[]>(
+      LEGACY_FILE_PATHS.aiAgentHistory,
+      PERSISTED_FILE_PATHS.aiAgentHistory,
+    )
+  ) {
+    return true;
+  }
+
   const history = safeReadJSON<unknown[]>(LS_AI_AGENT);
 
   if (!history || history.length === 0) {
     return false;
   }
-
-  const content = JSON.stringify(history, null, 2);
-
-  await createMigratedFile(
-    DEFAULT_DIR_IDS.systemAgent,
-    "history.json",
-    content,
-  );
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.aiAgentHistory, history);
 
   return true;
 }
@@ -195,19 +272,21 @@ async function migrateAiAgent(): Promise<boolean> {
 // ── Wallpaper Migration ─────────────────────────────────
 
 async function migrateWallpaper(): Promise<boolean> {
+  if (
+    await copyJsonFileIfMissing<{ wallpaperId: string }>(
+      LEGACY_FILE_PATHS.wallpaperPreferences,
+      PERSISTED_FILE_PATHS.settingsWallpaper,
+    )
+  ) {
+    return true;
+  }
+
   const wallpaperId = safeReadString(LS_WALLPAPER);
 
   if (!wallpaperId) {
     return false;
   }
-
-  const content = JSON.stringify({ wallpaperId }, null, 2);
-
-  await createMigratedFile(
-    DEFAULT_DIR_IDS.systemPreferences,
-    "wallpaper.json",
-    content,
-  );
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.settingsWallpaper, { wallpaperId });
 
   return true;
 }
@@ -215,27 +294,25 @@ async function migrateWallpaper(): Promise<boolean> {
 // ── Clock Migration ─────────────────────────────────────
 
 async function migrateClock(): Promise<boolean> {
+  if (
+    await copyJsonFileIfMissing<{
+      favorites: string[];
+      favoriteOrder: string[];
+    }>(LEGACY_FILE_PATHS.clockPreferences, PERSISTED_FILE_PATHS.clockPreferences)
+  ) {
+    return true;
+  }
+
   const favorites = safeReadJSON<string[]>(LS_CLOCK_FAVORITES);
   const order = safeReadJSON<string[]>(LS_CLOCK_FAVORITE_ORDER);
 
   if ((!favorites || favorites.length === 0) && (!order || order.length === 0)) {
     return false;
   }
-
-  const content = JSON.stringify(
-    {
-      favorites: favorites ?? [],
-      favoriteOrder: order ?? [],
-    },
-    null,
-    2,
-  );
-
-  await createMigratedFile(
-    DEFAULT_DIR_IDS.systemPreferences,
-    "clock.json",
-    content,
-  );
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.clockPreferences, {
+    favorites: favorites ?? [],
+    favoriteOrder: order ?? [],
+  });
 
   return true;
 }
