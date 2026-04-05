@@ -15,6 +15,7 @@ import type { StatusBarModel } from "../../model/status-bar";
 
 type MacMenuBarProps = {
   statusBar: StatusBarModel;
+  isFullscreen?: boolean;
   onRunAction?: (actionId: string) => void;
   onOpenAgent?: () => void;
   notificationCount?: number;
@@ -57,6 +58,7 @@ const BASE_INDICATORS = [
 
 export function MacMenuBar({
   statusBar,
+  isFullscreen = false,
   onRunAction,
   onOpenAgent,
   notificationCount = 0,
@@ -83,7 +85,14 @@ export function MacMenuBar({
   const contextInfo = statusBar.info ?? DESKTOP_FALLBACK;
 
   return (
-    <header className="absolute inset-x-0 top-0 z-[600] flex h-7 items-center justify-between gap-3 border-b border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.14))] px-2.5 text-[12px] text-black/85 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2),0_1px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,18,20,0.4),rgba(18,18,20,0.22))] dark:text-white/92 sm:px-3.5">
+    <header
+      className={cn(
+        "absolute inset-x-0 top-0 z-[600] flex h-7 items-center justify-between gap-3 border-b border-black/10 px-2.5 text-[12px] text-black/85 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2),0_1px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:text-white/92 sm:px-3.5",
+        isFullscreen
+          ? "bg-[linear-gradient(180deg,rgba(17,20,27,0.72),rgba(17,20,27,0.54))]"
+          : "bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.14))] dark:bg-[linear-gradient(180deg,rgba(18,18,20,0.4),rgba(18,18,20,0.22))]",
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
         <div className="flex min-w-0 shrink-0 items-center gap-2.5">
           <span

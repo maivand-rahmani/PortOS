@@ -1,10 +1,14 @@
 import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
-import type { WorkspaceId } from "@/entities/workspace";
+import type { WorkspaceDefinition, WorkspaceId } from "@/entities/workspace";
 
 import { DESKTOP_ICON_FRAME, DESKTOP_ICON_SPACING, DESKTOP_INSETS } from "./desktop-shell.constants";
 import type { DockMenuEntry } from "./desktop-shell.types";
 import type { DesktopIconMap, DockAppState, DockWindowItem } from "./desktop-shell.types";
+
+export function sortWorkspaces(workspaces: WorkspaceDefinition[]) {
+  return [...workspaces].sort((left, right) => left.order - right.order);
+}
 
 function getDesktopIconRows(bounds: DesktopBounds | null) {
   if (!bounds) {

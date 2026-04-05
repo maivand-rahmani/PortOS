@@ -53,3 +53,12 @@ export const WINDOW_SURFACE_TRANSITION = {
   stiffness: 320,
   damping: 28,
 } as const;
+
+export const WORKSPACE_TRACK_TRANSITION = {
+  type: "spring",
+  stiffness: 280,
+  damping: 30,
+} as const;
+
+export const FULLSCREEN_CHROME_EDGE_THRESHOLD = 8;
+export const FULLSCREEN_CHROME_HIDE_DELAY = 220;

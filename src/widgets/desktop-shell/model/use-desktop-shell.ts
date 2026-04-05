@@ -5,6 +5,9 @@ import { useReducedMotion } from "framer-motion";
 
 import {
   getActiveRuntimeTarget,
+  getWorkspaceById,
+  getWorkspaceIndex,
+  isFullscreenWorkspace as isFullscreenWorkspaceModel,
   serializeSessionModel,
   SESSION_STORAGE_KEY,
   useOSStore,
@@ -32,6 +35,7 @@ import {
   clampDesktopIconPosition,
   getDockAppStates,
   getDockMenuEntries,
+  sortWorkspaces,
   syncDesktopIconPositions,
 } from "./desktop-shell.layout";
 import type {
@@ -54,6 +58,11 @@ export function useDesktopShell(): UseDesktopShellResult {
   const [customAiWidgetPosition, setAiWidgetPosition] = useState<WindowPosition | null>(null);
   const [desktopWidgetDragState, setDesktopWidgetDragState] = useState<DesktopWidgetDragState>(null);
   const [dockMenu, setDockMenu] = useState<DockMenuModel | null>(null);
+  const [splitViewPicker, setSplitViewPicker] = useState<{
+    workspaceId: string;
+    anchorWindowId: string;
+    side: "left" | "right";
+  } | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
   const apps = useOSStore((state) => state.apps);
@@ -82,6 +91,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const hydrateSession = useOSStore((state) => state.hydrateSession);
   const activateApp = useOSStore((state) => state.activateApp);
   const switchWorkspace = useOSStore((state) => state.switchWorkspace);
+  const createDesktop = useOSStore((state) => state.createDesktop);
+  const closeFullscreenSpace = useOSStore((state) => state.closeFullscreenSpace);
   const beginFileDrag = useOSStore((state) => state.beginFileDrag);
   const updateFileDrag = useOSStore((state) => state.updateFileDrag);
   const setFileDropTarget = useOSStore((state) => state.setFileDropTarget);
@@ -93,12 +104,18 @@ export function useDesktopShell(): UseDesktopShellResult {
   const launchApp = useOSStore((state) => state.launchApp);
   const terminateProcess = useOSStore((state) => state.terminateProcess);
   const toggleWindowMaximize = useOSStore((state) => state.toggleWindowMaximize);
+  const toggleWindowFullscreen = useOSStore((state) => state.toggleWindowFullscreen);
   const beginWindowDrag = useOSStore((state) => state.beginWindowDrag);
   const updateWindowDrag = useOSStore((state) => state.updateWindowDrag);
   const endWindowDrag = useOSStore((state) => state.endWindowDrag);
+  const beginSplitResize = useOSStore((state) => state.beginSplitViewResize);
+  const updateSplitResize = useOSStore((state) => state.updateSplitViewResize);
+  const endSplitResize = useOSStore((state) => state.endSplitViewResize);
+  const enterSplitView = useOSStore((state) => state.enterSplitView);
   const snapWindowToZone = useOSStore((state) => state.snapWindowToZone);
   const windowSnapZone = useOSStore((state) => state.windowSnapZone);
   const dragState = useOSStore((state) => state.dragState);
+  const splitResizeState = useOSStore((state) => state.splitResizeState);
   const beginWindowResize = useOSStore((state) => state.beginWindowResize);
   const updateWindowResize = useOSStore((state) => state.updateWindowResize);
   const endWindowResize = useOSStore((state) => state.endWindowResize);
@@ -129,6 +146,53 @@ export function useDesktopShell(): UseDesktopShellResult {
       windows,
     ],
   );
+
+  const orderedWorkspaces = useMemo(() => sortWorkspaces(workspaces), [workspaces]);
+
+  const workspaceRenderItems = useMemo(
+    () =>
+      orderedWorkspaces.map((workspace) => ({
+        workspace,
+        isActive: workspace.id === currentWorkspaceId,
+        windows: [...windows]
+          .filter((window) => window.workspaceId === workspace.id)
+          .filter((window) => !window.isMinimized)
+          .sort((left, right) => left.zIndex - right.zIndex)
+          .map((window) => ({
+            window,
+            app: appMap[window.appId],
+            AppComponent: loadedApps[window.appId] ?? null,
+            isActive: window.id === activeWindowId,
+            isDragging: dragWindowId === window.id,
+            isResizing: resizeWindowId === window.id,
+          }))
+          .filter((entry) => Boolean(entry.app)),
+      })),
+    [
+      activeWindowId,
+      appMap,
+      currentWorkspaceId,
+      dragWindowId,
+      loadedApps,
+      orderedWorkspaces,
+      resizeWindowId,
+      windows,
+    ],
+  );
+
+  const currentWorkspaceIndex = useMemo(
+    () => Math.max(0, getWorkspaceIndex(orderedWorkspaces, currentWorkspaceId)),
+    [currentWorkspaceId, orderedWorkspaces],
+  );
+
+  const currentWorkspace = useMemo(
+    () => getWorkspaceById(orderedWorkspaces, currentWorkspaceId),
+    [currentWorkspaceId, orderedWorkspaces],
+  );
+
+  const isFullscreenWorkspace = isFullscreenWorkspaceModel(currentWorkspace);
+  const currentSplitView = currentWorkspace?.splitView ?? null;
+  const splitViewCandidates = apps.filter((app) => app.id !== "settings");
 
   const activeRuntimeTarget = useMemo(
     () =>
@@ -241,6 +305,7 @@ export function useDesktopShell(): UseDesktopShellResult {
 
     const timeoutId = window.setTimeout(() => {
       const snapshot = serializeSessionModel({
+        workspaces: useOSStore.getState().workspaces,
         windows: useOSStore.getState().windows,
         activeWindowId: useOSStore.getState().activeWindowId,
         currentWorkspaceId: useOSStore.getState().currentWorkspaceId,
@@ -418,6 +483,9 @@ export function useDesktopShell(): UseDesktopShellResult {
       }
 
       updateFileDrag(nextPointer);
+      if (splitResizeState) {
+        updateSplitResize(nextPointer.x, desktopBounds);
+      }
       updateWindowDrag(nextPointer, desktopBounds);
       updateWindowResize(nextPointer, desktopBounds);
     };
@@ -437,6 +505,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       }
 
       endFileDrag();
+      endSplitResize();
       endWindowResize();
       setDesktopIconDragState(null);
       setDesktopWidgetDragState(null);
@@ -455,8 +524,11 @@ export function useDesktopShell(): UseDesktopShellResult {
     desktopWidgetDragState,
       endWindowDrag,
       endFileDrag,
+      endSplitResize,
       endWindowResize,
       snapWindowToZone,
+      splitResizeState,
+      updateSplitResize,
       updateFileDrag,
       updateWindowDrag,
       updateWindowResize,
@@ -634,6 +706,91 @@ export function useDesktopShell(): UseDesktopShellResult {
     toggleWindowMaximize(windowId, desktopBounds);
   };
 
+  const toggleDesktopWindowFullscreen = (windowId: string) => {
+    if (!desktopBounds) {
+      return;
+    }
+
+    toggleWindowFullscreen(windowId, {
+      width: desktopBounds.width,
+      height: desktopBounds.height,
+    });
+  };
+
+  const openSplitViewPicker = (windowId: string, side: "left" | "right") => {
+    if (!desktopBounds) {
+      return;
+    }
+
+    const anchorWindow = windows.find((window) => window.id === windowId);
+
+    if (!anchorWindow) {
+      return;
+    }
+
+    if (!anchorWindow.isFullscreen) {
+      toggleWindowFullscreen(windowId, {
+        width: desktopBounds.width,
+        height: desktopBounds.height,
+      });
+    }
+
+    const runtimeWindow = useOSStore.getState().windows.find((window) => window.id === windowId);
+
+    setSplitViewPicker({
+      workspaceId: runtimeWindow?.workspaceId ?? anchorWindow.workspaceId,
+      anchorWindowId: windowId,
+      side,
+    });
+  };
+
+  const closeSplitViewPicker = () => {
+    setSplitViewPicker(null);
+  };
+
+  const chooseSplitViewApp = (appId: string) => {
+    if (!desktopBounds || !splitViewPicker) {
+      return;
+    }
+
+    const candidateWindow = [...windows]
+      .filter((window) => window.appId === appId && window.id !== splitViewPicker.anchorWindowId)
+      .sort((left, right) => right.zIndex - left.zIndex)[0];
+
+    if (candidateWindow) {
+      enterSplitView(
+        splitViewPicker.anchorWindowId,
+        candidateWindow.id,
+        splitViewPicker.side,
+        desktopBounds,
+      );
+      setSplitViewPicker(null);
+      return;
+    }
+
+    void launchApp(appId, desktopBounds).then((windowId) => {
+      if (!windowId) {
+        return;
+      }
+
+      enterSplitView(
+        splitViewPicker.anchorWindowId,
+        windowId,
+        splitViewPicker.side,
+        desktopBounds,
+      );
+      setSplitViewPicker(null);
+    });
+  };
+
+  const beginSplitViewResize = (pointerX: number) => {
+    if (!currentSplitView) {
+      return;
+    }
+
+    beginSplitResize(currentWorkspaceId, getContainerPointer({ x: pointerX, y: 0 }).x);
+  };
+
   const openDockMenu = (appId: string, anchor: WindowPosition) => {
     const item = dockApps.find((entry) => entry.app.id === appId);
 
@@ -727,10 +884,16 @@ export function useDesktopShell(): UseDesktopShellResult {
     minimizedWindows,
     currentWorkspaceId,
     workspaces,
+    currentWorkspaceIndex,
+    isFullscreenWorkspace,
+    currentSplitView,
+    splitViewPicker,
+    splitViewCandidates,
     fileDragNodeId: fileDragState?.nodeId ?? null,
     fileDropTarget,
     statusBar,
     visibleWindows,
+    workspaceRenderItems,
     clearDesktopSelection,
     closeDockMenu,
     selectDesktopApp,
@@ -742,6 +905,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     runDockMenuAction,
     runStatusBarCommand,
     switchWorkspace,
+    createDesktop,
+    closeFullscreenSpace,
     beginFileDrag,
     setFileDropTarget,
     focusWindow,
@@ -749,6 +914,11 @@ export function useDesktopShell(): UseDesktopShellResult {
     minimizeWindow,
     restoreWindow,
     toggleWindowMaximize: toggleDesktopWindowMaximize,
+    toggleWindowFullscreen: toggleDesktopWindowFullscreen,
+    openSplitViewPicker,
+    closeSplitViewPicker,
+    chooseSplitViewApp,
+    beginSplitViewResize,
     beginWindowDrag: beginDesktopWindowDrag,
     beginWindowResize: beginDesktopWindowResize,
     windowSnapZone,

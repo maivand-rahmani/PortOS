@@ -2,7 +2,11 @@ import type { RefObject } from "react";
 
 import type { AppConfig, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
-import type { WorkspaceDefinition, WorkspaceId } from "@/entities/workspace";
+import type {
+  WorkspaceDefinition,
+  WorkspaceId,
+  WorkspaceSplitView,
+} from "@/entities/workspace";
 import type {
   FileDropTarget,
   OSBootPhase,
@@ -32,6 +36,18 @@ export type WindowRenderItem = {
   isActive: boolean;
   isDragging: boolean;
   isResizing: boolean;
+};
+
+export type WorkspaceRenderItem = {
+  workspace: WorkspaceDefinition;
+  windows: WindowRenderItem[];
+  isActive: boolean;
+};
+
+export type SplitViewPickerState = {
+  workspaceId: WorkspaceId;
+  anchorWindowId: string;
+  side: "left" | "right";
 };
 
 export type DockAppState = {
@@ -103,10 +119,16 @@ export type UseDesktopShellResult = {
   minimizedWindows: WindowInstance[];
   currentWorkspaceId: WorkspaceId;
   workspaces: WorkspaceDefinition[];
+  currentWorkspaceIndex: number;
+  isFullscreenWorkspace: boolean;
+  currentSplitView: WorkspaceSplitView | null;
+  splitViewPicker: SplitViewPickerState | null;
+  splitViewCandidates: AppConfig[];
   fileDragNodeId: string | null;
   fileDropTarget: FileDropTarget | null;
   statusBar: StatusBarModel;
   visibleWindows: WindowRenderItem[];
+  workspaceRenderItems: WorkspaceRenderItem[];
   clearDesktopSelection: () => void;
   closeDockMenu: () => void;
   selectDesktopApp: (appId: string | null) => void;
@@ -118,6 +140,8 @@ export type UseDesktopShellResult = {
   runDockMenuAction: (action: DockMenuAction) => void;
   runStatusBarCommand: (actionId: string) => void;
   switchWorkspace: (workspaceId: WorkspaceId) => void;
+  createDesktop: () => void;
+  closeFullscreenSpace: (workspaceId: WorkspaceId) => void;
   beginFileDrag: (nodeId: string, pointer: WindowPosition) => void;
   setFileDropTarget: (target: FileDropTarget | null) => void;
   focusWindow: (windowId: string) => void;
@@ -125,6 +149,11 @@ export type UseDesktopShellResult = {
   minimizeWindow: (windowId: string) => void;
   restoreWindow: (windowId: string) => void;
   toggleWindowMaximize: (windowId: string) => void;
+  toggleWindowFullscreen: (windowId: string) => void;
+  openSplitViewPicker: (windowId: string, side: "left" | "right") => void;
+  closeSplitViewPicker: () => void;
+  chooseSplitViewApp: (appId: string) => void;
+  beginSplitViewResize: (pointerX: number) => void;
   beginWindowDrag: (windowId: string, pointer: WindowPosition) => void;
   beginWindowResize: (
     windowId: string,

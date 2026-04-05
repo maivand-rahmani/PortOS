@@ -11,6 +11,7 @@ type MacDockProps = {
   minimizedWindows: WindowInstance[];
   apps: AppConfig[];
   autohide?: boolean;
+  isFullscreen?: boolean;
   onActivateApp: (appId: string) => void;
   onOpenMenu: (appId: string, anchor: WindowPosition) => void;
   onRestoreWindow: (windowId: string) => void;
@@ -21,6 +22,7 @@ export function MacDock({
   minimizedWindows,
   apps,
   autohide = false,
+  isFullscreen = false,
   onActivateApp,
   onOpenMenu,
   onRestoreWindow,
@@ -34,7 +36,12 @@ export function MacDock({
         autohide && "translate-y-[calc(100%+1rem)] hover:translate-y-0",
       )}
     >
-      <div className="pointer-events-auto flex items-end gap-3 rounded-[28px] border border-white/26 bg-white/18 px-4 py-3 shadow-[0_30px_60px_rgba(8,14,26,0.24)] backdrop-blur-2xl">
+      <div
+        className={cn(
+          "pointer-events-auto flex items-end gap-3 rounded-[28px] border border-white/26 px-4 py-3 shadow-[0_30px_60px_rgba(8,14,26,0.24)] backdrop-blur-2xl",
+          isFullscreen ? "bg-[rgba(16,20,29,0.58)]" : "bg-white/18",
+        )}
+      >
         {dockApps.map((item) => (
           <DockAppButton
             key={item.app.id}

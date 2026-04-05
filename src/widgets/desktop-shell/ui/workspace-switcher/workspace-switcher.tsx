@@ -20,6 +20,7 @@ export function WorkspaceSwitcher({
       <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/14 bg-[linear-gradient(180deg,rgba(24,24,28,0.58),rgba(14,14,18,0.44))] px-2 py-1 shadow-[0_18px_40px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
         {workspaces.map((workspace) => {
           const isActive = workspace.id === currentWorkspaceId;
+          const isFullscreen = workspace.kind === "fullscreen";
 
           return (
             <button
@@ -35,7 +36,10 @@ export function WorkspaceSwitcher({
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               ) : null}
-              <span className="relative z-[1]">{workspace.label}</span>
+              <span className="relative z-[1] flex items-center gap-1.5">
+                {isFullscreen ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/90" /> : null}
+                <span>{workspace.label}</span>
+              </span>
             </button>
           );
         })}
