@@ -1,7 +1,7 @@
 import type { AppCommandAction, ParsedCommand } from "./commandParser";
 
 import { PERSISTED_FILE_PATHS } from "@/shared/lib";
-import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs/fs-actions";
 
 export type AgentChatRole = "user" | "assistant" | "system";
 

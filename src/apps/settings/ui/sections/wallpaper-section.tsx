@@ -3,7 +3,7 @@
 import { useRef } from "react";
 
 import { cn } from "@/shared/lib";
-import { WALLPAPERS, getWallpaperById } from "@/shared/lib/wallpapers";
+import { WALLPAPERS, getWallpaperById } from "@/shared/lib/app-data/wallpapers";
 import type { UseSettingsAppResult } from "../../model/use-settings-app";
 
 type WallpaperSectionProps = Pick<

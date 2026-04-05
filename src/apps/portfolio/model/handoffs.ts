@@ -1,5 +1,5 @@
-import type { PortfolioHandoffTarget } from "@/shared/lib/portfolio-os-events";
-import type { ResumeLensTarget, ResumeSectionTarget } from "@/shared/lib/resume-os-events";
+import type { PortfolioHandoffTarget } from "@/shared/lib/os-events/portfolio-os-events";
+import type { ResumeLensTarget, ResumeSectionTarget } from "@/shared/lib/os-events/resume-os-events";
 
 type ProjectHandoffSeed = {
   title: string;

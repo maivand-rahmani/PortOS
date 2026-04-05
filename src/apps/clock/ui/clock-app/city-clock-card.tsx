@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Star, Target, X } from "lucide-react";
 
-import { buildFormattedWorldClockTime } from "@/shared/lib/app-logic";
+import { buildFormattedWorldClockTime } from "@/shared/lib/app-data/app-logic";
 import { cn } from "@/shared/lib";
 
 import type { ClockTimeZoneOption } from "../../model/content";

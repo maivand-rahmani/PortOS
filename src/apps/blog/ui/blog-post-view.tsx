@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import type { BlogPost } from "@/shared/lib/app-logic";
+import type { BlogPost } from "@/shared/lib/app-data/app-logic";
 
 type BlogPostViewProps = {
   post: BlogPost | null;

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { cn } from "@/shared/lib/cn";
+import { cn } from "@/shared/lib/cn/cn";
 
 import type { StatusBarModel } from "../../model/status-bar";
 

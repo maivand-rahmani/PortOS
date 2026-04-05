@@ -1,7 +1,7 @@
 import type { ClockTimeZoneOption } from "../../model/content";
 import { buildPlannerInputValue } from "../../model/time";
 import { PERSISTED_FILE_PATHS, subscribeToFileSystemChanges } from "@/shared/lib";
-import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs/fs-actions";
 
 const CLOCK_STORAGE_EVENT = "portos:clock-storage-change";
 

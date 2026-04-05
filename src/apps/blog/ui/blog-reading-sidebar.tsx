@@ -1,4 +1,4 @@
-import type { BlogPost } from "@/shared/lib/app-logic";
+import type { BlogPost } from "@/shared/lib/app-data/app-logic";
 
 import type { BlogHighlight } from "../model/blog-reader-storage";
 

@@ -17,16 +17,16 @@ import {
   toggleWindowMaximizeModel,
   updateDraggedWindowModel,
   updateResizedWindowModel,
-} from "../window-manager";
+} from "../../window-manager";
 import {
   detectSnapZone,
   getSnapFrame,
-} from "../window-manager/window-manager.snap";
+} from "../../window-manager/window-manager.snap";
 import {
   removeWorkspaceModel,
   createFullscreenWorkspaceModel,
-} from "../workspace-manager";
-import { stopProcessModel } from "../process-manager";
+} from "../../workspace-manager";
+import { stopProcessModel } from "../../process-manager";
 import { collapseSplitWorkspaceForWindow, DEFAULT_LAUNCH_BOUNDS } from "./helpers";
 
 export type WindowSlice = Pick<

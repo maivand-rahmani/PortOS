@@ -17,7 +17,7 @@ import {
   Braces,
   FileText,
 } from "lucide-react";
-import { cn } from "@/shared/lib/cn";
+import { cn } from "@/shared/lib/cn/cn";
 
 import type { EditorMode } from "../../model/editor.types";
 

@@ -6,8 +6,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useOSStore, type FileDropTarget, type Shortcut } from "@/processes";
 import { SpotlightOverlay } from "@/features/spotlight-search";
 import { getNodePath } from "@/processes/os/model/file-system";
-import { dispatchOpenFileRequest } from "@/shared/lib/fs-os-events";
-import { dispatchFilesFocusNodeRequest } from "@/shared/lib/files-os-events";
+import { dispatchOpenFileRequest } from "@/shared/lib/os-events/fs-os-events";
+import { dispatchFilesFocusNodeRequest } from "@/shared/lib/os-events/files-os-events";
 import { useAppSwitcher } from "../../model/use-app-switcher";
 import {
   FULLSCREEN_CHROME_EDGE_THRESHOLD,

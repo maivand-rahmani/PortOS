@@ -1,7 +1,7 @@
-import type { BlogPost } from "@/shared/lib/app-logic";
-import type { AgentExternalRequest } from "@/shared/lib/agent-os-events";
-import type { NotesExternalRequestDetail } from "@/shared/lib/notes-os-events";
-import type { PortfolioFocusRequest } from "@/shared/lib/portfolio-os-events";
+import type { BlogPost } from "@/shared/lib/app-data/app-logic";
+import type { AgentExternalRequest } from "@/shared/lib/os-events/agent-os-events";
+import type { NotesExternalRequestDetail } from "@/shared/lib/os-events/notes-os-events";
+import type { PortfolioFocusRequest } from "@/shared/lib/os-events/portfolio-os-events";
 
 import type { BlogHighlight } from "./blog-reader-storage";
 

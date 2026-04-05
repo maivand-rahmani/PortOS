@@ -17,8 +17,8 @@ import {
 import {
   consumeFilesFocusNodeRequest,
   FILES_EVENTS,
-} from "@/shared/lib/files-os-events";
-import { openEditorWithFile } from "@/shared/lib/os-actions";
+} from "@/shared/lib/os-events/files-os-events";
+import { openEditorWithFile } from "@/shared/lib/os-actions/os-actions";
 
 // ── Types ───────────────────────────────────────────────
 

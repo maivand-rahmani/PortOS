@@ -10,7 +10,7 @@
  */
 
 import type { FileSystemNode } from "@/entities/file-system";
-import { normalizePath, resolveNodeByPath } from "../file-system";
+import { normalizePath, resolveNodeByPath } from "../../file-system";
 import type { OSStore } from "../store.types";
 
 function resolveFsNodeAtPath(get: () => OSStore, path: string): FileSystemNode | null {

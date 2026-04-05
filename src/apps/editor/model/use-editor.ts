@@ -8,7 +8,7 @@ import { useOSStore } from "@/processes";
 import {
   consumeOpenFileRequest,
   FS_EVENTS,
-} from "@/shared/lib/fs-os-events";
+} from "@/shared/lib/os-events/fs-os-events";
 
 import {
   type EditorState,

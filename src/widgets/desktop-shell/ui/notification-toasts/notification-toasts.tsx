@@ -11,7 +11,7 @@ import {
 
 import type { AppConfigMap } from "@/entities/app";
 import type { OSNotification } from "@/processes";
-import { cn } from "@/shared/lib/cn";
+import { cn } from "@/shared/lib/cn/cn";
 
 type NotificationToastsProps = {
   toasts: OSNotification[];

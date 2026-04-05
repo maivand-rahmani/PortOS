@@ -4,15 +4,15 @@ import {
   dispatchAgentRequest,
   type AgentExternalRequest,
   type AgentNotesPrefillDetail,
-} from "./agent-os-events";
-import { dispatchBlogFocusRequest, type BlogFocusRequest } from "./blog-os-events";
-import { dispatchClockFocusRequest, type ClockFocusRequest } from "./clock-os-events";
-import { dispatchOpenFileRequest, type OpenFileRequest } from "./fs-os-events";
-import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "./notes-os-events";
-import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "./portfolio-os-events";
-import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "./resume-os-events";
-import { dispatchSystemInfoExternalRequest, type SystemInfoExternalRequestDetail } from "./system-info-os-events";
-import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "./terminal-os-events";
+} from "../os-events/agent-os-events";
+import { dispatchBlogFocusRequest, type BlogFocusRequest } from "../os-events/blog-os-events";
+import { dispatchClockFocusRequest, type ClockFocusRequest } from "../os-events/clock-os-events";
+import { dispatchOpenFileRequest, type OpenFileRequest } from "../os-events/fs-os-events";
+import { dispatchNotesExternalRequest, type NotesExternalRequestDetail } from "../os-events/notes-os-events";
+import { dispatchPortfolioFocusRequest, type PortfolioFocusRequest } from "../os-events/portfolio-os-events";
+import { dispatchResumeFocusRequest, type ResumeFocusRequest } from "../os-events/resume-os-events";
+import { dispatchSystemInfoExternalRequest, type SystemInfoExternalRequestDetail } from "../os-events/system-info-os-events";
+import { dispatchTerminalExternalRequest, type TerminalExternalRequestDetail } from "../os-events/terminal-os-events";
 
 export async function openAppById(appId: string) {
   return useOSStore.getState().activateApp(appId);

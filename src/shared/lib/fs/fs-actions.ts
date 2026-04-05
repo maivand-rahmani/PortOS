@@ -1,6 +1,6 @@
 import type { AbsolutePath, FileNode, FileSystemNode } from "@/entities/file-system";
 
-import { useOSStore } from "@/processes/os/model/store";
+import { useOSStore } from "@/processes/os/model/store/store";
 import {
   getChildrenModel,
   normalizePath,

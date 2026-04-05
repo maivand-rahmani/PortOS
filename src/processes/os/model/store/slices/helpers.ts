@@ -12,7 +12,7 @@ import type { OSStore } from "../store.types";
 import {
   getWorkspaceById,
   updateWorkspaceSplitViewModel,
-} from "../workspace-manager";
+} from "../../workspace-manager";
 
 export const DEFAULT_LAUNCH_BOUNDS: DesktopBounds = {
   width: 1440,

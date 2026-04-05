@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { DocsDocument, DocsHeading } from "@/shared/lib/docs";
-import { slugifyDocsHeading } from "@/shared/lib/docs";
-import { getProfileBasics } from "@/shared/lib/project-data";
+import type { DocsDocument, DocsHeading } from "@/shared/lib/app-data/docs";
+import { slugifyDocsHeading } from "@/shared/lib/app-data/docs";
+import { getProfileBasics } from "@/shared/lib/app-data/project-data";
 
 function readProjectReadme() {
   const filePath = path.join(process.cwd(), "docs/project/README");

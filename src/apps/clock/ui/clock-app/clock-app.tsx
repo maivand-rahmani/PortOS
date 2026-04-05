@@ -10,7 +10,7 @@ import {
   CLOCK_FOCUS_REQUEST_EVENT,
   type ClockFocusRequest,
   consumeClockFocusRequest,
-} from "@/shared/lib/clock-os-events";
+} from "@/shared/lib/os-events/clock-os-events";
 import { cn } from "@/shared/lib";
 
 import {

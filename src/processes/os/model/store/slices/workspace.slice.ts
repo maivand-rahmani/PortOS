@@ -15,11 +15,11 @@ import {
   syncActiveWindowToWorkspace,
   updateWorkspaceSplitViewModel,
   workspaceManagerInitialState,
-} from "../workspace-manager";
+} from "../../workspace-manager";
 import {
   applySplitViewFramesModel,
   exitWindowFullscreenModel,
-} from "../window-manager";
+} from "../../window-manager";
 import { collapseSplitWorkspaceForWindow, DEFAULT_LAUNCH_BOUNDS } from "./helpers";
 
 export type WorkspaceSlice = Pick<

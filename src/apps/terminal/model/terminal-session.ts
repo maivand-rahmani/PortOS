@@ -1,8 +1,8 @@
 import type { TerminalExternalRequestDetail } from "@/shared/lib";
 import { consumePendingTerminalExternalRequest } from "@/shared/lib";
-import { subscribeToFileSystemChanges } from "@/shared/lib/fs-events";
-import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
-import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
+import { subscribeToFileSystemChanges } from "@/shared/lib/fs/fs-events";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs/fs-paths";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs/fs-actions";
 
 const SESSION_HISTORY_LIMIT = 12;
 

@@ -5,18 +5,18 @@ import {
   createAppRegistryModel,
   indexAppConfigs,
   loadAppModule,
-} from "../app-registry";
+} from "../../app-registry";
 import {
   createProcessManagerModel,
   startProcessModel,
   attachWindowToProcessModel,
-} from "../process-manager";
-import { openWindowModel } from "../window-manager";
+} from "../../process-manager";
+import { openWindowModel } from "../../window-manager";
 import {
   getWorkspaceById,
   isFullscreenWorkspace,
   workspaceManagerInitialState,
-} from "../workspace-manager";
+} from "../../workspace-manager";
 import { DEFAULT_LAUNCH_BOUNDS } from "./helpers";
 
 const defaultAppMap = indexAppConfigs(installedApps);

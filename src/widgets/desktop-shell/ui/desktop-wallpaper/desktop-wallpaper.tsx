@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { useOSStore } from "@/processes";
 
-import { getWallpaperById } from "@/shared/lib/wallpapers";
+import { getWallpaperById } from "@/shared/lib/app-data/wallpapers";
 
 export function DesktopWallpaper() {
   const wallpaperId = useOSStore((state) => state.wallpaperId);

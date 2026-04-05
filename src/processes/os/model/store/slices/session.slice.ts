@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 import type { OSStore } from "../store.types";
-import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs/fs-paths";
 import {
   migratePersistedSession,
   restoreSessionModel,
@@ -8,7 +8,7 @@ import {
   sessionManagerInitialState,
   type PersistedSessionState,
   loadPersistedSession,
-} from "../session-manager";
+} from "../../session-manager";
 import { writeFsJsonAtPath } from "./fs-path-helpers";
 
 export type SessionSlice = Pick<

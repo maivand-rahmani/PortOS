@@ -14,7 +14,7 @@ import {
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
-import { runDataMigration } from "@/shared/lib/fs-migration";
+import { runDataMigration } from "@/shared/lib/fs/fs-migration";
 import {
   BOOT_PHASE_DURATIONS,
   BOOT_PROGRESS_KEYFRAMES,

@@ -1,21 +1,21 @@
 import type { AppConfig, AppConfigMap, LoadedAppMap } from "@/entities/app";
 import type { DesktopBounds } from "@/entities/window";
-import type { Wallpaper } from "@/shared/lib/wallpapers";
+import type { Wallpaper } from "@/shared/lib/app-data/wallpapers";
 import type { OSSettings } from "@/apps/settings/model/settings.types";
-import type { AppRegistryState } from "./app-registry";
-import type { ProcessManagerState } from "./process-manager";
-import type { WindowManagerState } from "./window-manager";
-import type { WindowSnapZone } from "./window-manager/window-manager.snap";
-import type { FileSystemManagerState } from "./file-system";
-import type { FileDragManagerState, FileDropTarget } from "./file-drag-manager";
-import type { SessionManagerState, PersistedSessionState } from "./session-manager";
-import type { WorkspaceManagerState, WorkspaceId } from "./workspace-manager";
-import type { NotificationManagerState, NotificationLevel } from "./notification-manager";
-import type { ShortcutManagerState } from "./shortcut-manager";
-import type { Shortcut } from "./shortcut-manager/shortcut-manager.types";
+import type { AppRegistryState } from "../app-registry";
+import type { ProcessManagerState } from "../process-manager";
+import type { WindowManagerState } from "../window-manager";
+import type { WindowSnapZone } from "../window-manager/window-manager.snap";
+import type { FileSystemManagerState } from "../file-system";
+import type { FileDragManagerState, FileDropTarget } from "../file-drag-manager";
+import type { SessionManagerState, PersistedSessionState } from "../session-manager";
+import type { WorkspaceManagerState, WorkspaceId } from "../workspace-manager";
+import type { NotificationManagerState, NotificationLevel } from "../notification-manager";
+import type { ShortcutManagerState } from "../shortcut-manager";
+import type { Shortcut } from "../shortcut-manager/shortcut-manager.types";
 import type { FileNode, FileSystemNode } from "@/entities/file-system";
 import type { WindowPosition } from "@/entities/window";
-import type { WindowResizeDirection } from "./window-manager";
+import type { WindowResizeDirection } from "../window-manager";
 
 export type OSBootPhase =
   | "off"

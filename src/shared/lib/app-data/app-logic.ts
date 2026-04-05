@@ -10,7 +10,7 @@ import {
   deleteAtPath,
   moveToPath,
   copyToPath,
-} from "./fs-actions";
+} from "../fs/fs-actions";
 import { getProfileBasics } from "./project-data";
 
 export type BlogPost = {

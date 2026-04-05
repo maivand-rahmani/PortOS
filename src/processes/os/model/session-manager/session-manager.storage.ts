@@ -1,5 +1,5 @@
-import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
-import { readFsJsonAtPath } from "@/shared/lib/fs-file-storage";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs/fs-paths";
+import { readFsJsonAtPath } from "@/shared/lib/fs/fs-file-storage";
 
 import type { PersistedSessionState } from "./session-manager.types";
 

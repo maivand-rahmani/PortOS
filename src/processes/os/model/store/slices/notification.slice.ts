@@ -8,7 +8,7 @@ import {
   notificationManagerInitialState,
   pushNotificationModel,
   removeNotificationModel,
-} from "../notification-manager";
+} from "../../notification-manager";
 
 export type NotificationSlice = Pick<
   OSStore,

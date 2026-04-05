@@ -1,14 +1,14 @@
 import type { StateCreator } from "zustand";
 import type { OSStore } from "../store.types";
-import * as idb from "@/shared/lib/idb-storage";
-import { dispatchFileSystemChange } from "@/shared/lib/fs-events";
+import * as idb from "@/shared/lib/fs/idb-storage";
+import { dispatchFileSystemChange } from "@/shared/lib/fs/fs-events";
 import {
   beginFileDragModel,
   endFileDragModel,
   fileDragManagerInitialState,
   setFileDropTargetModel,
   updateFileDragModel,
-} from "../file-drag-manager";
+} from "../../file-drag-manager";
 import {
   createFileSystemManagerModel,
   getNodePath,
@@ -29,7 +29,7 @@ import {
   setSearchQueryModel,
   setSearchResultsModel,
   clearSearchModel,
-} from "../file-system";
+} from "../../file-system";
 
 export type FileSystemSlice = Pick<
   OSStore,

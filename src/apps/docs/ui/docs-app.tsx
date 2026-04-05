@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
 import { slugifyDocsHeading } from "@/shared/lib";
-import type { DocsDocument } from "@/shared/lib/docs";
+import type { DocsDocument } from "@/shared/lib/app-data/docs";
 
 type DocsResponse = { documents: DocsDocument[] };
 

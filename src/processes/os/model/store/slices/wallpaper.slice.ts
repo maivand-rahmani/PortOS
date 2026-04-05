@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand";
 import type { OSStore } from "../store.types";
-import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
-import { DEFAULT_WALLPAPER_ID, getWallpaperById } from "@/shared/lib/wallpapers";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs/fs-paths";
+import { DEFAULT_WALLPAPER_ID, getWallpaperById } from "@/shared/lib/app-data/wallpapers";
 import { loadWallpaperId } from "@/apps/settings/model/settings.idb";
 import { writeFsJsonAtPath } from "./fs-path-helpers";
 

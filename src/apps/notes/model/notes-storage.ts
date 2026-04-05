@@ -11,7 +11,7 @@ import {
   listPath,
   readFileAtPath,
   writeFileAtPathOrCreate,
-} from "@/shared/lib/fs-actions";
+} from "@/shared/lib/fs/fs-actions";
 
 export type NoteItem = {
   id: string;

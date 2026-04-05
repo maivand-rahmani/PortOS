@@ -1,6 +1,6 @@
-import type { NotesExternalRequestDetail } from "@/shared/lib/notes-os-events";
+import type { NotesExternalRequestDetail } from "@/shared/lib/os-events/notes-os-events";
 
-export type { NotesExternalRequestDetail } from "@/shared/lib/notes-os-events";
+export type { NotesExternalRequestDetail } from "@/shared/lib/os-events/notes-os-events";
 
 import { createPrefilledNote, type NoteItem } from "./notes-storage";
 

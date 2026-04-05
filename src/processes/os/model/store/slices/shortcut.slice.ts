@@ -5,7 +5,7 @@ import {
   registerShortcutModel,
   registerShortcutsModel,
   unregisterShortcutModel,
-} from "../shortcut-manager";
+} from "../../shortcut-manager";
 
 export type ShortcutSlice = Pick<
   OSStore,

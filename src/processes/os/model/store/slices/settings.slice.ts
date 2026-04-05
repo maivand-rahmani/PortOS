@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 import type { OSStore } from "../store.types";
-import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs/fs-paths";
 import {
   DEFAULT_OS_SETTINGS,
 } from "@/apps/settings/model/settings.types";

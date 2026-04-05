@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
 import { useOSStore } from "@/processes";
-import type { BlogPost } from "@/shared/lib/app-logic";
+import type { BlogPost } from "@/shared/lib/app-data/app-logic";
 import {
   BLOG_FOCUS_REQUEST_EVENT,
   consumeBlogFocusRequest,

@@ -1,4 +1,4 @@
-export { cn } from "./cn";
+export { cn } from "./cn/cn";
 export {
   FILE_SYSTEM_CHANGE_EVENT,
   isFileSystemChangeForPath,
@@ -6,7 +6,7 @@ export {
   subscribeToFileSystemChanges,
   type FileSystemChangeDetail,
   type FileSystemChangeType,
-} from "./fs-events";
+} from "./fs/fs-events";
 export {
   NOTES_FILE_EXTENSION,
   PERSISTED_FILE_PATHS,
@@ -19,7 +19,7 @@ export {
   SYSTEM_SHARED_ROOT,
   SYSTEM_USER_DIRECTORIES,
   SYSTEM_USER_ROOT,
-} from "./fs-paths";
+} from "./fs/fs-paths";
 export {
   AGENT_NOTES_PREFILL_EVENT,
   AI_AGENT_EXTERNAL_PROMPT_EVENT,
@@ -32,33 +32,33 @@ export {
   normalizeAgentExternalRequest,
   type AgentExternalRequest,
   type AgentNotesPrefillDetail,
-} from "./agent-os-events";
+} from "./os-events/agent-os-events";
 export {
   BLOG_FOCUS_REQUEST_EVENT,
   consumeBlogFocusRequest,
   dispatchBlogFocusRequest,
   type BlogFocusRequest,
-} from "./blog-os-events";
+} from "./os-events/blog-os-events";
 export {
   CLOCK_FOCUS_REQUEST_EVENT,
   consumeClockFocusRequest,
   dispatchClockFocusRequest,
   type ClockFocusRequest,
-} from "./clock-os-events";
+} from "./os-events/clock-os-events";
 export {
   NOTES_EXTERNAL_REQUEST_EVENT,
   consumeNotesExternalRequest,
   dispatchNotesExternalRequest,
   type NotesExternalRequestDetail,
   type NotesExternalRequestMode,
-} from "./notes-os-events";
+} from "./os-events/notes-os-events";
 export {
   PORTFOLIO_FOCUS_REQUEST_EVENT,
   consumePortfolioFocusRequest,
   dispatchPortfolioFocusRequest,
   type PortfolioFocusRequest,
   type PortfolioHandoffTarget,
-} from "./portfolio-os-events";
+} from "./os-events/portfolio-os-events";
 export {
   RESUME_FOCUS_REQUEST_EVENT,
   consumeResumeFocusRequest,
@@ -66,22 +66,22 @@ export {
   type ResumeFocusRequest,
   type ResumeLensTarget,
   type ResumeSectionTarget,
-} from "./resume-os-events";
+} from "./os-events/resume-os-events";
 export {
   SYSTEM_INFO_EXTERNAL_REQUEST_EVENT,
   consumeSystemInfoExternalRequest,
   dispatchSystemInfoExternalRequest,
   type SystemInfoExternalRequestDetail,
   type SystemInfoExternalSection,
-} from "./system-info-os-events";
+} from "./os-events/system-info-os-events";
 export {
   TERMINAL_EXTERNAL_REQUEST_EVENT,
   consumePendingTerminalExternalRequest,
   dispatchTerminalExternalRequest,
   type TerminalExternalRequestDetail,
-} from "./terminal-os-events";
-export { calculateExpression } from "./app-logic";
-export { slugifyDocsHeading } from "./docs";
+} from "./os-events/terminal-os-events";
+export { calculateExpression } from "./app-data/app-logic";
+export { slugifyDocsHeading } from "./app-data/docs";
 export {
   closeWindowById,
   focusOrOpenAppById,
@@ -102,6 +102,6 @@ export {
   openTerminalWithRequest,
   restoreWindowById,
   terminateProcessById,
-} from "./os-actions";
-export { getProfileBasics } from "./project-data";
-export { runDataMigration, type MigrationResult } from "./fs-migration";
+} from "./os-actions/os-actions";
+export { getProfileBasics } from "./app-data/project-data";
+export { runDataMigration, type MigrationResult } from "./fs/fs-migration";

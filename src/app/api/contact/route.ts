@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import type { ContactSubmission } from "@/shared/lib/app-logic";
-import { validateContactSubmission } from "@/shared/lib/app-logic";
+import type { ContactSubmission } from "@/shared/lib/app-data/app-logic";
+import { validateContactSubmission } from "@/shared/lib/app-data/app-logic";
 
 export async function POST(request: Request) {
   try {

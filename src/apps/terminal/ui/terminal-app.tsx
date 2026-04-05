@@ -20,7 +20,7 @@ import {
   terminateProcessById,
   type TerminalExternalRequestDetail,
 } from "@/shared/lib";
-import { runTerminalCommand } from "@/shared/lib/app-logic";
+import { runTerminalCommand } from "@/shared/lib/app-data/app-logic";
 
 import {
   buildCommandSuggestions,

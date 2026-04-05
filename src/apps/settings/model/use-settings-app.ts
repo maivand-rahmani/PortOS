@@ -3,8 +3,8 @@
 import { useCallback } from "react";
 
 import { useOSStore } from "@/processes";
-import type { Wallpaper } from "@/shared/lib/wallpapers";
-import * as idb from "@/shared/lib/idb-storage";
+import type { Wallpaper } from "@/shared/lib/app-data/wallpapers";
+import * as idb from "@/shared/lib/fs/idb-storage";
 
 import type { OSSettings } from "./settings.types";
 
