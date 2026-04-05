@@ -217,6 +217,15 @@ Notes on the current AI agent state:
 * [ ] Clean up code and interaction edge cases
 * [x] Document development decisions in Roadmap
 
+Current in-progress runtime upgrade:
+
+- [ ] Phase 1 spaces rollout
+  - [x] dynamic fullscreen workspaces can now be created from the green window control
+  - [x] fullscreen state is persisted in the session snapshot and migrated from older snapshots
+  - [x] workspace navigation now supports desktop and fullscreen spaces in one ordered strip
+  - [x] shell chrome can auto-hide in fullscreen and reveal from top/bottom screen edges
+  - [ ] split view and Mission Control remain pending phases
+
 ---
 
 ## 10. Settings App Overhaul
