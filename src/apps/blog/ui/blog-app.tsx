@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import type { BlogPost } from "@/shared/lib/app-logic";
 import {
   BLOG_FOCUS_REQUEST_EVENT,
@@ -45,11 +46,17 @@ function describeRequestSource(source: string | undefined) {
 }
 
 export function BlogApp({ processId, windowId }: AppComponentProps) {
+  const fsHydrated = useOSStore((state) => state.fsHydrated);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [query, setQuery] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [highlightDraft, setHighlightDraft] = useState("");
-  const [readerState, setReaderState] = useState<BlogReaderState>(() => readStoredBlogReaderState());
+  const [readerState, setReaderState] = useState<BlogReaderState>({
+    queuedPostIds: [],
+    completedPostIds: [],
+    highlights: [],
+  });
+  const [readerStateHydrated, setReaderStateHydrated] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Search the archive, save takeaways, and move a useful post into Notes or the AI agent.");
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -79,8 +86,35 @@ export function BlogApp({ processId, windowId }: AppComponentProps) {
   const relatedPortfolio = activePost ? resolveBlogPortfolioFocus(activePost) : null;
 
   useEffect(() => {
-    saveBlogReaderState(readerState);
-  }, [readerState]);
+    if (!fsHydrated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateReaderState = async () => {
+      const stored = await readStoredBlogReaderState();
+
+      if (!cancelled) {
+        setReaderState(stored);
+        setReaderStateHydrated(true);
+      }
+    };
+
+    void hydrateReaderState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fsHydrated]);
+
+  useEffect(() => {
+    if (!fsHydrated || !readerStateHydrated) {
+      return;
+    }
+
+    void saveBlogReaderState(readerState);
+  }, [fsHydrated, readerState, readerStateHydrated]);
 
   useEffect(() => {
     setHighlightDraft("");

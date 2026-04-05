@@ -1,4 +1,5 @@
-export const BLOG_READER_STORAGE_KEY = "portos-blog-reader-state";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
 
 export type BlogHighlight = {
   id: string;
@@ -40,43 +41,30 @@ function isBlogHighlight(value: unknown): value is BlogHighlight {
   );
 }
 
-export function readStoredBlogReaderState(): BlogReaderState {
-  if (typeof window === "undefined") {
-    return EMPTY_READER_STATE;
-  }
-
-  const value = window.localStorage.getItem(BLOG_READER_STORAGE_KEY);
-
-  if (!value) {
-    return EMPTY_READER_STATE;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as Partial<BlogReaderState>;
-
-    return {
-      queuedPostIds: uniquePostIds(parsed.queuedPostIds ?? []),
-      completedPostIds: uniquePostIds(parsed.completedPostIds ?? []),
-      highlights: Array.isArray(parsed.highlights) ? parsed.highlights.filter(isBlogHighlight) : [],
-    };
-  } catch {
-    return EMPTY_READER_STATE;
-  }
+function normalizeReaderState(parsed: Partial<BlogReaderState> | null | undefined): BlogReaderState {
+  return {
+    queuedPostIds: uniquePostIds(parsed?.queuedPostIds ?? []),
+    completedPostIds: uniquePostIds(parsed?.completedPostIds ?? []),
+    highlights: Array.isArray(parsed?.highlights)
+      ? parsed.highlights.filter(isBlogHighlight)
+      : [],
+  };
 }
 
-export function saveBlogReaderState(state: BlogReaderState) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(
-    BLOG_READER_STORAGE_KEY,
-    JSON.stringify({
-      queuedPostIds: uniquePostIds(state.queuedPostIds),
-      completedPostIds: uniquePostIds(state.completedPostIds),
-      highlights: state.highlights,
-    }),
+export async function readStoredBlogReaderState(): Promise<BlogReaderState> {
+  const parsed = await readJsonAtPath<Partial<BlogReaderState>>(
+    PERSISTED_FILE_PATHS.blogReaderState,
   );
+
+  return normalizeReaderState(parsed);
+}
+
+export async function saveBlogReaderState(state: BlogReaderState) {
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.blogReaderState, {
+    queuedPostIds: uniquePostIds(state.queuedPostIds),
+    completedPostIds: uniquePostIds(state.completedPostIds),
+    highlights: state.highlights,
+  });
 }
 
 export function addPostToQueue(state: BlogReaderState, postId: string): BlogReaderState {

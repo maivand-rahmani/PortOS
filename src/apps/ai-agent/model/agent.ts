@@ -54,13 +54,15 @@ export function useAiAgent(processId: string) {
   const activeWindowId = useOSStore((state) => state.activeWindowId);
   const bootPhase = useOSStore((state) => state.bootPhase);
   const bootProgress = useOSStore((state) => state.bootProgress);
+  const fsHydrated = useOSStore((state) => state.fsHydrated);
 
-  const [messages, setMessages] = useState<AgentChatMessage[]>(() => readStoredAgentHistory());
+  const [messages, setMessages] = useState<AgentChatMessage[]>(() => clearAgentHistory());
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeRequest, setActiveRequest] = useState<AgentExternalRequest | null>(null);
   const [queuedRequests, setQueuedRequests] = useState<AgentExternalRequest[]>([]);
+  const [historyHydrated, setHistoryHydrated] = useState(false);
 
   const runtimeSnapshot = useMemo(
     () =>
@@ -89,8 +91,35 @@ export function useAiAgent(processId: string) {
   );
 
   useEffect(() => {
-    saveAgentHistory(messages);
-  }, [messages]);
+    if (!fsHydrated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateHistory = async () => {
+      const storedHistory = await readStoredAgentHistory();
+
+      if (!cancelled) {
+        setMessages(storedHistory);
+        setHistoryHydrated(true);
+      }
+    };
+
+    void hydrateHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fsHydrated]);
+
+  useEffect(() => {
+    if (!fsHydrated || !historyHydrated) {
+      return;
+    }
+
+    void saveAgentHistory(messages);
+  }, [fsHydrated, historyHydrated, messages]);
 
   const baseSuggestions = useMemo(
     () => [

@@ -29,8 +29,11 @@ import {
   buildTerminalBridgeMessage,
   createInitialTerminalHistory,
   createTerminalEntry,
+  loadRecentTerminalCommands,
   pushCommandHistory,
   readPendingTerminalExternalRequest,
+  saveRecentTerminalCommands,
+  subscribeToRecentTerminalCommands,
   type TerminalEntry,
   type TerminalQuickAction,
 } from "../model/terminal-session";
@@ -77,6 +80,7 @@ export function TerminalApp({ processId, windowId }: AppComponentProps) {
   const commandHistoryRef = useRef<string[]>([]);
   const historyContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const skipNextRecentCommandsSyncRef = useRef(false);
 
   const availableApps = useMemo(
     () => apps.map((app) => ({ id: app.id, name: app.name, description: app.description })),
@@ -105,6 +109,40 @@ export function TerminalApp({ processId, windowId }: AppComponentProps) {
       inputRef.current?.focus();
     }
   }, [activeWindowId, windowId]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    void loadRecentTerminalCommands().then((stored) => {
+      if (disposed) {
+        return;
+      }
+
+      setRecentCommands(stored);
+      commandHistoryRef.current = stored;
+    });
+
+    const unsubscribe = subscribeToRecentTerminalCommands(() => {
+      if (skipNextRecentCommandsSyncRef.current) {
+        skipNextRecentCommandsSyncRef.current = false;
+        return;
+      }
+
+      void loadRecentTerminalCommands().then((stored) => {
+        if (disposed) {
+          return;
+        }
+
+        setRecentCommands(stored);
+        commandHistoryRef.current = stored;
+      });
+    });
+
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, []);
 
   const applyRuntimeActions = useCallback(async (commandText: string) => {
     const runtime = getRuntimeSnapshot();
@@ -180,8 +218,12 @@ export function TerminalApp({ processId, windowId }: AppComponentProps) {
         ...nextEntries,
       ]);
       setValue("");
-      setRecentCommands((current) => pushCommandHistory(current, command));
-      commandHistoryRef.current = pushCommandHistory(commandHistoryRef.current, command);
+      const nextRecentCommands = pushCommandHistory(commandHistoryRef.current, command);
+
+      setRecentCommands(nextRecentCommands);
+      commandHistoryRef.current = nextRecentCommands;
+      skipNextRecentCommandsSyncRef.current = true;
+      void saveRecentTerminalCommands(nextRecentCommands);
       setHistoryIndex(null);
 
       if (result.nextPath) {

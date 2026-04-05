@@ -5,7 +5,7 @@ import NotesIcon from "./icon";
 export const notesAppConfig: AppConfig = {
   id: "notes",
   name: "Notes",
-  description: "A notebook-style notes app with local persistence, tagging, and external draft intake.",
+  description: "A notebook-style notes app with filesystem-backed markdown pages, tagging, and external draft intake.",
   icon: NotesIcon,
   
   tint: "#facc15",
@@ -17,7 +17,7 @@ export const notesAppConfig: AppConfig = {
     launchMaximized: true,
   },
   statusBar: {
-    info: "Notes autosave locally in this browser.",
+    info: "Notes autosave as markdown files inside the PortOS filesystem.",
     sections: [
       {
         id: "notes",

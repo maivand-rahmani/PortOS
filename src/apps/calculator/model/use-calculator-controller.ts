@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useOSStore } from "@/processes";
 import { calculateExpression, openAgentWithRequest, openNotesWithRequest } from "@/shared/lib";
 
 import {
@@ -33,6 +34,7 @@ function canSendActiveEntry(entry: CalculationTapeEntry | null): entry is Calcul
 }
 
 export function useCalculatorController() {
+  const fsHydrated = useOSStore((state) => state.fsHydrated);
   const [expression, setExpression] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [tape, setTape] = useState<CalculationTapeEntry[]>([]);
@@ -40,20 +42,34 @@ export function useCalculatorController() {
   const [status, setStatus] = useState<CalculatorStatus>(getDefaultStatus);
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      const initialTape = loadCalculatorTape();
+    if (!fsHydrated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadTape = async () => {
+      const initialTape = await loadCalculatorTape();
+
+      if (cancelled) {
+        return;
+      }
 
       setTape(initialTape);
       setActiveEntryId(initialTape[0]?.id ?? null);
-    });
+    };
 
-    return () => window.cancelAnimationFrame(frameId);
-  }, []);
+    void loadTape();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fsHydrated]);
 
   const persistTape = useCallback((updater: (current: CalculationTapeEntry[]) => CalculationTapeEntry[]) => {
     setTape((current) => {
       const nextTape = updater(current);
-      saveCalculatorTape(nextTape);
+      void saveCalculatorTape(nextTape);
       return nextTape;
     });
   }, []);

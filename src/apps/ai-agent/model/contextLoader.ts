@@ -1,5 +1,8 @@
 import type { AppCommandAction, ParsedCommand } from "./commandParser";
 
+import { PERSISTED_FILE_PATHS } from "@/shared/lib";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
+
 export type AgentChatRole = "user" | "assistant" | "system";
 
 export type AgentChatMessage = {
@@ -20,7 +23,6 @@ export type AgentRuntimeSnapshot = {
   bootProgress: number;
 };
 
-const AI_AGENT_STORAGE_KEY = "portos-ai-agent-history";
 const MAX_PERSISTED_MESSAGES = 24;
 
 function createTimestamp() {
@@ -70,43 +72,42 @@ export function createWelcomeMessages() {
 }
 
 export function clearAgentHistory() {
-  if (typeof window === "undefined") {
-    return createWelcomeMessages();
-  }
-
-  window.localStorage.removeItem(AI_AGENT_STORAGE_KEY);
-
   return createWelcomeMessages();
 }
 
-export function readStoredAgentHistory() {
-  if (typeof window === "undefined") {
-    return createWelcomeMessages();
+function isAgentChatMessage(value: unknown): value is AgentChatMessage {
+  if (!value || typeof value !== "object") {
+    return false;
   }
 
-  const stored = window.localStorage.getItem(AI_AGENT_STORAGE_KEY);
+  const candidate = value as AgentChatMessage;
+
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.role === "string" &&
+    typeof candidate.content === "string" &&
+    typeof candidate.createdAt === "string"
+  );
+}
+
+export async function readStoredAgentHistory() {
+  const stored = await readJsonAtPath<AgentChatMessage[]>(
+    PERSISTED_FILE_PATHS.aiAgentHistory,
+  );
 
   if (!stored) {
     return createWelcomeMessages();
   }
 
-  try {
-    const parsed = JSON.parse(stored) as AgentChatMessage[];
+  const parsed = stored.filter(isAgentChatMessage);
 
-    return parsed.length > 0 ? parsed : createWelcomeMessages();
-  } catch {
-    return createWelcomeMessages();
-  }
+  return parsed.length > 0 ? parsed : createWelcomeMessages();
 }
 
-export function saveAgentHistory(messages: AgentChatMessage[]) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+export async function saveAgentHistory(messages: AgentChatMessage[]) {
   const filtered = messages.slice(-MAX_PERSISTED_MESSAGES);
 
-  window.localStorage.setItem(AI_AGENT_STORAGE_KEY, JSON.stringify(filtered));
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.aiAgentHistory, filtered);
 }
 
 export function buildAgentRuntimeSnapshot(input: AgentRuntimeSnapshot) {

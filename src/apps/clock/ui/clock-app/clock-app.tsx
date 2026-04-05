@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, LayoutGroup, Reorder, motion, useReducedMotion } from "framer-motion";
 import { MoonStar, Search, SunMedium } from "lucide-react";
@@ -32,8 +32,8 @@ import {
   createTimePlaceholder,
   getBrowserTimeZone,
   getPlannerStatus,
-  readFavoriteOrderSnapshot,
-  readFavoriteTimeZonesSnapshot,
+  readFavoriteOrder,
+  readFavoriteTimeZones,
   saveFavoriteOrder,
   saveFavoriteTimeZones,
   formatPlannerTimeLabel,
@@ -45,22 +45,14 @@ import { FavoriteChip } from "./favorite-chip";
 import { PlannerPanel } from "./planner-panel";
 import { SearchResultsPanel } from "./search-results-panel";
 import { SpotlightPanel } from "./spotlight-panel";
+import { useOSStore } from "@/processes";
 
 const clockOptions = getClockTimeZoneOptions();
 const defaultCities = getDefaultClockTimeZones(clockOptions);
 
 export function ClockApp({ processId, windowId }: AppComponentProps) {
-  const favoriteTimeZonesSnapshot = useSyncExternalStore(
-    subscribeToClockStorage,
-    readFavoriteTimeZonesSnapshot,
-    () => "[]",
-  );
-  const favoriteOrderSnapshot = useSyncExternalStore(
-    subscribeToClockStorage,
-    readFavoriteOrderSnapshot,
-    () => "[]",
-  );
-  const browserTimeZone = useSyncExternalStore(subscribeToBrowserTimeZone, getBrowserTimeZone, () => "UTC");
+  const fsHydrated = useOSStore((state) => state.fsHydrated);
+  const [browserTimeZone, setBrowserTimeZone] = useState(() => getBrowserTimeZone());
   const [tick, setTick] = useState<number | null>(null);
   const [use24Hour, setUse24Hour] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,23 +62,61 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
   const [focusSource, setFocusSource] = useState<string | null>(null);
   const [plannerValue, setPlannerValue] = useState(createInitialPlannerValue);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "unsupported">("idle");
+  const [favoriteTimeZones, setFavoriteTimeZones] = useState<Set<string>>(new Set());
+  const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const reduceMotion = useReducedMotion();
 
-  const favoriteTimeZones = useMemo(() => {
-    try {
-      return new Set(JSON.parse(favoriteTimeZonesSnapshot) as string[]);
-    } catch {
-      return new Set<string>();
-    }
-  }, [favoriteTimeZonesSnapshot]);
+  useEffect(() => {
+    return subscribeToBrowserTimeZone(() => {
+      setBrowserTimeZone(getBrowserTimeZone());
+    });
+  }, []);
 
-  const favoriteOrder = useMemo(() => {
-    try {
-      return JSON.parse(favoriteOrderSnapshot) as string[];
-    } catch {
-      return [] as string[];
+  useEffect(() => {
+    if (!fsHydrated) {
+      return;
     }
-  }, [favoriteOrderSnapshot]);
+
+    let cancelled = false;
+
+    const hydrateClockPreferences = async () => {
+      const [favorites, order] = await Promise.all([
+        readFavoriteTimeZones(),
+        readFavoriteOrder(),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      setFavoriteTimeZones(favorites);
+      setFavoriteOrder(order);
+    };
+
+    void hydrateClockPreferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fsHydrated]);
+
+  useEffect(() => {
+    if (!fsHydrated) {
+      return;
+    }
+
+    return subscribeToClockStorage(() => {
+      void (async () => {
+        const [favorites, order] = await Promise.all([
+          readFavoriteTimeZones(),
+          readFavoriteOrder(),
+        ]);
+
+        setFavoriteTimeZones(favorites);
+        setFavoriteOrder(order);
+      })();
+    });
+  }, [fsHydrated]);
 
   useEffect(() => {
     const updateTick = () => {
@@ -259,7 +289,8 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
       nextFavorites.delete(timeZone);
     }
 
-    saveFavoriteTimeZones(nextFavorites);
+    void saveFavoriteTimeZones(nextFavorites);
+    setFavoriteTimeZones(nextFavorites);
 
     const nextOrder = willBeFavorite
       ? favoriteOrder.includes(timeZone)
@@ -267,13 +298,15 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
         : [...favoriteOrder, timeZone]
       : favoriteOrder.filter((item) => item !== timeZone);
 
-    saveFavoriteOrder(nextOrder);
+    setFavoriteOrder(nextOrder);
+    void saveFavoriteOrder(nextOrder);
   };
 
   const handleReorderFavorites = (items: ClockTimeZoneOption[]) => {
     const nextOrder = items.map((item) => item.timeZone);
 
-    saveFavoriteOrder(nextOrder);
+    setFavoriteOrder(nextOrder);
+    void saveFavoriteOrder(nextOrder);
   };
 
   const handleCopyPlanner = async () => {

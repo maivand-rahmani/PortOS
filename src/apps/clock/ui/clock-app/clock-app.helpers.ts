@@ -1,60 +1,68 @@
 import type { ClockTimeZoneOption } from "../../model/content";
 import { buildPlannerInputValue } from "../../model/time";
+import { PERSISTED_FILE_PATHS, subscribeToFileSystemChanges } from "@/shared/lib";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
 
-export const favoriteStorageKey = "portos-clock-favorites";
-export const favoriteOrderStorageKey = "portos-clock-favorite-order";
 const CLOCK_STORAGE_EVENT = "portos:clock-storage-change";
+
+type ClockPreferences = {
+  favorites: string[];
+  favoriteOrder: string[];
+};
 
 export type PlannerStatus = "ideal" | "early" | "late" | "overnight";
 
-export function readFavoriteTimeZones() {
-  if (typeof window === "undefined") {
-    return new Set<string>();
-  }
+function normalizeClockPreferences(value: ClockPreferences | null): ClockPreferences {
+  return {
+    favorites: Array.isArray(value?.favorites) ? value.favorites : [],
+    favoriteOrder: Array.isArray(value?.favoriteOrder) ? value.favoriteOrder : [],
+  };
+}
 
-  try {
-    const stored = window.localStorage.getItem(favoriteStorageKey);
+async function readClockPreferences() {
+  const stored = await readJsonAtPath<ClockPreferences>(
+    PERSISTED_FILE_PATHS.clockPreferences,
+  );
 
-    if (!stored) {
-      return new Set<string>();
-    }
+  return normalizeClockPreferences(stored);
+}
 
-    return new Set(JSON.parse(stored) as string[]);
-  } catch {
-    return new Set<string>();
+async function writeClockPreferences(preferences: ClockPreferences) {
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.clockPreferences, preferences);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CLOCK_STORAGE_EVENT));
   }
 }
 
-export function saveFavoriteTimeZones(favorites: Set<string>) {
-  if (typeof window === "undefined") {
-    return;
-  }
+export async function readFavoriteTimeZones() {
+  const preferences = await readClockPreferences();
 
-  window.localStorage.setItem(favoriteStorageKey, JSON.stringify([...favorites]));
-  window.dispatchEvent(new Event(CLOCK_STORAGE_EVENT));
+  return new Set(preferences.favorites);
 }
 
-export function readFavoriteOrder() {
-  if (typeof window === "undefined") {
-    return [] as string[];
-  }
+export async function saveFavoriteTimeZones(favorites: Set<string>) {
+  const current = await readClockPreferences();
 
-  try {
-    const stored = window.localStorage.getItem(favoriteOrderStorageKey);
-
-    return stored ? (JSON.parse(stored) as string[]) : [];
-  } catch {
-    return [] as string[];
-  }
+  await writeClockPreferences({
+    ...current,
+    favorites: [...favorites],
+  });
 }
 
-export function saveFavoriteOrder(order: string[]) {
-  if (typeof window === "undefined") {
-    return;
-  }
+export async function readFavoriteOrder() {
+  const preferences = await readClockPreferences();
 
-  window.localStorage.setItem(favoriteOrderStorageKey, JSON.stringify(order));
-  window.dispatchEvent(new Event(CLOCK_STORAGE_EVENT));
+  return preferences.favoriteOrder;
+}
+
+export async function saveFavoriteOrder(order: string[]) {
+  const current = await readClockPreferences();
+
+  await writeClockPreferences({
+    ...current,
+    favoriteOrder: order,
+  });
 }
 
 export function subscribeToClockStorage(onStoreChange: () => void) {
@@ -63,28 +71,16 @@ export function subscribeToClockStorage(onStoreChange: () => void) {
   }
 
   window.addEventListener(CLOCK_STORAGE_EVENT, onStoreChange);
-  window.addEventListener("storage", onStoreChange);
+  const unsubscribeFs = subscribeToFileSystemChanges((detail) => {
+    if (detail.path === PERSISTED_FILE_PATHS.clockPreferences) {
+      onStoreChange();
+    }
+  });
 
   return () => {
     window.removeEventListener(CLOCK_STORAGE_EVENT, onStoreChange);
-    window.removeEventListener("storage", onStoreChange);
+    unsubscribeFs();
   };
-}
-
-export function readFavoriteTimeZonesSnapshot() {
-  if (typeof window === "undefined") {
-    return "[]";
-  }
-
-  return window.localStorage.getItem(favoriteStorageKey) ?? "[]";
-}
-
-export function readFavoriteOrderSnapshot() {
-  if (typeof window === "undefined") {
-    return "[]";
-  }
-
-  return window.localStorage.getItem(favoriteOrderStorageKey) ?? "[]";
 }
 
 export function subscribeToBrowserTimeZone(onStoreChange: () => void) {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import {
   AGENT_NOTES_PREFILL_EVENT,
   NOTES_EXTERNAL_REQUEST_EVENT,
@@ -33,9 +34,12 @@ import {
   createNoteItem,
   duplicateNoteItem,
   formatNoteDate,
+  noteExistsAtPath,
   readStoredNotes,
   saveNotes,
+  subscribeToNotesDirectory,
   type NoteItem,
+  updateNotePath,
   updateNoteTimestamp,
 } from "../model/notes-storage";
 import {
@@ -57,14 +61,63 @@ const cardRotations = ["rotate-[-0.8deg]", "rotate-[0.6deg]", "rotate-[-1.2deg]"
 type NoteView = "all" | "pinned" | "untagged";
 
 export function NotesApp({ windowId }: AppComponentProps) {
-  const [initialNotes] = useState<NoteItem[]>(() => readStoredNotes());
-  const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(initialNotes[0]?.id ?? null);
+  const fsHydrated = useOSStore((state) => state.fsHydrated);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedView, setSelectedView] = useState<NoteView>("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState("Saved locally");
+  const [saveStatus, setSaveStatus] = useState("Syncing with file system");
+  const [notesHydrated, setNotesHydrated] = useState(false);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!fsHydrated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadNotes = async () => {
+      const storedNotes = await readStoredNotes();
+
+      if (cancelled) {
+        return;
+      }
+
+      setNotes(storedNotes);
+      setActiveNoteId((current) => current ?? storedNotes[0]?.id ?? null);
+      setNotesHydrated(true);
+      setSaveStatus("Synced with file system");
+    };
+
+    void loadNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fsHydrated]);
+
+  useEffect(() => {
+    if (!fsHydrated) {
+      return;
+    }
+
+    return subscribeToNotesDirectory(() => {
+      void (async () => {
+        const storedNotes = await readStoredNotes();
+
+        setNotes(storedNotes);
+        setActiveNoteId((current) => {
+          if (current && storedNotes.some((note) => note.id === current)) {
+            return current;
+          }
+
+          return storedNotes[0]?.id ?? null;
+        });
+      })();
+    });
+  }, [fsHydrated]);
 
   const availableTags = useMemo(
     () => Array.from(new Set(notes.flatMap((note) => note.tags))).sort((left, right) => left.localeCompare(right)),
@@ -114,14 +167,18 @@ export function NotesApp({ windowId }: AppComponentProps) {
   const pinnedCount = notes.filter((note) => note.isPinned).length;
   const untaggedCount = notes.filter((note) => note.tags.length === 0).length;
 
-  const updateNotes = (updater: (current: NoteItem[]) => NoteItem[]) => {
+  const updateNotes = useCallback((updater: (current: NoteItem[]) => NoteItem[]) => {
     setNotes((current) => {
       const next = updater(current);
-      saveNotes(next);
-      setSaveStatus("Saved locally");
+
+      if (notesHydrated) {
+        void saveNotes(next);
+        setSaveStatus("Synced with file system");
+      }
+
       return next;
     });
-  };
+  }, [notesHydrated]);
 
   useEffect(() => {
     const applyPrefill = (detail: AgentNotesPrefillDetail | null) => {
@@ -153,7 +210,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
     return () => {
       window.removeEventListener(AGENT_NOTES_PREFILL_EVENT, handleAgentPrefill);
     };
-  }, []);
+  }, [updateNotes]);
 
   const updateActiveNote = (updater: (note: NoteItem) => NoteItem, status = "Saved locally") => {
     if (!activeNote) {
@@ -161,7 +218,16 @@ export function NotesApp({ windowId }: AppComponentProps) {
     }
 
     updateNotes((current) =>
-      current.map((note) => (note.id === activeNote.id ? updateNoteTimestamp(updater(note)) : note)),
+      current.map((note) => {
+        if (note.id !== activeNote.id) {
+          return note;
+        }
+
+        const updated = updateNoteTimestamp(updater(note));
+        const shouldRefreshPath = updated.title !== note.title || !noteExistsAtPath(updated.path);
+
+        return shouldRefreshPath ? updateNotePath(updated) : updated;
+      }),
     );
     setSaveStatus(status);
   };
@@ -184,7 +250,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
     updateNotes((current) => [nextNote, ...current]);
     setActiveNoteId(nextNote.id);
     setSaveStatus("Page duplicated");
-  }, [activeNote]);
+  }, [activeNote, updateNotes]);
 
   const insertChecklistStarter = () => {
     if (!activeNote) {
@@ -212,7 +278,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
     const remainingNotes = notes.filter((note) => note.id !== activeNote.id);
     const fallbackNotes = remainingNotes.length > 0 ? remainingNotes : [createNoteItem(0)];
 
-    saveNotes(fallbackNotes);
+    void saveNotes(fallbackNotes);
     setNotes(fallbackNotes);
     setActiveNoteId(fallbackNotes[0]?.id ?? null);
     setSaveStatus("Page removed");
@@ -261,7 +327,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
     return () => {
       window.removeEventListener(NOTES_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
     };
-  }, [windowId]);
+  }, [updateNotes, windowId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

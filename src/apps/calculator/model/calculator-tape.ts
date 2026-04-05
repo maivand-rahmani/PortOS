@@ -1,8 +1,9 @@
 import type { AgentExternalRequest, NotesExternalRequestDetail } from "@/shared/lib";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
 
 import type { CalculationTapeEntry } from "./types";
 
-const CALCULATOR_TAPE_STORAGE_KEY = "portos-calculator-tape";
 const MAX_TAPE_ENTRIES = 10;
 
 export const CALCULATOR_WORKING_TAPE_TITLE = "Calculator Working Tape";
@@ -26,41 +27,39 @@ export function formatTapeTimestamp(value: string) {
   }).format(new Date(value));
 }
 
-export function loadCalculatorTape() {
-  if (typeof window === "undefined") {
-    return [] satisfies CalculationTapeEntry[];
+function isCalculationTapeEntry(entry: unknown): entry is CalculationTapeEntry {
+  if (!entry || typeof entry !== "object") {
+    return false;
   }
 
-  const storedTape = window.localStorage.getItem(CALCULATOR_TAPE_STORAGE_KEY);
+  const candidate = entry as CalculationTapeEntry;
 
-  if (!storedTape) {
-    return [] satisfies CalculationTapeEntry[];
-  }
-
-  try {
-    const parsed = JSON.parse(storedTape) as CalculationTapeEntry[];
-
-    return sortTape(
-      parsed.filter(
-        (entry) =>
-          typeof entry.id === "string" &&
-          typeof entry.expression === "string" &&
-          typeof entry.result === "string" &&
-          typeof entry.createdAt === "string" &&
-          typeof entry.pinned === "boolean",
-      ),
-    ).slice(0, MAX_TAPE_ENTRIES);
-  } catch {
-    return [] satisfies CalculationTapeEntry[];
-  }
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.expression === "string" &&
+    typeof candidate.result === "string" &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.pinned === "boolean"
+  );
 }
 
-export function saveCalculatorTape(entries: CalculationTapeEntry[]) {
-  if (typeof window === "undefined") {
-    return;
+export async function loadCalculatorTape() {
+  const parsed = await readJsonAtPath<CalculationTapeEntry[]>(
+    PERSISTED_FILE_PATHS.calculatorTape,
+  );
+
+  if (!parsed) {
+    return [] satisfies CalculationTapeEntry[];
   }
 
-  window.localStorage.setItem(CALCULATOR_TAPE_STORAGE_KEY, JSON.stringify(sortTape(entries).slice(0, MAX_TAPE_ENTRIES)));
+  return sortTape(parsed.filter(isCalculationTapeEntry)).slice(0, MAX_TAPE_ENTRIES);
+}
+
+export async function saveCalculatorTape(entries: CalculationTapeEntry[]) {
+  await writeJsonAtPath(
+    PERSISTED_FILE_PATHS.calculatorTape,
+    sortTape(entries).slice(0, MAX_TAPE_ENTRIES),
+  );
 }
 
 export function createCalculatorTapeEntry(expression: string, result: string): CalculationTapeEntry {

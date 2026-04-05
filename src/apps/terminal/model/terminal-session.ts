@@ -1,7 +1,14 @@
 import type { TerminalExternalRequestDetail } from "@/shared/lib";
 import { consumePendingTerminalExternalRequest } from "@/shared/lib";
+import { subscribeToFileSystemChanges } from "@/shared/lib/fs-events";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
+import { readJsonAtPath, writeJsonAtPath } from "@/shared/lib/fs-actions";
 
 const SESSION_HISTORY_LIMIT = 12;
+
+type PersistedTerminalHistory = {
+  recentCommands: string[];
+};
 
 export type TerminalEntry = {
   id: string;
@@ -91,6 +98,34 @@ export function buildRuntimeQuickActions(currentPath: string): TerminalQuickActi
       description: "List files in current directory.",
     },
   ];
+}
+
+function normalizeRecentCommands(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  return value.map((entry) => String(entry).trim()).filter(Boolean).slice(-SESSION_HISTORY_LIMIT);
+}
+
+export async function loadRecentTerminalCommands() {
+  const stored = await readJsonAtPath<PersistedTerminalHistory>(PERSISTED_FILE_PATHS.terminalHistory);
+
+  return normalizeRecentCommands(stored?.recentCommands);
+}
+
+export async function saveRecentTerminalCommands(recentCommands: string[]) {
+  await writeJsonAtPath(PERSISTED_FILE_PATHS.terminalHistory, {
+    recentCommands: normalizeRecentCommands(recentCommands),
+  });
+}
+
+export function subscribeToRecentTerminalCommands(onChange: () => void) {
+  return subscribeToFileSystemChanges((detail) => {
+    if (detail.path === PERSISTED_FILE_PATHS.terminalHistory) {
+      onChange();
+    }
+  });
 }
 
 export function readPendingTerminalExternalRequest(windowId: string) {
