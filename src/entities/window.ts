@@ -36,5 +36,8 @@ export type WindowInstance = {
   zIndex: number;
   isMinimized: boolean;
   isMaximized: boolean;
+  isFullscreen: boolean;
   restoredFrame: WindowFrame | null;
+  fullscreenRestoreWorkspaceId: WorkspaceId | null;
+  fullscreenRestoreMaximized: boolean;
 };

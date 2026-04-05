@@ -97,7 +97,12 @@ export function beginWindowResizeModel(
 ): WindowManagerState {
   const targetWindow = state.windows.find((window) => window.id === input.windowId);
 
-  if (!targetWindow || targetWindow.isMinimized || targetWindow.isMaximized) {
+  if (
+    !targetWindow ||
+    targetWindow.isMinimized ||
+    targetWindow.isMaximized ||
+    targetWindow.isFullscreen
+  ) {
     return {
       ...state,
       dragState: null,
@@ -130,7 +135,12 @@ export function updateResizedWindowModel(
 
   const targetWindow = state.windows.find((window) => window.id === state.resizeState?.windowId);
 
-  if (!targetWindow || targetWindow.isMinimized || targetWindow.isMaximized) {
+  if (
+    !targetWindow ||
+    targetWindow.isMinimized ||
+    targetWindow.isMaximized ||
+    targetWindow.isFullscreen
+  ) {
     return {
       ...state,
       resizeState: null,

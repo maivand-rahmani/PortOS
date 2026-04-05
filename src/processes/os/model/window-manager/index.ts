@@ -1,9 +1,12 @@
 import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
-import type { WorkspaceId } from "@/entities/workspace";
+import type { WorkspaceDefinition, WorkspaceId, WorkspaceSplitView } from "@/entities/workspace";
 
 import {
   clampWindowPosition,
+  clampSplitViewRatio,
+  getFullscreenFrame,
+  getSplitViewFrames,
   getTopVisibleWindowId,
   getWindowFrameFromBounds,
   replaceWindow,
@@ -44,6 +47,29 @@ type UpdateDraggedWindowInput = {
 type MaximizeWindowInput = {
   windowId: string;
   bounds: DesktopBounds;
+};
+
+type FullscreenWindowInput = {
+  windowId: string;
+  bounds: Pick<DesktopBounds, "width" | "height">;
+  restoreWorkspaceId: WorkspaceId;
+  fullscreenWorkspaceId: WorkspaceId;
+};
+
+type ExitFullscreenWindowInput = {
+  windowId: string;
+  bounds: DesktopBounds;
+};
+
+type ApplySplitViewInput = {
+  workspaceId: WorkspaceId;
+  splitView: WorkspaceSplitView;
+  bounds: Pick<DesktopBounds, "width" | "height">;
+};
+
+type ResizeWindowsToBoundsInput = {
+  bounds: DesktopBounds;
+  workspaces?: WorkspaceDefinition[];
 };
 
 type WindowResizeInput = {
@@ -111,11 +137,14 @@ export function openWindowModel(
     position: nextPosition,
     size,
     minSize,
-    zIndex: state.nextZIndex,
-    isMinimized: false,
-    isMaximized: false,
-    restoredFrame: null,
-  };
+      zIndex: state.nextZIndex,
+      isMinimized: false,
+      isMaximized: false,
+      isFullscreen: false,
+      restoredFrame: null,
+      fullscreenRestoreWorkspaceId: null,
+      fullscreenRestoreMaximized: false,
+    };
 
   return {
     state: {
@@ -269,7 +298,7 @@ export function toggleWindowMaximizeModel(
   const focusedState = focusWindowModel(state, input.windowId);
   const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
 
-  if (!targetWindow || targetWindow.isMinimized) {
+  if (!targetWindow || targetWindow.isMinimized || targetWindow.isFullscreen) {
     return focusedState;
   }
 
@@ -314,15 +343,188 @@ export function beginWindowResizeModel(
   return beginWindowResizeStateModel(focusedState, input);
 }
 
-export function resizeWindowsToBoundsModel(
+export function enterWindowFullscreenModel(
   state: WindowManagerState,
-  bounds: DesktopBounds,
+  input: FullscreenWindowInput,
 ): WindowManagerState {
+  const focusedState = focusWindowModel(state, input.windowId);
+  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+
+  if (!targetWindow || targetWindow.isMinimized || targetWindow.isFullscreen) {
+    return focusedState;
+  }
+
+  const fullscreenFrame = getFullscreenFrame(input.bounds);
+
+  return {
+    windows: replaceWindow(focusedState.windows, input.windowId, (window) => ({
+      ...window,
+      workspaceId: input.fullscreenWorkspaceId,
+      position: fullscreenFrame.position,
+      size: fullscreenFrame.size,
+      isMaximized: false,
+      isFullscreen: true,
+      restoredFrame: window.isMaximized
+        ? window.restoredFrame
+        : {
+            position: window.position,
+            size: window.size,
+          },
+      fullscreenRestoreWorkspaceId: input.restoreWorkspaceId,
+      fullscreenRestoreMaximized: window.isMaximized,
+    })),
+    activeWindowId: input.windowId,
+    nextZIndex: focusedState.nextZIndex,
+    dragState: null,
+    resizeState: null,
+  };
+}
+
+export function exitWindowFullscreenModel(
+  state: WindowManagerState,
+  input: ExitFullscreenWindowInput,
+): WindowManagerState {
+  const focusedState = focusWindowModel(state, input.windowId);
+  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+
+  if (!targetWindow || !targetWindow.isFullscreen || !targetWindow.fullscreenRestoreWorkspaceId) {
+    return focusedState;
+  }
+
+  const maximizedFrame = getWindowFrameFromBounds(input.bounds);
+
+  return {
+    windows: replaceWindow(focusedState.windows, input.windowId, (window) => {
+      const restoredFrame = window.restoredFrame;
+
+      return {
+        ...window,
+        workspaceId: window.fullscreenRestoreWorkspaceId ?? window.workspaceId,
+        position: window.fullscreenRestoreMaximized
+          ? maximizedFrame.position
+          : restoredFrame?.position ?? window.position,
+        size: window.fullscreenRestoreMaximized
+          ? maximizedFrame.size
+          : resolveWindowSize(restoredFrame?.size ?? window.size, window.minSize, input.bounds),
+        isMaximized: window.fullscreenRestoreMaximized,
+        isFullscreen: false,
+        restoredFrame: window.fullscreenRestoreMaximized ? restoredFrame : null,
+        fullscreenRestoreWorkspaceId: null,
+        fullscreenRestoreMaximized: false,
+      };
+    }),
+    activeWindowId: input.windowId,
+    nextZIndex: focusedState.nextZIndex,
+    dragState: null,
+    resizeState: null,
+  };
+}
+
+export function applySplitViewFramesModel(
+  state: WindowManagerState,
+  input: ApplySplitViewInput,
+): WindowManagerState {
+  const leftWindow = state.windows.find((window) => window.id === input.splitView.leftWindowId);
+  const rightWindow = state.windows.find((window) => window.id === input.splitView.rightWindowId);
+
+  if (!leftWindow || !rightWindow) {
+    return state;
+  }
+
+  const frames = getSplitViewFrames(input.bounds, {
+    ratio: input.splitView.ratio,
+    leftMinWidth: leftWindow.minSize.width,
+    rightMinWidth: rightWindow.minSize.width,
+  });
+
   return {
     ...state,
     windows: state.windows.map((window) => {
-      if (window.isMaximized) {
-        const frame = getWindowFrameFromBounds(bounds);
+      if (window.id === leftWindow.id) {
+        return {
+          ...window,
+          workspaceId: input.workspaceId,
+          isFullscreen: true,
+          position: frames.left.position,
+          size: frames.left.size,
+        };
+      }
+
+      if (window.id === rightWindow.id) {
+        return {
+          ...window,
+          workspaceId: input.workspaceId,
+          isFullscreen: true,
+          position: frames.right.position,
+          size: frames.right.size,
+        };
+      }
+
+      return window;
+    }),
+  };
+}
+
+export function resizeWindowsToBoundsModel(
+  state: WindowManagerState,
+  input: ResizeWindowsToBoundsInput,
+): WindowManagerState {
+  const workspaces = input.workspaces ?? [];
+
+  return {
+    ...state,
+    windows: state.windows.map((window) => {
+      const workspace = workspaces.find((entry) => entry.id === window.workspaceId) ?? null;
+      const splitView = workspace?.splitView;
+
+      if (
+        splitView &&
+        (splitView.leftWindowId === window.id || splitView.rightWindowId === window.id)
+      ) {
+        const siblingId =
+          splitView.leftWindowId === window.id ? splitView.rightWindowId : splitView.leftWindowId;
+        const siblingWindow = state.windows.find((entry) => entry.id === siblingId);
+
+        if (!siblingWindow) {
+          return window;
+        }
+
+        const ratio = clampSplitViewRatio(input.bounds, {
+          ratio: splitView.ratio,
+          leftMinWidth:
+            splitView.leftWindowId === window.id
+              ? window.minSize.width
+              : siblingWindow.minSize.width,
+          rightMinWidth:
+            splitView.rightWindowId === window.id
+              ? window.minSize.width
+              : siblingWindow.minSize.width,
+        });
+        const frames = getSplitViewFrames(input.bounds, {
+          ratio,
+          leftMinWidth:
+            splitView.leftWindowId === window.id
+              ? window.minSize.width
+              : siblingWindow.minSize.width,
+          rightMinWidth:
+            splitView.rightWindowId === window.id
+              ? window.minSize.width
+              : siblingWindow.minSize.width,
+        });
+
+        return {
+          ...window,
+          position:
+            splitView.leftWindowId === window.id
+              ? frames.left.position
+              : frames.right.position,
+          size:
+            splitView.leftWindowId === window.id ? frames.left.size : frames.right.size,
+        };
+      }
+
+      if (window.isFullscreen) {
+        const frame = getFullscreenFrame(input.bounds);
 
         return {
           ...window,
@@ -331,12 +533,22 @@ export function resizeWindowsToBoundsModel(
         };
       }
 
-      const size = resolveWindowSize(window.size, window.minSize, bounds);
+      if (window.isMaximized) {
+        const frame = getWindowFrameFromBounds(input.bounds);
+
+        return {
+          ...window,
+          position: frame.position,
+          size: frame.size,
+        };
+      }
+
+      const size = resolveWindowSize(window.size, window.minSize, input.bounds);
 
       return {
         ...window,
         size,
-        position: clampWindowPosition(window.position, size, bounds),
+        position: clampWindowPosition(window.position, size, input.bounds),
       };
     }),
     dragState: state.dragState,
