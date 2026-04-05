@@ -47,13 +47,9 @@ export function maximizeWindowById(windowId: string) {
   const bounds = {
     width: window.innerWidth,
     height: window.innerHeight,
-    insetTop: 32,
-    insetRight: 24,
-    insetBottom: 132,
-    insetLeft: 24,
   };
 
-  state.toggleWindowMaximize(windowId, bounds);
+  state.toggleWindowFullscreen(windowId, bounds);
 }
 
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {

@@ -71,16 +71,30 @@ import {
   type ProcessManagerState,
 } from "./process-manager";
 import {
+  migratePersistedSession,
   restoreSessionModel,
+  serializeSessionModel,
   sessionManagerInitialState,
   SESSION_STORAGE_KEY,
   type PersistedSessionState,
   type SessionManagerState,
 } from "./session-manager";
 import {
+  createDesktopWorkspaceModel,
+  createFullscreenWorkspaceModel,
+  beginSplitViewResizeModel,
   cycleWorkspaceModel,
+  endSplitViewResizeModel,
+  enterSplitViewModel,
+  getWorkspaceById,
+  getWorkspaceSplitView,
+  isFullscreenWorkspace,
+  isSplitWorkspace,
+  removeWorkspaceModel,
+  setSplitViewRatioModel,
   switchWorkspaceModel,
   syncActiveWindowToWorkspace,
+  updateWorkspaceSplitViewModel,
   workspaceManagerInitialState,
   type WorkspaceId,
   type WorkspaceManagerState,
@@ -109,8 +123,11 @@ import {
   beginWindowResizeModel,
   closeWindowModel,
   createWindowManagerModel,
+  applySplitViewFramesModel,
+  enterWindowFullscreenModel,
   endWindowDragModel,
   endWindowResizeModel,
+  exitWindowFullscreenModel,
   focusWindowModel,
   minimizeWindowModel,
   openWindowModel,
@@ -185,6 +202,7 @@ export type OSStore = AppRegistryState &
     updateSettings: (patch: Partial<OSSettings>) => Promise<void>;
     switchWorkspace: (workspaceId: WorkspaceId) => void;
     cycleWorkspace: (direction: 1 | -1) => void;
+    createDesktop: () => void;
     launchApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     activateApp: (appId: string, bounds?: DesktopBounds) => Promise<string | null>;
     loadAppComponent: (appId: string) => Promise<LoadedAppMap[string] | null>;
@@ -193,6 +211,24 @@ export type OSStore = AppRegistryState &
     minimizeWindow: (windowId: string) => void;
     restoreWindow: (windowId: string) => void;
     toggleWindowMaximize: (windowId: string, bounds: DesktopBounds) => void;
+    toggleWindowFullscreen: (
+      windowId: string,
+      bounds: Pick<DesktopBounds, "width" | "height">,
+    ) => void;
+    enterSplitView: (
+      anchorWindowId: string,
+      companionWindowId: string,
+      side: "left" | "right",
+      bounds: Pick<DesktopBounds, "width" | "height">,
+    ) => void;
+    setSplitViewRatio: (
+      workspaceId: WorkspaceId,
+      ratio: number,
+      bounds: Pick<DesktopBounds, "width" | "height">,
+    ) => void;
+    beginSplitViewResize: (workspaceId: WorkspaceId, pointerX: number) => void;
+    updateSplitViewResize: (pointerX: number, bounds: Pick<DesktopBounds, "width" | "height">) => void;
+    endSplitViewResize: () => void;
     beginWindowDrag: (windowId: string, pointer: WindowPosition) => void;
     updateWindowDrag: (pointer: WindowPosition, bounds: DesktopBounds) => void;
     endWindowDrag: () => void;
@@ -205,6 +241,7 @@ export type OSStore = AppRegistryState &
     updateWindowResize: (pointer: WindowPosition, bounds: DesktopBounds) => void;
     endWindowResize: () => void;
     resizeWindowsToBounds: (bounds: DesktopBounds) => void;
+    closeFullscreenSpace: (workspaceId: WorkspaceId) => void;
     terminateProcess: (processId: string) => void;
     // File system
     hydrateFileSystem: () => Promise<void>;
@@ -298,6 +335,70 @@ function applySettingsToDOM(settings: OSSettings): void {
   } else {
     root.removeAttribute("data-reduced-transparency");
   }
+}
+
+function collapseSplitWorkspaceForWindow(input: {
+  state: OSStore;
+  windowId: string;
+  bounds: Pick<DesktopBounds, "width" | "height">;
+}) {
+  const workspace = getWorkspaceById(input.state.workspaces, input.state.currentWorkspaceId);
+  const targetWindow = input.state.windows.find((window) => window.id === input.windowId);
+
+  if (!workspace || !targetWindow || !workspace.splitView) {
+    return null;
+  }
+
+  const splitView = workspace.splitView;
+  const remainingWindowId =
+    splitView.leftWindowId === input.windowId
+      ? splitView.rightWindowId
+      : splitView.rightWindowId === input.windowId
+        ? splitView.leftWindowId
+        : null;
+
+  if (!remainingWindowId) {
+    return null;
+  }
+
+  const nextWorkspaceState = updateWorkspaceSplitViewModel(input.state, {
+    workspaceId: workspace.id,
+    splitView: null,
+  });
+  const remainingWindow = input.state.windows.find((window) => window.id === remainingWindowId);
+
+  if (!remainingWindow) {
+    return {
+      workspaces: nextWorkspaceState.workspaces,
+      splitResizeState: nextWorkspaceState.splitResizeState,
+      activeWindowId: input.state.activeWindowId,
+      windows: input.state.windows,
+    };
+  }
+
+  const nextWindows = input.state.windows.map((window) => {
+    if (window.id !== remainingWindowId) {
+      return window;
+    }
+
+    return {
+      ...window,
+      workspaceId: workspace.id,
+      isFullscreen: true,
+      position: { x: 0, y: 0 },
+      size: {
+        width: Math.max(320, input.bounds.width),
+        height: Math.max(240, input.bounds.height),
+      },
+    };
+  });
+
+  return {
+    workspaces: nextWorkspaceState.workspaces,
+    splitResizeState: nextWorkspaceState.splitResizeState,
+    activeWindowId: remainingWindowId,
+    windows: nextWindows,
+  };
 }
 
 export const useOSStore = create<OSStore>()((set, get) => ({
@@ -400,13 +501,15 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     const session = rawSession as PersistedSessionState;
 
-    if (session.version !== 1 || !Array.isArray(session.windows)) {
+    const migratedSession = migratePersistedSession(session);
+
+    if (!migratedSession || !Array.isArray(migratedSession.windows)) {
       set({ sessionHydrated: true });
       return;
     }
 
     const restored = restoreSessionModel({
-      session,
+      session: migratedSession,
       bounds,
       appMap: get().appMap,
       windowState: {
@@ -432,9 +535,20 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       dragState: restored.windows.dragState,
       resizeState: restored.windows.resizeState,
       processes: restored.processes.processes,
-      currentWorkspaceId: session.currentWorkspaceId ?? get().currentWorkspaceId,
+      currentWorkspaceId: migratedSession.currentWorkspaceId ?? get().currentWorkspaceId,
+      workspaces: migratedSession.workspaces,
       sessionHydrated: true,
     });
+
+    await idb.setMeta(
+      SESSION_STORAGE_KEY,
+      serializeSessionModel({
+        workspaces: migratedSession.workspaces,
+        windows: restored.windows.windows,
+        activeWindowId: restored.windows.activeWindowId,
+        currentWorkspaceId: migratedSession.currentWorkspaceId,
+      }),
+    );
   },
   updateSettings: async (patch) => {
     const current = get().osSettings;
@@ -479,6 +593,17 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       activeWindowId: nextActiveWindow.activeWindowId,
     });
   },
+  createDesktop: () => {
+    const state = get();
+    const nextWorkspaceState = createDesktopWorkspaceModel(state, {
+      afterWorkspaceId: state.currentWorkspaceId,
+    });
+
+    set({
+      currentWorkspaceId: nextWorkspaceState.state.currentWorkspaceId,
+      workspaces: nextWorkspaceState.state.workspaces,
+    });
+  },
   loadAppComponent: async (appId) => {
     const currentApp = get().appMap[appId];
 
@@ -517,6 +642,14 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     }
 
     const currentState = get();
+    const currentWorkspace = getWorkspaceById(
+      currentState.workspaces,
+      currentState.currentWorkspaceId,
+    );
+    const launchWorkspaceId = isFullscreenWorkspace(currentWorkspace)
+      ? currentState.windows.find((window) => window.id === currentState.activeWindowId)
+          ?.fullscreenRestoreWorkspaceId ?? workspaceManagerInitialState.currentWorkspaceId
+      : currentState.currentWorkspaceId;
     const processResult = startProcessModel(
       {
         processes: currentState.processes,
@@ -536,7 +669,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         processId: processResult.process.id,
         instanceIndex: currentState.windows.length,
         bounds,
-        workspaceId: currentState.currentWorkspaceId,
+        workspaceId: launchWorkspaceId,
       },
     );
     const linkedProcesses = attachWindowToProcessModel(processResult.state, {
@@ -563,10 +696,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   activateApp: async (appId, bounds) => {
     const state = get();
     const appWindows = [...state.windows]
-      .filter(
-        (window) =>
-          window.appId === appId && window.workspaceId === state.currentWorkspaceId,
-      )
+      .filter((window) => window.appId === appId)
       .sort((left, right) => right.zIndex - left.zIndex);
     const visibleWindow = appWindows.find((window) => !window.isMinimized);
 
@@ -617,13 +747,45 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   },
   minimizeWindow: (windowId) => {
     const state = get();
+    const targetWindow = state.windows.find((window) => window.id === windowId);
+
+    if (!targetWindow) {
+      return;
+    }
+
+    if (targetWindow.isFullscreen) {
+      const collapsedSplit = collapseSplitWorkspaceForWindow({
+        state,
+        windowId,
+        bounds: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      });
+
+      if (collapsedSplit) {
+        set({
+          windows: collapsedSplit.windows,
+          workspaces: collapsedSplit.workspaces,
+          splitResizeState: collapsedSplit.splitResizeState,
+          activeWindowId: collapsedSplit.activeWindowId,
+        });
+      } else {
+        get().toggleWindowFullscreen(windowId, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        });
+      }
+    }
+
+    const refreshedState = get();
     const nextWindowState = minimizeWindowModel(
       {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
+        windows: refreshedState.windows,
+        activeWindowId: refreshedState.activeWindowId,
+        nextZIndex: refreshedState.nextZIndex,
+        dragState: refreshedState.dragState,
+        resizeState: refreshedState.resizeState,
       },
       windowId,
     );
@@ -655,9 +817,11 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       windowId,
     );
 
+    const restoredWindow = nextWindowState.windows.find((window) => window.id === windowId);
+
     set({
       windows: nextWindowState.windows,
-      currentWorkspaceId: targetWindow.workspaceId,
+      currentWorkspaceId: restoredWindow?.workspaceId ?? targetWindow.workspaceId,
       activeWindowId: nextWindowState.activeWindowId,
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
@@ -686,6 +850,370 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       nextZIndex: nextWindowState.nextZIndex,
       dragState: nextWindowState.dragState,
       resizeState: nextWindowState.resizeState,
+    });
+  },
+  toggleWindowFullscreen: (windowId, bounds) => {
+    const state = get();
+    const targetWindow = state.windows.find((window) => window.id === windowId);
+
+    if (!targetWindow) {
+      return;
+    }
+
+    if (targetWindow.isFullscreen) {
+      const collapsedSplit = collapseSplitWorkspaceForWindow({
+        state,
+        windowId,
+        bounds,
+      });
+
+      if (collapsedSplit) {
+        const nextWindowState = exitWindowFullscreenModel(
+          {
+            windows: collapsedSplit.windows,
+            activeWindowId: collapsedSplit.activeWindowId,
+            nextZIndex: state.nextZIndex,
+            dragState: state.dragState,
+            resizeState: state.resizeState,
+          },
+          {
+            windowId,
+            bounds: {
+              ...DEFAULT_LAUNCH_BOUNDS,
+              width: bounds.width,
+              height: bounds.height,
+            },
+          },
+        );
+        const restoredWindow = nextWindowState.windows.find((window) => window.id === windowId);
+
+        set({
+          windows: nextWindowState.windows,
+          currentWorkspaceId:
+            restoredWindow?.workspaceId ?? collapsedSplit.activeWindowId ?? state.currentWorkspaceId,
+          workspaces: collapsedSplit.workspaces,
+          splitResizeState: collapsedSplit.splitResizeState,
+          activeWindowId: collapsedSplit.activeWindowId,
+          nextZIndex: nextWindowState.nextZIndex,
+          dragState: nextWindowState.dragState,
+          resizeState: nextWindowState.resizeState,
+        });
+
+        return;
+      }
+
+      const nextWindowState = exitWindowFullscreenModel(
+        {
+          windows: state.windows,
+          activeWindowId: state.activeWindowId,
+          nextZIndex: state.nextZIndex,
+          dragState: state.dragState,
+          resizeState: state.resizeState,
+        },
+        {
+          windowId,
+          bounds: {
+            ...DEFAULT_LAUNCH_BOUNDS,
+            width: bounds.width,
+            height: bounds.height,
+          },
+        },
+      );
+      const nextWorkspaceState = removeWorkspaceModel(state, targetWindow.workspaceId);
+      const restoredWindow = nextWindowState.windows.find((window) => window.id === windowId);
+
+      set({
+        windows: nextWindowState.windows,
+        currentWorkspaceId:
+          restoredWindow?.workspaceId ?? nextWorkspaceState.currentWorkspaceId,
+        workspaces: nextWorkspaceState.workspaces,
+        activeWindowId: nextWindowState.activeWindowId,
+        nextZIndex: nextWindowState.nextZIndex,
+        dragState: nextWindowState.dragState,
+        resizeState: nextWindowState.resizeState,
+      });
+
+      return;
+    }
+
+    const fullscreenWorkspace = createFullscreenWorkspaceModel(state, {
+      ownerWindowId: windowId,
+      label: targetWindow.title,
+    });
+    const nextWindowState = enterWindowFullscreenModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+        resizeState: state.resizeState,
+      },
+      {
+        windowId,
+        bounds,
+        restoreWorkspaceId: targetWindow.workspaceId,
+        fullscreenWorkspaceId: fullscreenWorkspace.workspace.id,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      currentWorkspaceId: fullscreenWorkspace.state.currentWorkspaceId,
+      workspaces: fullscreenWorkspace.state.workspaces,
+      activeWindowId: nextWindowState.activeWindowId,
+      nextZIndex: nextWindowState.nextZIndex,
+      dragState: nextWindowState.dragState,
+      resizeState: nextWindowState.resizeState,
+    });
+  },
+  enterSplitView: (anchorWindowId, companionWindowId, side, bounds) => {
+    const state = get();
+    const anchorWindow = state.windows.find((window) => window.id === anchorWindowId);
+    const companionWindow = state.windows.find((window) => window.id === companionWindowId);
+
+    if (!anchorWindow || !companionWindow || anchorWindowId === companionWindowId) {
+      return;
+    }
+
+    let runtimeState = state;
+    let fullscreenWorkspaceId = anchorWindow.workspaceId;
+
+    if (!anchorWindow.isFullscreen) {
+      get().toggleWindowFullscreen(anchorWindowId, bounds);
+      runtimeState = get();
+      fullscreenWorkspaceId =
+        runtimeState.windows.find((window) => window.id === anchorWindowId)?.workspaceId ??
+        anchorWindow.workspaceId;
+    }
+
+    const workspace = getWorkspaceById(runtimeState.workspaces, fullscreenWorkspaceId);
+
+    if (!workspace || workspace.kind !== "fullscreen") {
+      return;
+    }
+
+    const leftWindowId = side === "left" ? anchorWindowId : companionWindowId;
+    const rightWindowId = side === "left" ? companionWindowId : anchorWindowId;
+    const nextWorkspaceState = enterSplitViewModel(runtimeState, {
+      workspaceId: fullscreenWorkspaceId,
+      leftWindowId,
+      rightWindowId,
+      ratio: 0.5,
+    });
+    const companionSourceWindow = runtimeState.windows.find((window) => window.id === companionWindowId);
+    const nextWindows = runtimeState.windows.map((window) => {
+      if (window.id !== companionWindowId) {
+        return window;
+      }
+
+      return {
+        ...window,
+        workspaceId: fullscreenWorkspaceId,
+        isMinimized: false,
+        isFullscreen: true,
+        fullscreenRestoreWorkspaceId:
+          window.fullscreenRestoreWorkspaceId ??
+          companionSourceWindow?.workspaceId ??
+          runtimeState.currentWorkspaceId,
+        fullscreenRestoreMaximized:
+          window.fullscreenRestoreWorkspaceId != null
+            ? window.fullscreenRestoreMaximized
+            : window.isMaximized,
+        restoredFrame:
+          window.fullscreenRestoreWorkspaceId != null
+            ? window.restoredFrame
+            : window.isMaximized
+              ? window.restoredFrame
+              : {
+                  position: window.position,
+                  size: window.size,
+                },
+        isMaximized: false,
+      };
+    });
+    const nextWindowState = applySplitViewFramesModel(
+      {
+        windows: nextWindows,
+        activeWindowId: runtimeState.activeWindowId,
+        nextZIndex: runtimeState.nextZIndex,
+        dragState: runtimeState.dragState,
+        resizeState: runtimeState.resizeState,
+      },
+      {
+        workspaceId: fullscreenWorkspaceId,
+        splitView: {
+          leftWindowId,
+          rightWindowId,
+          ratio: 0.5,
+        },
+        bounds,
+      },
+    );
+
+    set({
+      windows: nextWindowState.windows,
+      currentWorkspaceId: fullscreenWorkspaceId,
+      workspaces: nextWorkspaceState.workspaces,
+      activeWindowId: anchorWindowId,
+      nextZIndex: runtimeState.nextZIndex,
+      dragState: null,
+      resizeState: null,
+      splitResizeState: nextWorkspaceState.splitResizeState,
+    });
+  },
+  setSplitViewRatio: (workspaceId, ratio, bounds) => {
+    const state = get();
+    const splitView = getWorkspaceSplitView(state.workspaces, workspaceId);
+
+    if (!splitView) {
+      return;
+    }
+
+    const leftWindow = state.windows.find((window) => window.id === splitView.leftWindowId);
+    const rightWindow = state.windows.find((window) => window.id === splitView.rightWindowId);
+
+    if (!leftWindow || !rightWindow) {
+      return;
+    }
+
+    const minLeftRatio = leftWindow.minSize.width / Math.max(320, bounds.width);
+    const maxLeftRatio = 1 - rightWindow.minSize.width / Math.max(320, bounds.width);
+    const clampedRatio = Math.min(Math.max(ratio, minLeftRatio), maxLeftRatio);
+    const nextWorkspaceState = setSplitViewRatioModel(state, {
+      workspaceId,
+      ratio: clampedRatio,
+    });
+    const nextWindowState = applySplitViewFramesModel(
+      {
+        windows: state.windows,
+        activeWindowId: state.activeWindowId,
+        nextZIndex: state.nextZIndex,
+        dragState: state.dragState,
+        resizeState: state.resizeState,
+      },
+      {
+        workspaceId,
+        splitView: {
+          ...splitView,
+          ratio: clampedRatio,
+        },
+        bounds,
+      },
+    );
+
+    set({
+      workspaces: nextWorkspaceState.workspaces,
+      splitResizeState: nextWorkspaceState.splitResizeState,
+      windows: nextWindowState.windows,
+    });
+  },
+  beginSplitViewResize: (workspaceId, pointerX) => {
+    const nextWorkspaceState = beginSplitViewResizeModel(get(), {
+      workspaceId,
+      originPointerX: pointerX,
+    });
+
+    set({ splitResizeState: nextWorkspaceState.splitResizeState });
+  },
+  updateSplitViewResize: (pointerX, bounds) => {
+    const state = get();
+
+    if (!state.splitResizeState) {
+      return;
+    }
+
+    const splitView = getWorkspaceSplitView(state.workspaces, state.splitResizeState.workspaceId);
+
+    if (!splitView) {
+      return;
+    }
+
+    const deltaX = pointerX - state.splitResizeState.originPointerX;
+    const nextRatio = state.splitResizeState.originRatio + deltaX / Math.max(320, bounds.width);
+
+    get().setSplitViewRatio(state.splitResizeState.workspaceId, nextRatio, bounds);
+  },
+  endSplitViewResize: () => {
+    const nextWorkspaceState = endSplitViewResizeModel(get());
+
+    set({ splitResizeState: nextWorkspaceState.splitResizeState });
+  },
+  closeFullscreenSpace: (workspaceId) => {
+    const state = get();
+    const workspace = getWorkspaceById(state.workspaces, workspaceId);
+
+    if (!workspace || workspace.kind !== "fullscreen") {
+      return;
+    }
+
+    const bounds = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+    const desktopWorkspace = state.workspaces.find((w) => w.kind === "desktop") ?? null;
+    let currentWindows = state.windows;
+    let currentWorkspaces = state.workspaces;
+    let currentSplitResizeState = state.splitResizeState;
+
+    if (workspace.splitView) {
+      const collapsedSplit = collapseSplitWorkspaceForWindow({
+        state,
+        windowId: workspace.splitView.leftWindowId,
+        bounds,
+      });
+
+      if (collapsedSplit) {
+        currentWindows = collapsedSplit.windows;
+        currentWorkspaces = collapsedSplit.workspaces;
+        currentSplitResizeState = collapsedSplit.splitResizeState;
+      }
+    }
+
+    const windowsInSpace = currentWindows.filter(
+      (w) => w.workspaceId === workspaceId && w.isFullscreen,
+    );
+
+    let finalWindows = currentWindows;
+    for (const window of windowsInSpace) {
+      const exitResult = exitWindowFullscreenModel(
+        {
+          windows: finalWindows,
+          activeWindowId: state.activeWindowId,
+          nextZIndex: state.nextZIndex,
+          dragState: state.dragState,
+          resizeState: state.resizeState,
+        },
+        {
+          windowId: window.id,
+          bounds: {
+            ...DEFAULT_LAUNCH_BOUNDS,
+            width: bounds.width,
+            height: bounds.height,
+          },
+        },
+      );
+      finalWindows = exitResult.windows;
+    }
+
+    const nextWorkspaceState = removeWorkspaceModel(
+      {
+        currentWorkspaceId: state.currentWorkspaceId,
+        workspaces: currentWorkspaces,
+        splitResizeState: currentSplitResizeState,
+      },
+      workspaceId,
+    );
+
+    const shouldSwitch = state.currentWorkspaceId === workspaceId;
+    const fallbackWorkspaceId = shouldSwitch
+      ? desktopWorkspace?.id ?? nextWorkspaceState.workspaces[0]?.id ?? state.currentWorkspaceId
+      : state.currentWorkspaceId;
+
+    set({
+      windows: finalWindows,
+      workspaces: nextWorkspaceState.workspaces,
+      currentWorkspaceId: fallbackWorkspaceId,
+      splitResizeState: nextWorkspaceState.splitResizeState,
     });
   },
   beginWindowDrag: (windowId, pointer) => {
@@ -859,7 +1387,10 @@ export const useOSStore = create<OSStore>()((set, get) => ({
         dragState: state.dragState,
         resizeState: state.resizeState,
       },
-      bounds,
+      {
+        bounds,
+        workspaces: state.workspaces,
+      },
     );
 
     set({
@@ -876,25 +1407,54 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       return;
     }
 
+    const collapsedSplit = targetWindow.isFullscreen
+      ? collapseSplitWorkspaceForWindow({
+          state,
+          windowId,
+          bounds: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+        })
+      : null;
+    const baseState = collapsedSplit
+      ? {
+          ...state,
+          windows: collapsedSplit.windows,
+          workspaces: collapsedSplit.workspaces,
+          splitResizeState: collapsedSplit.splitResizeState,
+          activeWindowId: collapsedSplit.activeWindowId,
+        }
+      : state;
     const nextWindowState = closeWindowModel(
       {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
+        windows: baseState.windows,
+        activeWindowId: baseState.activeWindowId,
+        nextZIndex: baseState.nextZIndex,
+        dragState: baseState.dragState,
+        resizeState: baseState.resizeState,
       },
       windowId,
     );
     const nextProcessState = stopProcessModel(
       {
-        processes: state.processes,
+        processes: baseState.processes,
       },
       targetWindow.processId,
     );
+    const isSingleFullscreen = targetWindow.isFullscreen && !collapsedSplit;
+    const nextWorkspaceState = isSingleFullscreen
+      ? removeWorkspaceModel(baseState, targetWindow.workspaceId)
+      : null;
+    const fallbackWorkspaceId = targetWindow.isFullscreen
+      ? targetWindow.fullscreenRestoreWorkspaceId ?? nextWorkspaceState?.currentWorkspaceId ?? baseState.currentWorkspaceId
+      : baseState.currentWorkspaceId;
 
     set({
       windows: nextWindowState.state.windows,
+      currentWorkspaceId: fallbackWorkspaceId,
+      workspaces: nextWorkspaceState?.workspaces ?? baseState.workspaces,
+      splitResizeState: nextWorkspaceState?.splitResizeState ?? baseState.splitResizeState,
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
       dragState: nextWindowState.state.dragState,
@@ -910,9 +1470,29 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       return;
     }
 
+    const processWindow = state.windows.find((window) => window.id === targetProcess.windowId);
+    const collapsedSplit = processWindow?.isFullscreen
+      ? collapseSplitWorkspaceForWindow({
+          state,
+          windowId: processWindow.id,
+          bounds: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+        })
+      : null;
+    const baseState = collapsedSplit
+      ? {
+          ...state,
+          windows: collapsedSplit.windows,
+          workspaces: collapsedSplit.workspaces,
+          splitResizeState: collapsedSplit.splitResizeState,
+          activeWindowId: collapsedSplit.activeWindowId,
+        }
+      : state;
     const nextProcessState = stopProcessModel(
       {
-        processes: state.processes,
+        processes: baseState.processes,
       },
       processId,
     );
@@ -927,11 +1507,11 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     const nextWindowState = closeWindowModel(
       {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
+        windows: baseState.windows,
+        activeWindowId: baseState.activeWindowId,
+        nextZIndex: baseState.nextZIndex,
+        dragState: baseState.dragState,
+        resizeState: baseState.resizeState,
       },
       targetProcess.windowId,
     );
@@ -939,6 +1519,8 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     set({
       processes: nextProcessState.processes,
       windows: nextWindowState.state.windows,
+      workspaces: baseState.workspaces,
+      splitResizeState: baseState.splitResizeState,
       activeWindowId: nextWindowState.state.activeWindowId,
       nextZIndex: nextWindowState.state.nextZIndex,
       dragState: nextWindowState.state.dragState,

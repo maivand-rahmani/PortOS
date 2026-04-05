@@ -1,10 +1,13 @@
 export {
+  applySplitViewFramesModel,
   beginWindowDragModel,
   beginWindowResizeModel,
   closeWindowModel,
   createWindowManagerModel,
+  enterWindowFullscreenModel,
   endWindowDragModel,
   endWindowResizeModel,
+  exitWindowFullscreenModel,
   focusWindowModel,
   minimizeWindowModel,
   openWindowModel,
@@ -75,6 +78,7 @@ export {
   updateFileDragModel,
 } from "./file-drag-manager";
 export {
+  migratePersistedSession,
   restoreSessionModel,
   sanitizePersistedWindow,
   serializeSessionModel,
@@ -83,9 +87,21 @@ export {
   SESSION_STORAGE_VERSION,
 } from "./session-manager";
 export {
+  beginSplitViewResizeModel,
+  createFullscreenWorkspaceModel,
   cycleWorkspaceModel,
+  endSplitViewResizeModel,
+  enterSplitViewModel,
+  getWorkspaceById,
+  getWorkspaceIndex,
+  getWorkspaceSplitView,
+  isFullscreenWorkspace,
+  isSplitWorkspace,
+  removeWorkspaceModel,
+  setSplitViewRatioModel,
   switchWorkspaceModel,
   syncActiveWindowToWorkspace,
+  updateWorkspaceSplitViewModel,
   workspaceManagerInitialState,
 } from "./workspace-manager";
 export {
@@ -115,6 +131,8 @@ export type { SessionManagerState, PersistedSessionState } from "./session-manag
 export type {
   WorkspaceDefinition,
   WorkspaceId,
+  WorkspaceKind,
+  WorkspaceSplitView,
   WorkspaceManagerState,
 } from "./workspace-manager";
 export type { NotificationManagerState } from "./notification-manager";
