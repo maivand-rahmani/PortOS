@@ -17,6 +17,14 @@
   --radius-panel: 24px;
   --radius-window: 32px;
   --dock-icon-size: 56px;
+  --font-display: "Plus Jakarta Sans", "Avenir Next", "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-body: "DM Sans", "Avenir Next", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-industrial-sans: "Inter", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-industrial-mono: "JetBrains Mono", "SFMono-Regular", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-clock-sans: "Fira Sans", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-clock-mono: "Fira Code", "SFMono-Regular", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-marker: "Kalam", "Marker Felt", "Chalkboard SE", "Bradley Hand", cursive;
+  --font-handwriting: "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
 }
 
 [data-theme="dark"] {
@@ -57,6 +65,7 @@
   --color-accent: var(--accent);
   --color-accent-secondary: var(--accent-secondary);
   --font-sans: var(--font-body);
+  --font-mono: var(--font-industrial-mono);
   --radius-panel: var(--radius-panel);
   --radius-window: var(--radius-window);
   --shadow-panel: var(--shadow-panel);
@@ -84,7 +93,7 @@ body {
     radial-gradient(circle at top right, rgba(50, 215, 75, 0.18), transparent 26%),
     linear-gradient(180deg, #fbfbfe 0%, #eef1f6 100%);
   color: var(--foreground);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body);
 }
 
 button,
@@ -99,5 +108,29 @@ select {
 }
 
 .font-display {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-display);
+}
+
+.font-industrial-sans {
+  font-family: var(--font-industrial-sans);
+}
+
+.font-industrial-mono {
+  font-family: var(--font-industrial-mono);
+}
+
+.font-clock-sans {
+  font-family: var(--font-clock-sans);
+}
+
+.font-clock-mono {
+  font-family: var(--font-clock-mono);
+}
+
+.font-marker {
+  font-family: var(--font-marker);
+}
+
+.font-handwriting {
+  font-family: var(--font-handwriting);
 }

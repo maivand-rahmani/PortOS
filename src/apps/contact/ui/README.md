@@ -4,7 +4,7 @@ Contact UI for the sketch-paper outreach workspace.
 
 ## Files
 
-- `contact-app.tsx`: top-level Contact app shell that composes the sidebar and outreach workspace.
+- `contact-app.tsx`: top-level Contact app shell that composes the sidebar, outreach workspace, and offline-safe sketch font classes.
 - `contact-field-block.tsx`: reusable paper-style field wrapper for the form inputs.
 - `contact-message-workspace.tsx`: preset-aware drafting surface with Notes, AI, Resume, and Portfolio actions.
 - `contact-sidebar.tsx`: contact details, quick notes, and outreach flow selector.

@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Kalam, Patrick_Hand } from "next/font/google";
 import { Github, Mail, MapPin } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
@@ -14,18 +13,6 @@ import styles from "../theme.module.css";
 import { ContactMessageWorkspace } from "./contact-message-workspace";
 import { ContactSidebar } from "./contact-sidebar";
 import { contactRadii } from "./contact-ui";
-
-const markerFont = Kalam({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-});
-
-const handwritingFont = Patrick_Hand({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 type ContactProfile = {
   personal?: {
@@ -93,7 +80,7 @@ export function ContactApp({ processId, windowId }: AppComponentProps) {
       initial={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.985 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
-      className={cn(styles.app, "flex h-full min-h-0 flex-col overflow-hidden p-3 md:p-4", handwritingFont.className)}
+      className={cn(styles.app, "flex h-full min-h-0 flex-col overflow-hidden p-3 md:p-4 font-handwriting")}
     >
       <div
         className="flex min-h-0 flex-1 flex-col border-[3px] border-[#2d2d2d] bg-[#fdfbf7] shadow-[8px_8px_0px_0px_#2d2d2d]"
@@ -118,7 +105,7 @@ export function ContactApp({ processId, windowId }: AppComponentProps) {
                 <span>Session {processId.slice(0, 6)}</span>
                 <span>Window {windowId.slice(0, 4)}</span>
               </div>
-              <h2 className={cn("mt-4 text-4xl leading-none text-[#2d2d2d] md:text-5xl", markerFont.className)}>
+              <h2 className={cn("mt-4 text-4xl leading-none text-[#2d2d2d] md:text-5xl font-marker")}>
                 Plan the right outreach.
               </h2>
               <p className="mt-3 max-w-3xl text-lg leading-7 text-[#2d2d2d]/76">
@@ -136,7 +123,7 @@ export function ContactApp({ processId, windowId }: AppComponentProps) {
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
           <ContactSidebar
             contactItems={contactItems}
-            markerFontClassName={markerFont.className}
+            markerFontClassName="font-marker"
             presets={presets}
             quickNotes={quickNotes.length > 0 ? quickNotes : [profile.personal?.focus ?? "Building scalable products"]}
             selectedPresetId={selectedPresetId}

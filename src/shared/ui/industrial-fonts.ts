@@ -1,13 +1,9 @@
-import { Inter, JetBrains_Mono } from "next/font/google";
+export const industrialSans = {
+  className: "font-industrial-sans",
+  family: "var(--font-industrial-sans)",
+} as const;
 
-export const industrialSans = Inter({
-  variable: "--font-industrial-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-export const industrialMono = JetBrains_Mono({
-  variable: "--font-industrial-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
+export const industrialMono = {
+  className: "font-industrial-mono",
+  family: "var(--font-industrial-mono)",
+} as const;

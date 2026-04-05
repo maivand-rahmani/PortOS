@@ -7,6 +7,7 @@ Shared interface primitives.
 - buttons
 - cards and panels
 - design-system CSS and font exports
+- `industrial-fonts.ts`: shared offline-safe industrial font class/family references backed by global CSS variables
 - window frames
 - inputs and layout primitives
 

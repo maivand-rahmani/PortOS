@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Kalam, Patrick_Hand } from "next/font/google";
 import {
   CheckSquare,
    Clock3,
@@ -43,18 +42,6 @@ import {
   applyNotesExternalRequest,
   type NotesExternalRequestDetail,
 } from "../model/notes-external-request";
-
-const markerFont = Kalam({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-});
-
-const handwritingFont = Patrick_Hand({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 const wobbleRadii = {
   shell: "32px 18px 28px 16px / 18px 26px 18px 28px",
@@ -312,7 +299,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
       initial={reduceMotion ? undefined : { opacity: 0, scale: 0.97, y: 18, rotate: -1.2 }}
       animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0, rotate: 0 }}
       transition={{ duration: 0.32, ease: "easeOut" }}
-      className={cn("notes-app flex h-full flex-col overflow-auto p-3 md:p-4", handwritingFont.className)}
+      className={cn("notes-app flex h-full flex-col overflow-auto p-3 md:p-4 font-handwriting")}
     >
       <div
         className="flex  h-full flex-1 flex-col border-[3px] border-[#2d2d2d] bg-[#fdfbf7] shadow-[8px_8px_0px_0px_#2d2d2d]"
@@ -338,7 +325,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
 
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className={cn("text-4xl leading-none text-[#2d2d2d] md:text-5xl", markerFont.className)}>
+                  <h2 className={cn("text-4xl leading-none text-[#2d2d2d] md:text-5xl font-marker")}>
                     Scribbles, plans, and half-finished thoughts.
                   </h2>
                   <p className="mt-3 max-w-2xl text-lg leading-7 text-[#2d2d2d]/75 md:text-xl">
@@ -380,7 +367,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className={cn("text-2xl text-[#2d2d2d]", markerFont.className)}>Shelf</p>
+                  <p className={cn("text-2xl text-[#2d2d2d] font-marker")}>Shelf</p>
                   <p className="text-base text-[#2d2d2d]/70">Browse by stack, tags, or loose pages.</p>
                 </div>
                 <StickyNote className="h-6 w-6 text-[#ff4d4d]" strokeWidth={2.5} />
@@ -414,7 +401,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className={cn("text-2xl text-[#2d2d2d]", markerFont.className)}>Tags</p>
+                  <p className={cn("text-2xl text-[#2d2d2d] font-marker")}>Tags</p>
                   <p className="text-base text-[#2d2d2d]/70">Tap one to slice the current pile.</p>
                 </div>
                 <Tag className="h-5 w-5 text-[#2d5da1]" strokeWidth={2.5} />
@@ -453,7 +440,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
                         />
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className={cn("truncate text-2xl text-[#2d2d2d]", markerFont.className)}>
+                            <p className={cn("truncate text-2xl text-[#2d2d2d] font-marker")}>
                               {note.title || "Untitled note"}
                             </p>
                             <p className="mt-1 text-base text-[#2d2d2d]/65">Updated {formatNoteDate(note.updatedAt)}</p>
@@ -486,7 +473,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
                     className="border-[3px] border-dashed border-[#2d2d2d] bg-white px-4 py-8 text-center shadow-[4px_4px_0px_0px_#2d2d2d]"
                     style={{ borderRadius: wobbleRadii.card }}
                   >
-                    <p className={cn("text-2xl text-[#2d2d2d]", markerFont.className)}>Nothing matches this filter.</p>
+                    <p className={cn("text-2xl text-[#2d2d2d] font-marker")}>Nothing matches this filter.</p>
                     <p className="mt-2 text-lg text-[#2d2d2d]/70">Try another tag, clear the search, or start a fresh page.</p>
                     <div className="mt-4 flex flex-wrap justify-center gap-3">
                       <button
@@ -542,8 +529,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
                           onChange={(event) => updateActiveNote((note) => ({ ...note, title: event.target.value }))}
                           placeholder="Untitled page"
                           className={cn(
-                            "w-full border-0 bg-transparent px-0 text-4xl leading-none text-[#2d2d2d] outline-none placeholder:text-[#2d2d2d]/35 md:text-5xl",
-                            markerFont.className,
+                            "w-full border-0 bg-transparent px-0 text-4xl leading-none text-[#2d2d2d] outline-none placeholder:text-[#2d2d2d]/35 md:text-5xl font-marker",
                           )}
                         />
                         <div className="mt-4 flex flex-wrap items-center gap-3 text-base text-[#2d2d2d]/70">
@@ -645,7 +631,7 @@ export function NotesApp({ windowId }: AppComponentProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-[#2d2d2d]">
                           <CheckSquare className="h-5 w-5 text-[#2d5da1]" strokeWidth={2.5} />
-                          <p className={cn("text-2xl", markerFont.className)}>Checklist pulse</p>
+                          <p className={cn("text-2xl font-marker")}>Checklist pulse</p>
                         </div>
                         {activeChecklistProgress ? (
                           <>

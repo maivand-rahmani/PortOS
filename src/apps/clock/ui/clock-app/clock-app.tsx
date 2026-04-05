@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { AnimatePresence, LayoutGroup, Reorder, motion, useReducedMotion } from "framer-motion";
-import { Fira_Code, Fira_Sans } from "next/font/google";
 import { MoonStar, Search, SunMedium } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
@@ -46,18 +45,6 @@ import { FavoriteChip } from "./favorite-chip";
 import { PlannerPanel } from "./planner-panel";
 import { SearchResultsPanel } from "./search-results-panel";
 import { SpotlightPanel } from "./spotlight-panel";
-
-const displayFont = Fira_Code({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const bodyFont = Fira_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 const clockOptions = getClockTimeZoneOptions();
 const defaultCities = getDefaultClockTimeZones(clockOptions);
@@ -306,7 +293,7 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
       initial={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.99 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
-      className={cn("clock-app flex h-full min-h-0 flex-col overflow-hidden p-3 md:p-4", bodyFont.className)}
+      className={cn("clock-app flex h-full min-h-0 flex-col overflow-hidden p-3 md:p-4 font-clock-sans")}
     >
       <div className="clock-app__panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-white/12 bg-slate-950/72 p-4 shadow-[0_24px_72px_rgba(2,6,23,0.54)] backdrop-blur-xl md:p-5">
         <motion.header
@@ -379,7 +366,7 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
                 browserTimeZone={browserTimeZone}
                 use24Hour={use24Hour}
                 reduceMotion={reduceMotion}
-                monoClassName={displayFont.className}
+                monoClassName="font-clock-mono"
                 focusSource={focusSource}
                 timePlaceholder={timePlaceholder}
               />
@@ -401,7 +388,7 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
                         isHighlighted={item.timeZone === highlightedTimeZone}
                         browserTimeZone={browserTimeZone}
                         reduceMotion={reduceMotion}
-                        monoClassName={displayFont.className}
+                        monoClassName="font-clock-mono"
                         timePlaceholder={timePlaceholder}
                         onRemove={() => handleRemoveCity(item.timeZone)}
                         onSetSpotlight={() => handleSpotlight(item.timeZone, "Focused inside Clock")}
