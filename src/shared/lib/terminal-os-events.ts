@@ -1,3 +1,8 @@
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 export const TERMINAL_EXTERNAL_REQUEST_EVENT = "portos:terminal-external-request";
 const TERMINAL_PENDING_REQUEST_KEY = "portos-terminal-pending-request";
 
@@ -13,41 +18,16 @@ export function dispatchTerminalExternalRequest(detail: TerminalExternalRequestD
     return;
   }
 
-  window.localStorage.setItem(TERMINAL_PENDING_REQUEST_KEY, JSON.stringify(detail));
-
-  window.dispatchEvent(
-    new CustomEvent<TerminalExternalRequestDetail>(TERMINAL_EXTERNAL_REQUEST_EVENT, {
-      detail,
-    }),
+  dispatchWindowRequest(
+    TERMINAL_PENDING_REQUEST_KEY,
+    TERMINAL_EXTERNAL_REQUEST_EVENT,
+    detail,
   );
 }
 
 export function consumePendingTerminalExternalRequest(targetWindowId?: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const value = window.localStorage.getItem(TERMINAL_PENDING_REQUEST_KEY);
-
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as TerminalExternalRequestDetail;
-
-    if (parsed.targetWindowId && targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    if (parsed.targetWindowId && !targetWindowId) {
-      return null;
-    }
-
-    window.localStorage.removeItem(TERMINAL_PENDING_REQUEST_KEY);
-
-    return parsed;
-  } catch {
-    return null;
-  }
+  return consumeWindowRequest<TerminalExternalRequestDetail>(
+    TERMINAL_PENDING_REQUEST_KEY,
+    targetWindowId,
+  );
 }

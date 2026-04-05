@@ -78,12 +78,12 @@ export {
   updateFileDragModel,
 } from "./file-drag-manager";
 export {
+  loadPersistedSession,
   migratePersistedSession,
   restoreSessionModel,
   sanitizePersistedWindow,
   serializeSessionModel,
   sessionManagerInitialState,
-  SESSION_STORAGE_KEY,
   SESSION_STORAGE_VERSION,
 } from "./session-manager";
 export {

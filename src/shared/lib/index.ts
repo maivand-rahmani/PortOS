@@ -1,5 +1,26 @@
 export { cn } from "./cn";
 export {
+  FILE_SYSTEM_CHANGE_EVENT,
+  isFileSystemChangeForPath,
+  isFileSystemChangeWithinPath,
+  subscribeToFileSystemChanges,
+  type FileSystemChangeDetail,
+  type FileSystemChangeType,
+} from "./fs-events";
+export {
+  NOTES_FILE_EXTENSION,
+  PERSISTED_FILE_PATHS,
+  SYSTEM_APP_DIRECTORIES,
+  SYSTEM_APPS_ROOT,
+  SYSTEM_CACHE_DIRECTORIES,
+  SYSTEM_CACHE_ROOT,
+  SYSTEM_ROOT,
+  SYSTEM_SHARED_DIRECTORIES,
+  SYSTEM_SHARED_ROOT,
+  SYSTEM_USER_DIRECTORIES,
+  SYSTEM_USER_ROOT,
+} from "./fs-paths";
+export {
   AGENT_NOTES_PREFILL_EVENT,
   AI_AGENT_EXTERNAL_PROMPT_EVENT,
   AI_AGENT_EXTERNAL_REQUEST_EVENT,

@@ -50,8 +50,3 @@ export const DOCK_ICON_SIZE_MAP: Record<DockIconSize, { label: string; px: numbe
   medium: { label: "Medium", px: 56 },
   large: { label: "Large", px: 64 },
 };
-
-// ── IDB Keys ──────────────────────────────────────────────────────────────────
-
-export const SETTINGS_IDB_KEY = "os-settings";
-export const CUSTOM_WALLPAPER_IDB_KEY = "custom-wallpaper";

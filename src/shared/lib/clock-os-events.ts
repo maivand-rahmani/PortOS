@@ -1,3 +1,8 @@
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 export const CLOCK_FOCUS_REQUEST_EVENT = "portos:clock-focus-request";
 const CLOCK_FOCUS_REQUEST_STORAGE_KEY = "portos-clock-focus-request";
 
@@ -13,41 +18,16 @@ export function dispatchClockFocusRequest(detail: ClockFocusRequest) {
     return;
   }
 
-  window.localStorage.setItem(CLOCK_FOCUS_REQUEST_STORAGE_KEY, JSON.stringify(detail));
-
-  window.dispatchEvent(
-    new CustomEvent<ClockFocusRequest>(CLOCK_FOCUS_REQUEST_EVENT, {
-      detail,
-    }),
+  dispatchWindowRequest(
+    CLOCK_FOCUS_REQUEST_STORAGE_KEY,
+    CLOCK_FOCUS_REQUEST_EVENT,
+    detail,
   );
 }
 
 export function consumeClockFocusRequest(targetWindowId?: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const value = window.localStorage.getItem(CLOCK_FOCUS_REQUEST_STORAGE_KEY);
-
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as ClockFocusRequest;
-
-    if (parsed.targetWindowId && targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    if (parsed.targetWindowId && !targetWindowId) {
-      return null;
-    }
-
-    window.localStorage.removeItem(CLOCK_FOCUS_REQUEST_STORAGE_KEY);
-
-    return parsed;
-  } catch {
-    return null;
-  }
+  return consumeWindowRequest<ClockFocusRequest>(
+    CLOCK_FOCUS_REQUEST_STORAGE_KEY,
+    targetWindowId,
+  );
 }

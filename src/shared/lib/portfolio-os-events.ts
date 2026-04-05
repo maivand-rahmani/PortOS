@@ -1,3 +1,8 @@
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 export const PORTFOLIO_FOCUS_REQUEST_EVENT = "portos:portfolio-focus-request";
 const PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY = "portos-portfolio-focus-request";
 
@@ -16,41 +21,16 @@ export function dispatchPortfolioFocusRequest(detail: PortfolioFocusRequest) {
     return;
   }
 
-  window.localStorage.setItem(PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY, JSON.stringify(detail));
-
-  window.dispatchEvent(
-    new CustomEvent<PortfolioFocusRequest>(PORTFOLIO_FOCUS_REQUEST_EVENT, {
-      detail,
-    }),
+  dispatchWindowRequest(
+    PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY,
+    PORTFOLIO_FOCUS_REQUEST_EVENT,
+    detail,
   );
 }
 
 export function consumePortfolioFocusRequest(targetWindowId?: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const value = window.localStorage.getItem(PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY);
-
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as PortfolioFocusRequest;
-
-    if (parsed.targetWindowId && targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    if (parsed.targetWindowId && !targetWindowId) {
-      return null;
-    }
-
-    window.localStorage.removeItem(PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY);
-
-    return parsed;
-  } catch {
-    return null;
-  }
+  return consumeWindowRequest<PortfolioFocusRequest>(
+    PORTFOLIO_FOCUS_REQUEST_STORAGE_KEY,
+    targetWindowId,
+  );
 }

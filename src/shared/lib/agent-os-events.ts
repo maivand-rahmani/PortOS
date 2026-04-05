@@ -5,6 +5,12 @@ export const AI_AGENT_EXTERNAL_REQUEST_EVENT = "portos:ai-agent-external-request
 const AI_AGENT_PENDING_PROMPT_KEY = "portos-ai-agent-pending-prompt";
 const AI_AGENT_PENDING_REQUEST_KEY = "portos-ai-agent-pending-request";
 
+import {
+  clearWindowRequest,
+  consumeUntargetedWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 export type AgentNotesPrefillDetail = {
   title: string;
   body: string;
@@ -53,22 +59,16 @@ export function dispatchAgentNotesPrefill(detail: AgentNotesPrefillDetail) {
     return;
   }
 
-  window.localStorage.setItem(AGENT_NOTES_PREFILL_STORAGE_KEY, JSON.stringify(detail));
-
-  window.dispatchEvent(
-    new CustomEvent<AgentNotesPrefillDetail>(AGENT_NOTES_PREFILL_EVENT, {
-      detail,
-    }),
+  dispatchWindowRequest(
+    AGENT_NOTES_PREFILL_STORAGE_KEY,
+    AGENT_NOTES_PREFILL_EVENT,
+    detail,
   );
 }
 
 export function clearPendingAgentRequest() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.removeItem(AI_AGENT_PENDING_REQUEST_KEY);
-  window.localStorage.removeItem(AI_AGENT_PENDING_PROMPT_KEY);
+  clearWindowRequest(AI_AGENT_PENDING_REQUEST_KEY);
+  clearWindowRequest(AI_AGENT_PENDING_PROMPT_KEY);
 }
 
 export function dispatchAgentRequest(input: AgentExternalRequest | string) {
@@ -82,63 +82,31 @@ export function dispatchAgentRequest(input: AgentExternalRequest | string) {
     return;
   }
 
-  window.localStorage.setItem(AI_AGENT_PENDING_REQUEST_KEY, JSON.stringify(request));
-
-  window.dispatchEvent(
-    new CustomEvent<AgentExternalRequest>(AI_AGENT_EXTERNAL_REQUEST_EVENT, {
-      detail: request,
-    }),
+  dispatchWindowRequest(
+    AI_AGENT_PENDING_REQUEST_KEY,
+    AI_AGENT_EXTERNAL_REQUEST_EVENT,
+    request,
   );
 }
 
 export function consumePendingAgentRequest() {
-  if (typeof window === "undefined") {
-    return null;
+  const storedRequest = consumeUntargetedWindowRequest<unknown>(AI_AGENT_PENDING_REQUEST_KEY);
+
+  if (storedRequest && isAgentExternalRequest(storedRequest)) {
+    return normalizeAgentExternalRequest(storedRequest);
   }
 
-  const storedRequest = window.localStorage.getItem(AI_AGENT_PENDING_REQUEST_KEY);
-
-  if (storedRequest) {
-    window.localStorage.removeItem(AI_AGENT_PENDING_REQUEST_KEY);
-
-    try {
-      const parsed = JSON.parse(storedRequest) as unknown;
-
-      if (isAgentExternalRequest(parsed)) {
-        return normalizeAgentExternalRequest(parsed);
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  const legacyPrompt = window.localStorage.getItem(AI_AGENT_PENDING_PROMPT_KEY);
+  const legacyPrompt = consumeUntargetedWindowRequest<string>(AI_AGENT_PENDING_PROMPT_KEY);
 
   if (!legacyPrompt) {
     return null;
   }
 
-  window.localStorage.removeItem(AI_AGENT_PENDING_PROMPT_KEY);
-
   return normalizeAgentExternalRequest(legacyPrompt);
 }
 
 export function consumeAgentNotesPrefill() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const value = window.localStorage.getItem(AGENT_NOTES_PREFILL_STORAGE_KEY);
-
-  if (!value) {
-    return null;
-  }
-
-  window.localStorage.removeItem(AGENT_NOTES_PREFILL_STORAGE_KEY);
-
-  try {
-    return JSON.parse(value) as AgentNotesPrefillDetail;
-  } catch {
-    return null;
-  }
+  return consumeUntargetedWindowRequest<AgentNotesPrefillDetail>(
+    AGENT_NOTES_PREFILL_STORAGE_KEY,
+  );
 }

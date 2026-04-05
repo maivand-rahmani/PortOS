@@ -2,6 +2,11 @@
 // Inter-app communication for file operations.
 // Follows the same dispatch/consume pattern as other OS events.
 
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 const OPEN_FILE_KEY = "portos-fs-open-file-request";
 const OPEN_FILE_EVENT = "portos:fs-open-file-request";
 
@@ -24,38 +29,13 @@ export function dispatchOpenFileRequest(detail: OpenFileRequest): void {
     return;
   }
 
-  localStorage.setItem(OPEN_FILE_KEY, JSON.stringify(detail));
-  window.dispatchEvent(new CustomEvent(OPEN_FILE_EVENT, { detail }));
+  dispatchWindowRequest(OPEN_FILE_KEY, OPEN_FILE_EVENT, detail);
 }
 
 export function consumeOpenFileRequest(
   targetWindowId?: string,
 ): OpenFileRequest | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = localStorage.getItem(OPEN_FILE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as OpenFileRequest;
-
-    if (targetWindowId && parsed.targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    localStorage.removeItem(OPEN_FILE_KEY);
-
-    return parsed;
-  } catch {
-    localStorage.removeItem(OPEN_FILE_KEY);
-
-    return null;
-  }
+  return consumeWindowRequest<OpenFileRequest>(OPEN_FILE_KEY, targetWindowId);
 }
 
 // ── Save File Request ───────────────────────────────────
@@ -72,38 +52,13 @@ export function dispatchSaveFileRequest(detail: SaveFileRequest): void {
     return;
   }
 
-  localStorage.setItem(SAVE_FILE_KEY, JSON.stringify(detail));
-  window.dispatchEvent(new CustomEvent(SAVE_FILE_EVENT, { detail }));
+  dispatchWindowRequest(SAVE_FILE_KEY, SAVE_FILE_EVENT, detail);
 }
 
 export function consumeSaveFileRequest(
   targetWindowId?: string,
 ): SaveFileRequest | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = localStorage.getItem(SAVE_FILE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as SaveFileRequest;
-
-    if (targetWindowId && parsed.targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    localStorage.removeItem(SAVE_FILE_KEY);
-
-    return parsed;
-  } catch {
-    localStorage.removeItem(SAVE_FILE_KEY);
-
-    return null;
-  }
+  return consumeWindowRequest<SaveFileRequest>(SAVE_FILE_KEY, targetWindowId);
 }
 
 // ── Event Name Constants ────────────────────────────────

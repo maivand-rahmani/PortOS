@@ -1,7 +1,11 @@
 import type { AbsolutePath, FileNode, FileSystemNode } from "@/entities/file-system";
 
 import { useOSStore } from "@/processes/os/model/store";
-import { resolveNodeByPath, getChildrenModel } from "@/processes/os/model/file-system";
+import {
+  getChildrenModel,
+  normalizePath,
+  resolveNodeByPath,
+} from "@/processes/os/model/file-system";
 
 // ── Path-based Imperative Helpers ───────────────────────
 // These mirror os-actions.ts but for file system operations.
@@ -11,20 +15,46 @@ function getState() {
   return useOSStore.getState();
 }
 
-export async function createFileAtPath(
-  path: AbsolutePath,
-  content?: string,
-): Promise<FileNode | null> {
+function resolveRootNode(): FileSystemNode | null {
   const state = getState();
-  const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
-  const name = path.slice(path.lastIndexOf("/") + 1);
 
-  const parent = resolveNodeByPath(
-    parentPath as AbsolutePath,
+  return state.fsNodes.find((node) => node.parentId === null && node.name === "System") ?? null;
+}
+
+function resolvePathNode(path: AbsolutePath): FileSystemNode | null {
+  const normalized = normalizePath(path);
+
+  if (normalized === "/") {
+    return resolveRootNode();
+  }
+
+  const state = getState();
+
+  return resolveNodeByPath(
+    normalized,
     state.fsNodes,
     state.fsNodeMap,
     state.fsChildMap,
   );
+}
+
+function splitParentPath(path: AbsolutePath) {
+  const normalized = normalizePath(path);
+  const parentPath = normalized.slice(0, normalized.lastIndexOf("/")) || "/";
+  const name = normalized.slice(normalized.lastIndexOf("/") + 1);
+
+  return {
+    parentPath: parentPath as AbsolutePath,
+    name,
+  };
+}
+
+export async function createFileAtPath(
+  path: AbsolutePath,
+  content?: string,
+): Promise<FileNode | null> {
+  const { parentPath, name } = splitParentPath(path);
+  const parent = resolvePathNode(parentPath);
 
   if (!parent || parent.type !== "directory") {
     return null;
@@ -36,13 +66,7 @@ export async function createFileAtPath(
 export async function readFileAtPath(
   path: AbsolutePath,
 ): Promise<string | null> {
-  const state = getState();
-  const node = resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const node = resolvePathNode(path);
 
   if (!node || node.type !== "file") {
     return null;
@@ -55,13 +79,7 @@ export async function writeFileAtPath(
   path: AbsolutePath,
   content: string,
 ): Promise<boolean> {
-  const state = getState();
-  const node = resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const node = resolvePathNode(path);
 
   if (!node || node.type !== "file") {
     return false;
@@ -73,13 +91,7 @@ export async function writeFileAtPath(
 }
 
 export async function deleteAtPath(path: AbsolutePath): Promise<boolean> {
-  const state = getState();
-  const node = resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const node = resolvePathNode(path);
 
   if (!node) {
     return false;
@@ -93,16 +105,8 @@ export async function deleteAtPath(path: AbsolutePath): Promise<boolean> {
 export async function createDirectoryAtPath(
   path: AbsolutePath,
 ): Promise<FileSystemNode | null> {
-  const state = getState();
-  const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
-  const name = path.slice(path.lastIndexOf("/") + 1);
-
-  const parent = resolveNodeByPath(
-    parentPath as AbsolutePath,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const { parentPath, name } = splitParentPath(path);
+  const parent = resolvePathNode(parentPath);
 
   if (!parent || parent.type !== "directory") {
     return null;
@@ -113,12 +117,13 @@ export async function createDirectoryAtPath(
 
 export function listPath(path: AbsolutePath): FileSystemNode[] {
   const state = getState();
-  const node = resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const normalized = normalizePath(path);
+
+  if (normalized === "/") {
+    return state.fsNodes.filter((node) => node.parentId === null);
+  }
+
+  const node = resolvePathNode(normalized);
 
   if (!node || node.type !== "directory") {
     return [];
@@ -128,52 +133,27 @@ export function listPath(path: AbsolutePath): FileSystemNode[] {
 }
 
 export function existsAtPath(path: AbsolutePath): boolean {
-  const state = getState();
-  const node = resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const node = resolvePathNode(path);
 
   return node !== null;
 }
 
 export function getNodeAtPath(path: AbsolutePath): FileSystemNode | null {
-  const state = getState();
-
-  return resolveNodeByPath(
-    path,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  return resolvePathNode(path);
 }
 
 export async function moveToPath(
   srcPath: AbsolutePath,
   destPath: AbsolutePath,
 ): Promise<boolean> {
-  const state = getState();
-  const srcNode = resolveNodeByPath(
-    srcPath,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const srcNode = resolvePathNode(srcPath);
 
   if (!srcNode) {
     return false;
   }
 
-  const destParentPath =
-    destPath.slice(0, destPath.lastIndexOf("/")) || "/";
-  const destParent = resolveNodeByPath(
-    destParentPath as AbsolutePath,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const { parentPath } = splitParentPath(destPath);
+  const destParent = resolvePathNode(parentPath);
 
   if (!destParent || destParent.type !== "directory") {
     return false;
@@ -188,30 +168,127 @@ export async function copyToPath(
   srcPath: AbsolutePath,
   destPath: AbsolutePath,
 ): Promise<FileSystemNode | null> {
-  const state = getState();
-  const srcNode = resolveNodeByPath(
-    srcPath,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const srcNode = resolvePathNode(srcPath);
 
   if (!srcNode) {
     return null;
   }
 
-  const destParentPath =
-    destPath.slice(0, destPath.lastIndexOf("/")) || "/";
-  const destParent = resolveNodeByPath(
-    destParentPath as AbsolutePath,
-    state.fsNodes,
-    state.fsNodeMap,
-    state.fsChildMap,
-  );
+  const { parentPath } = splitParentPath(destPath);
+  const destParent = resolvePathNode(parentPath);
 
   if (!destParent || destParent.type !== "directory") {
     return null;
   }
 
   return getState().fsCopyNode(srcNode.id, destParent.id);
+}
+
+export async function ensureDirectoryAtPath(
+  path: AbsolutePath,
+): Promise<FileSystemNode | null> {
+  const normalized = normalizePath(path);
+
+  if (normalized === "/") {
+    return resolveRootNode();
+  }
+
+  const existing = resolvePathNode(normalized);
+
+  if (existing) {
+    return existing.type === "directory" ? existing : null;
+  }
+
+  const parsed = normalized.split("/").filter(Boolean);
+  let currentPath = "/" as AbsolutePath;
+  let currentNode = resolveRootNode();
+
+  for (const segment of parsed) {
+    currentPath = normalizePath(
+      currentPath === "/" ? `/${segment}` : `${currentPath}/${segment}`,
+    );
+
+    const existingNode = resolvePathNode(currentPath);
+
+    if (existingNode) {
+      if (existingNode.type !== "directory") {
+        return null;
+      }
+
+      currentNode = existingNode;
+      continue;
+    }
+
+    if (!currentNode || currentNode.type !== "directory") {
+      return null;
+    }
+
+    const created = await getState().fsCreateDirectory(currentNode.id, segment);
+
+    if (!created || created.type !== "directory") {
+      return null;
+    }
+
+    currentNode = created;
+  }
+
+  return currentNode;
+}
+
+export async function ensureFileAtPath(
+  path: AbsolutePath,
+  content = "",
+): Promise<FileNode | null> {
+  const existing = resolvePathNode(path);
+
+  if (existing) {
+    return existing.type === "file" ? existing : null;
+  }
+
+  const { parentPath, name } = splitParentPath(path);
+  const parent = await ensureDirectoryAtPath(parentPath);
+
+  if (!parent || parent.type !== "directory") {
+    return null;
+  }
+
+  return getState().fsCreateFile(parent.id, name, content);
+}
+
+export async function writeFileAtPathOrCreate(
+  path: AbsolutePath,
+  content: string,
+): Promise<FileNode | null> {
+  const file = await ensureFileAtPath(path, content);
+
+  if (!file) {
+    return null;
+  }
+
+  await getState().fsWriteContent(file.id, content);
+
+  return getNodeAtPath(path) as FileNode | null;
+}
+
+export async function readJsonAtPath<T>(
+  path: AbsolutePath,
+): Promise<T | null> {
+  const content = await readFileAtPath(path);
+
+  if (!content) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(content) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeJsonAtPath<T>(
+  path: AbsolutePath,
+  value: T,
+): Promise<FileNode | null> {
+  return writeFileAtPathOrCreate(path, JSON.stringify(value, null, 2));
 }

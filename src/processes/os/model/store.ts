@@ -9,18 +9,17 @@ import type { ProcessInstance } from "@/entities/process";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 
 import * as idb from "@/shared/lib/idb-storage";
+import { dispatchFileSystemChange } from "@/shared/lib/fs-events";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
 import {
   DEFAULT_WALLPAPER_ID,
-  getStoredWallpaperId,
-  setStoredWallpaperId,
   type Wallpaper,
   getWallpaperById,
 } from "@/shared/lib/wallpapers";
 import {
   loadSettings,
-  saveSettings,
   loadCustomWallpaper,
-  saveCustomWallpaper,
+  loadWallpaperId,
 } from "@/apps/settings/model/settings.idb";
 import {
   DEFAULT_OS_SETTINGS,
@@ -46,13 +45,16 @@ import {
 } from "./file-drag-manager";
 import {
   createFileSystemManagerModel,
+  getNodePath,
   hydrateFileSystemModel,
   createFileModel,
   createDirectoryModel,
+  normalizePath,
   deleteNodeModel,
   renameNodeModel,
   moveNodeModel,
   copyNodeModel,
+  resolveNodeByPath,
   updateFileMetadataModel,
   setCutModel,
   setCopyModel,
@@ -75,9 +77,9 @@ import {
   restoreSessionModel,
   serializeSessionModel,
   sessionManagerInitialState,
-  SESSION_STORAGE_KEY,
   type PersistedSessionState,
   type SessionManagerState,
+  loadPersistedSession,
 } from "./session-manager";
 import {
   createDesktopWorkspaceModel,
@@ -199,6 +201,7 @@ export type OSStore = AppRegistryState &
     setCustomWallpaper: (dataUrl: string) => Promise<void>;
     hydrateSettings: () => Promise<void>;
     hydrateSession: (bounds: DesktopBounds) => Promise<void>;
+    persistSessionSnapshot: (snapshot: PersistedSessionState) => Promise<void>;
     updateSettings: (patch: Partial<OSSettings>) => Promise<void>;
     switchWorkspace: (workspaceId: WorkspaceId) => void;
     cycleWorkspace: (direction: 1 | -1) => void;
@@ -401,6 +404,94 @@ function collapseSplitWorkspaceForWindow(input: {
   };
 }
 
+function resolveFsNodeAtPath(state: OSStore, path: string): FileSystemNode | null {
+  return resolveNodeByPath(
+    normalizePath(path),
+    state.fsNodes,
+    state.fsNodeMap,
+    state.fsChildMap,
+  );
+}
+
+function splitAbsolutePath(path: string) {
+  const normalized = normalizePath(path);
+  const parentPath = normalized.slice(0, normalized.lastIndexOf("/")) || "/";
+  const name = normalized.slice(normalized.lastIndexOf("/") + 1);
+
+  return {
+    normalized,
+    parentPath,
+    name,
+  };
+}
+
+async function ensureFsDirectoryAtPath(path: string): Promise<FileSystemNode | null> {
+  const normalized = normalizePath(path);
+
+  if (normalized === "/") {
+    return null;
+  }
+
+  const segments = normalized.split("/").filter(Boolean);
+  let current: FileSystemNode | null = null;
+  let currentPath = "";
+
+  for (let index = 0; index < segments.length; index += 1) {
+    currentPath = `${currentPath}/${segments[index]}`;
+
+    const existing = resolveFsNodeAtPath(useOSStore.getState(), currentPath);
+
+    if (existing) {
+      if (existing.type !== "directory") {
+        return null;
+      }
+
+      current = existing;
+      continue;
+    }
+
+    if (!current || current.type !== "directory") {
+      return null;
+    }
+
+    const created = await useOSStore.getState().fsCreateDirectory(current.id, segments[index]);
+
+    if (!created || created.type !== "directory") {
+      return null;
+    }
+
+    current = created;
+  }
+
+  return current;
+}
+
+async function writeFsFileAtPath(path: string, content: string): Promise<void> {
+  const existing = resolveFsNodeAtPath(useOSStore.getState(), path);
+
+  if (existing) {
+    if (existing.type !== "file") {
+      return;
+    }
+
+    await useOSStore.getState().fsWriteContent(existing.id, content);
+    return;
+  }
+
+  const { parentPath, name } = splitAbsolutePath(path);
+  const parent = await ensureFsDirectoryAtPath(parentPath);
+
+  if (!parent || parent.type !== "directory") {
+    return;
+  }
+
+  await useOSStore.getState().fsCreateFile(parent.id, name, content);
+}
+
+async function writeFsJsonAtPath(path: string, value: unknown): Promise<void> {
+  await writeFsFileAtPath(path, JSON.stringify(value, null, 2));
+}
+
 export const useOSStore = create<OSStore>()((set, get) => ({
   ...createAppRegistryModel({
     apps: installedApps,
@@ -445,11 +536,13 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       return;
     }
 
-    const wallpaperId = getWallpaperById(getStoredWallpaperId()).id;
+    void (async () => {
+      const wallpaperId = getWallpaperById(await loadWallpaperId()).id;
 
-    set({
-      wallpaperId,
-    });
+      set({
+        wallpaperId,
+      });
+    })();
   },
   setWallpaper: (wallpaperId) => {
     const normalizedWallpaperId = getWallpaperById(wallpaperId).id;
@@ -459,15 +552,20 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     });
 
     if (typeof window !== "undefined") {
-      setStoredWallpaperId(normalizedWallpaperId);
+      void writeFsJsonAtPath(PERSISTED_FILE_PATHS.settingsWallpaper, {
+        wallpaperId: normalizedWallpaperId,
+        customWallpaperDataUrl: get().customWallpaperDataUrl,
+      });
     }
   },
   setCustomWallpaper: async (dataUrl) => {
     set({ wallpaperId: "custom", customWallpaperDataUrl: dataUrl });
 
     if (typeof window !== "undefined") {
-      setStoredWallpaperId("custom");
-      await saveCustomWallpaper(dataUrl);
+      await writeFsJsonAtPath(PERSISTED_FILE_PATHS.settingsWallpaper, {
+        wallpaperId: "custom",
+        customWallpaperDataUrl: dataUrl,
+      });
     }
   },
   hydrateSettings: async () => {
@@ -492,7 +590,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       return;
     }
 
-    const rawSession = await idb.getMeta(SESSION_STORAGE_KEY);
+    const rawSession = await loadPersistedSession();
 
     if (!rawSession || typeof rawSession !== "object") {
       set({ sessionHydrated: true });
@@ -540,8 +638,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       sessionHydrated: true,
     });
 
-    await idb.setMeta(
-      SESSION_STORAGE_KEY,
+    await get().persistSessionSnapshot(
       serializeSessionModel({
         workspaces: migratedSession.workspaces,
         windows: restored.windows.windows,
@@ -550,6 +647,13 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       }),
     );
   },
+  persistSessionSnapshot: async (snapshot) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    await writeFsJsonAtPath(PERSISTED_FILE_PATHS.sessionSnapshot, snapshot);
+  },
   updateSettings: async (patch) => {
     const current = get().osSettings;
     const next = { ...current, ...patch };
@@ -557,7 +661,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
     applySettingsToDOM(next);
     set({ osSettings: next });
 
-    await saveSettings(next);
+    await writeFsJsonAtPath(PERSISTED_FILE_PATHS.settingsPreferences, next);
   },
   switchWorkspace: (workspaceId) => {
     const state = get();
@@ -1566,6 +1670,13 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       });
     }
 
+    dispatchFileSystemChange({
+      type: "file-created",
+      nodeId: result.node.id,
+      nodeType: result.node.type,
+      path: getNodePath(result.node.id, result.state.fsNodeMap),
+    });
+
     return result.node;
   },
 
@@ -1580,6 +1691,13 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     await idb.putNode(result.node);
 
+    dispatchFileSystemChange({
+      type: "directory-created",
+      nodeId: result.node.id,
+      nodeType: result.node.type,
+      path: getNodePath(result.node.id, result.state.fsNodeMap),
+    });
+
     return result.node;
   },
 
@@ -1590,6 +1708,7 @@ export const useOSStore = create<OSStore>()((set, get) => ({
   },
 
   fsWriteContent: async (nodeId, content) => {
+    const previousNode = get().fsNodeMap[nodeId];
     const size = new Blob([content]).size;
     const nextState = updateFileMetadataModel(get(), nodeId, { size });
 
@@ -1611,9 +1730,22 @@ export const useOSStore = create<OSStore>()((set, get) => ({
       encoding: "utf-8",
       checksum: idb.computeChecksum(content),
     });
+
+    if (previousNode?.type === "file") {
+      dispatchFileSystemChange({
+        type: "file-written",
+        nodeId,
+        nodeType: previousNode.type,
+        path: getNodePath(nodeId, nextState.fsNodeMap),
+      });
+    }
   },
 
   fsDeleteNode: async (nodeId) => {
+    const previousNode = get().fsNodeMap[nodeId];
+    const previousPath = previousNode
+      ? getNodePath(nodeId, get().fsNodeMap)
+      : undefined;
     const result = deleteNodeModel(get(), nodeId);
 
     set({
@@ -1626,9 +1758,22 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     await idb.deleteNodes(result.deletedIds);
     await idb.deleteContents(result.deletedIds);
+
+    if (previousNode) {
+      dispatchFileSystemChange({
+        type: "node-deleted",
+        nodeId,
+        nodeType: previousNode.type,
+        previousPath,
+      });
+    }
   },
 
   fsRenameNode: async (nodeId, newName) => {
+    const previousNode = get().fsNodeMap[nodeId];
+    const previousPath = previousNode
+      ? getNodePath(nodeId, get().fsNodeMap)
+      : undefined;
     const nextState = renameNodeModel(get(), nodeId, newName);
 
     set({
@@ -1641,10 +1786,22 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     if (updatedNode) {
       await idb.putNode(updatedNode);
+
+      dispatchFileSystemChange({
+        type: "node-renamed",
+        nodeId,
+        nodeType: updatedNode.type,
+        path: getNodePath(nodeId, nextState.fsNodeMap),
+        previousPath,
+      });
     }
   },
 
   fsMoveNode: async (nodeId, newParentId) => {
+    const previousNode = get().fsNodeMap[nodeId];
+    const previousPath = previousNode
+      ? getNodePath(nodeId, get().fsNodeMap)
+      : undefined;
     const nextState = moveNodeModel(get(), nodeId, newParentId);
 
     set({
@@ -1657,6 +1814,14 @@ export const useOSStore = create<OSStore>()((set, get) => ({
 
     if (updatedNode) {
       await idb.putNode(updatedNode);
+
+      dispatchFileSystemChange({
+        type: "node-moved",
+        nodeId,
+        nodeType: updatedNode.type,
+        path: getNodePath(nodeId, nextState.fsNodeMap),
+        previousPath,
+      });
     }
   },
 

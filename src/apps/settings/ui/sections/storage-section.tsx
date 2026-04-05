@@ -51,7 +51,7 @@ export function StorageSection({ fsNodeCount, exportVfs, clearVfs }: StorageSect
       <div className="rounded-2xl border border-border bg-surface/60 p-5">
         <p className="text-sm font-semibold text-foreground">Export File System</p>
         <p className="mt-1 text-xs text-muted">
-          Download a JSON snapshot of all files and directories.
+          Download a JSON snapshot of all files, directories, and filesystem metadata.
         </p>
         <button
           type="button"

@@ -1,10 +1,18 @@
-import { openDB, type IDBPDatabase } from "idb";
+import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction } from "idb";
 
 import type {
   DirectoryNode,
   FileContent,
+  FileNode,
   FileSystemNode,
 } from "@/entities/file-system";
+import { getExtension, getMimeType, type AbsolutePath } from "@/entities/file-system";
+import {
+  buildChildMap,
+  buildNodeMap,
+  normalizePath,
+  resolveNodeByPath,
+} from "@/processes/os/model/file-system";
 
 // ── Database Schema ─────────────────────────────────────
 
@@ -15,7 +23,7 @@ const STORE_NODES = "nodes";
 const STORE_CONTENTS = "contents";
 const STORE_METADATA = "metadata";
 
-type PortosFSDB = {
+type PortosFSDB = DBSchema & {
   nodes: {
     key: string;
     value: FileSystemNode;
@@ -121,6 +129,22 @@ export async function putNode(node: FileSystemNode): Promise<void> {
   await db.put(STORE_NODES, node);
 }
 
+export async function putNodeAndContent(
+  node: FileSystemNode,
+  content?: FileContent,
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
+
+  await tx.objectStore(STORE_NODES).put(node);
+
+  if (content) {
+    await tx.objectStore(STORE_CONTENTS).put(content);
+  }
+
+  await tx.done;
+}
+
 export async function putNodes(nodes: FileSystemNode[]): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(STORE_NODES, "readwrite");
@@ -165,6 +189,214 @@ export async function putContent(content: FileContent): Promise<void> {
   await db.put(STORE_CONTENTS, content);
 }
 
+export async function putContents(contents: FileContent[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_CONTENTS, "readwrite");
+
+  for (const content of contents) {
+    tx.store.put(content);
+  }
+
+  await tx.done;
+}
+
+export async function putNodeContentAndMeta(input: {
+  node?: FileSystemNode;
+  content?: FileContent;
+  metadata?: Array<{ key: string; value: unknown }>;
+}): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(
+    [STORE_NODES, STORE_CONTENTS, STORE_METADATA],
+    "readwrite",
+  );
+
+  if (input.node) {
+    await tx.objectStore(STORE_NODES).put(input.node);
+  }
+
+  if (input.content) {
+    await tx.objectStore(STORE_CONTENTS).put(input.content);
+  }
+
+  if (input.metadata) {
+    for (const entry of input.metadata) {
+      await tx.objectStore(STORE_METADATA).put(entry);
+    }
+  }
+
+  await tx.done;
+}
+
+function splitPath(path: AbsolutePath) {
+  const normalized = normalizePath(path);
+  const parentPath = normalized.slice(0, normalized.lastIndexOf("/")) || "/";
+  const name = normalized.slice(normalized.lastIndexOf("/") + 1);
+
+  return {
+    normalized,
+    parentPath: parentPath as AbsolutePath,
+    name,
+  };
+}
+
+function findRootByName(nodes: FileSystemNode[], name: string) {
+  return nodes.find((node) => node.parentId === null && node.name === name) ?? null;
+}
+
+export async function readJsonFile<T>(path: AbsolutePath): Promise<T | null> {
+  const nodes = await getAllNodes();
+  const nodeMap = buildNodeMap(nodes);
+  const childMap = buildChildMap(nodes);
+  const node = resolveNodeByPath(normalizePath(path), nodes, nodeMap, childMap);
+
+  if (!node || node.type !== "file") {
+    return null;
+  }
+
+  const content = await getContent(node.id);
+
+  if (!content?.data) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(content.data) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureDirectoryTreeInTx(
+  tx: IDBPTransaction<PortosFSDB, [typeof STORE_NODES, typeof STORE_CONTENTS], "readwrite">,
+  path: AbsolutePath,
+): Promise<DirectoryNode | null> {
+  const normalized = normalizePath(path);
+
+  if (normalized === "/") {
+    return null;
+  }
+
+  const nodes = (await tx.objectStore(STORE_NODES).getAll()) as FileSystemNode[];
+  const nodeMap = buildNodeMap(nodes);
+  const childMap = buildChildMap(nodes);
+  const segments = normalized.split("/").filter(Boolean);
+  const now = new Date().toISOString();
+  let current = findRootByName(nodes, segments[0]);
+
+  if (!current) {
+    current = {
+      id: crypto.randomUUID(),
+      name: segments[0],
+      type: "directory",
+      parentId: null,
+      createdAt: now,
+      updatedAt: now,
+      isHidden: segments[0].startsWith("."),
+    };
+    await tx.objectStore(STORE_NODES).put(current);
+    nodes.push(current);
+    nodeMap[current.id] = current;
+    childMap.__root__ = [...(childMap.__root__ ?? []), current.id];
+  }
+
+  for (let index = 1; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const childIds: string[] = childMap[current.id] ?? [];
+    const existing = childIds
+      .map((id) => nodeMap[id])
+      .find((node) => node?.name === segment) ?? null;
+
+    if (existing) {
+      if (existing.type !== "directory") {
+        return null;
+      }
+
+      current = existing;
+      continue;
+    }
+
+    const nextDirectory: DirectoryNode = {
+      id: crypto.randomUUID(),
+      name: segment,
+      type: "directory",
+      parentId: current.id,
+      createdAt: now,
+      updatedAt: now,
+      isHidden: segment.startsWith("."),
+    };
+    await tx.objectStore(STORE_NODES).put(nextDirectory);
+    nodes.push(nextDirectory);
+    nodeMap[nextDirectory.id] = nextDirectory;
+    childMap[current.id] = [...(childMap[current.id] ?? []), nextDirectory.id];
+    current = nextDirectory;
+  }
+
+  return current as DirectoryNode;
+}
+
+export async function writeJsonFile(path: AbsolutePath, value: unknown): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
+  const content = JSON.stringify(value, null, 2);
+  const { normalized, parentPath, name } = splitPath(path);
+  const parent = await ensureDirectoryTreeInTx(tx, parentPath);
+
+  if (!parent) {
+    await tx.done;
+    return;
+  }
+
+  const nodes = (await tx.objectStore(STORE_NODES).getAll()) as FileSystemNode[];
+  const nodeMap = buildNodeMap(nodes);
+  const childMap = buildChildMap(nodes);
+  const existing = resolveNodeByPath(normalized, nodes, nodeMap, childMap);
+
+  if (existing && existing.type === "file") {
+    const updatedNode: FileNode = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+      size: new Blob([content]).size,
+      version: existing.version + 1,
+    };
+
+    await tx.objectStore(STORE_NODES).put(updatedNode);
+    await tx.objectStore(STORE_CONTENTS).put({
+      nodeId: existing.id,
+      data: content,
+      encoding: "utf-8",
+      checksum: computeChecksum(content),
+    });
+    await tx.done;
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const extension = getExtension(name);
+  const node: FileNode = {
+    id: crypto.randomUUID(),
+    name,
+    type: "file",
+    parentId: parent.id,
+    createdAt: now,
+    updatedAt: now,
+    isHidden: name.startsWith("."),
+    extension,
+    mimeType: getMimeType(extension),
+    size: new Blob([content]).size,
+    version: 1,
+  };
+
+  await tx.objectStore(STORE_NODES).put(node);
+  await tx.objectStore(STORE_CONTENTS).put({
+    nodeId: node.id,
+    data: content,
+    encoding: "utf-8",
+    checksum: computeChecksum(content),
+  });
+  await tx.done;
+}
+
 export async function deleteContent(nodeId: string): Promise<void> {
   const db = await getDB();
 
@@ -195,6 +427,12 @@ export async function getMeta(key: string): Promise<unknown | undefined> {
   const entry = await db.get(STORE_METADATA, key);
 
   return entry?.value;
+}
+
+export async function getAllMeta(): Promise<Array<{ key: string; value: unknown }>> {
+  const db = await getDB();
+
+  return db.getAll(STORE_METADATA);
 }
 
 export async function setMeta(key: string, value: unknown): Promise<void> {
@@ -248,9 +486,34 @@ export async function seedDefaultFileSystem(): Promise<FileSystemNode[]> {
     documentsCalculator: "dir-documents-calculator",
     downloads: "dir-downloads",
     system: "dir-system",
+    systemApps: "dir-system-apps",
     systemAgent: "dir-system-agent",
+    systemUser: "dir-system-user",
+    systemShared: "dir-system-shared",
+    systemCache: "dir-system-cache",
     systemPreferences: "dir-system-preferences",
     systemLogs: "dir-system-logs",
+    systemAppsAiAgent: "dir-system-apps-ai-agent",
+    systemAppsBlog: "dir-system-apps-blog",
+    systemAppsCalculator: "dir-system-apps-calculator",
+    systemAppsClock: "dir-system-apps-clock",
+    systemAppsSettings: "dir-system-apps-settings",
+    systemAppsTerminal: "dir-system-apps-terminal",
+    systemAppsSystemInfo: "dir-system-apps-system-info",
+    systemUserAi: "dir-system-user-ai",
+    systemUserBlog: "dir-system-user-blog",
+    systemUserCalculator: "dir-system-user-calculator",
+    systemUserContact: "dir-system-user-contact",
+    systemUserDocs: "dir-system-user-docs",
+    systemUserNotes: "dir-system-user-notes",
+    systemUserPortfolio: "dir-system-user-portfolio",
+    systemUserResume: "dir-system-user-resume",
+    systemUserWallpapers: "dir-system-user-wallpapers",
+    systemSharedSession: "dir-system-shared-session",
+    systemSharedRegistry: "dir-system-shared-registry",
+    systemSharedRecent: "dir-system-shared-recent",
+    systemCachePreviews: "dir-system-cache-previews",
+    systemCacheSearch: "dir-system-cache-search",
     templates: "dir-templates",
   } as const;
 
@@ -262,9 +525,34 @@ export async function seedDefaultFileSystem(): Promise<FileSystemNode[]> {
     makeDir("Calculator", IDS.documents, IDS.documentsCalculator),
     makeDir("Downloads", null, IDS.downloads),
     makeDir("System", null, IDS.system, true),
+    makeDir("apps", IDS.system, IDS.systemApps, true),
     makeDir("Agent", IDS.system, IDS.systemAgent, true),
+    makeDir("user", IDS.system, IDS.systemUser, true),
+    makeDir("shared", IDS.system, IDS.systemShared, true),
+    makeDir("cache", IDS.system, IDS.systemCache, true),
     makeDir("Preferences", IDS.system, IDS.systemPreferences, true),
     makeDir("Logs", IDS.system, IDS.systemLogs, true),
+    makeDir("ai-agent", IDS.systemApps, IDS.systemAppsAiAgent, true),
+    makeDir("blog", IDS.systemApps, IDS.systemAppsBlog, true),
+    makeDir("calculator", IDS.systemApps, IDS.systemAppsCalculator, true),
+    makeDir("clock", IDS.systemApps, IDS.systemAppsClock, true),
+    makeDir("settings", IDS.systemApps, IDS.systemAppsSettings, true),
+    makeDir("system-info", IDS.systemApps, IDS.systemAppsSystemInfo, true),
+    makeDir("terminal", IDS.systemApps, IDS.systemAppsTerminal, true),
+    makeDir("ai", IDS.systemUser, IDS.systemUserAi, true),
+    makeDir("blog", IDS.systemUser, IDS.systemUserBlog, true),
+    makeDir("calculator", IDS.systemUser, IDS.systemUserCalculator, true),
+    makeDir("contact", IDS.systemUser, IDS.systemUserContact, true),
+    makeDir("docs", IDS.systemUser, IDS.systemUserDocs, true),
+    makeDir("notes", IDS.systemUser, IDS.systemUserNotes, true),
+    makeDir("portfolio", IDS.systemUser, IDS.systemUserPortfolio, true),
+    makeDir("resume", IDS.systemUser, IDS.systemUserResume, true),
+    makeDir("wallpapers", IDS.systemUser, IDS.systemUserWallpapers, true),
+    makeDir("session", IDS.systemShared, IDS.systemSharedSession, true),
+    makeDir("registry", IDS.systemShared, IDS.systemSharedRegistry, true),
+    makeDir("recent", IDS.systemShared, IDS.systemSharedRecent, true),
+    makeDir("previews", IDS.systemCache, IDS.systemCachePreviews, true),
+    makeDir("search", IDS.systemCache, IDS.systemCacheSearch, true),
     makeDir("Templates", null, IDS.templates),
   ];
 
@@ -279,13 +567,15 @@ export async function seedDefaultFileSystem(): Promise<FileSystemNode[]> {
 export async function exportAll(): Promise<{
   nodes: FileSystemNode[];
   contents: FileContent[];
+  metadata: Array<{ key: string; value: unknown }>;
 }> {
-  const [nodes, contents] = await Promise.all([
+  const [nodes, contents, metadata] = await Promise.all([
     getAllNodes(),
     getAllContents(),
+    getAllMeta(),
   ]);
 
-  return { nodes, contents };
+  return { nodes, contents, metadata };
 }
 
 export async function clearAll(): Promise<void> {
@@ -313,8 +603,33 @@ export const DEFAULT_DIR_IDS = {
   documentsCalculator: "dir-documents-calculator",
   downloads: "dir-downloads",
   system: "dir-system",
+  systemApps: "dir-system-apps",
   systemAgent: "dir-system-agent",
+  systemUser: "dir-system-user",
+  systemShared: "dir-system-shared",
+  systemCache: "dir-system-cache",
   systemPreferences: "dir-system-preferences",
   systemLogs: "dir-system-logs",
+  systemAppsAiAgent: "dir-system-apps-ai-agent",
+  systemAppsBlog: "dir-system-apps-blog",
+  systemAppsCalculator: "dir-system-apps-calculator",
+  systemAppsClock: "dir-system-apps-clock",
+  systemAppsSettings: "dir-system-apps-settings",
+  systemAppsTerminal: "dir-system-apps-terminal",
+  systemAppsSystemInfo: "dir-system-apps-system-info",
+  systemUserAi: "dir-system-user-ai",
+  systemUserBlog: "dir-system-user-blog",
+  systemUserCalculator: "dir-system-user-calculator",
+  systemUserContact: "dir-system-user-contact",
+  systemUserDocs: "dir-system-user-docs",
+  systemUserNotes: "dir-system-user-notes",
+  systemUserPortfolio: "dir-system-user-portfolio",
+  systemUserResume: "dir-system-user-resume",
+  systemUserWallpapers: "dir-system-user-wallpapers",
+  systemSharedSession: "dir-system-shared-session",
+  systemSharedRegistry: "dir-system-shared-registry",
+  systemSharedRecent: "dir-system-shared-recent",
+  systemCachePreviews: "dir-system-cache-previews",
+  systemCacheSearch: "dir-system-cache-search",
   templates: "dir-templates",
 } as const;

@@ -1,3 +1,8 @@
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 export const BLOG_FOCUS_REQUEST_EVENT = "portos:blog-focus-request";
 const BLOG_FOCUS_REQUEST_STORAGE_KEY = "portos-blog-focus-request";
 
@@ -14,41 +19,16 @@ export function dispatchBlogFocusRequest(detail: BlogFocusRequest) {
     return;
   }
 
-  window.localStorage.setItem(BLOG_FOCUS_REQUEST_STORAGE_KEY, JSON.stringify(detail));
-
-  window.dispatchEvent(
-    new CustomEvent<BlogFocusRequest>(BLOG_FOCUS_REQUEST_EVENT, {
-      detail,
-    }),
+  dispatchWindowRequest(
+    BLOG_FOCUS_REQUEST_STORAGE_KEY,
+    BLOG_FOCUS_REQUEST_EVENT,
+    detail,
   );
 }
 
 export function consumeBlogFocusRequest(targetWindowId?: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const value = window.localStorage.getItem(BLOG_FOCUS_REQUEST_STORAGE_KEY);
-
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as BlogFocusRequest;
-
-    if (parsed.targetWindowId && targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    if (parsed.targetWindowId && !targetWindowId) {
-      return null;
-    }
-
-    window.localStorage.removeItem(BLOG_FOCUS_REQUEST_STORAGE_KEY);
-
-    return parsed;
-  } catch {
-    return null;
-  }
+  return consumeWindowRequest<BlogFocusRequest>(
+    BLOG_FOCUS_REQUEST_STORAGE_KEY,
+    targetWindowId,
+  );
 }

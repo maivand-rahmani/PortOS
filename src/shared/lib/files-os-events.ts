@@ -1,3 +1,8 @@
+import {
+  consumeWindowRequest,
+  dispatchWindowRequest,
+} from "./window-request-bus";
+
 const FILES_FOCUS_NODE_KEY = "portos-files-focus-node-request";
 const FILES_FOCUS_NODE_EVENT = "portos:files-focus-node-request";
 
@@ -12,38 +17,16 @@ export function dispatchFilesFocusNodeRequest(detail: FilesFocusNodeRequest): vo
     return;
   }
 
-  localStorage.setItem(FILES_FOCUS_NODE_KEY, JSON.stringify(detail));
-  window.dispatchEvent(new CustomEvent(FILES_FOCUS_NODE_EVENT, { detail }));
+  dispatchWindowRequest(FILES_FOCUS_NODE_KEY, FILES_FOCUS_NODE_EVENT, detail);
 }
 
 export function consumeFilesFocusNodeRequest(
   targetWindowId?: string,
 ): FilesFocusNodeRequest | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = localStorage.getItem(FILES_FOCUS_NODE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as FilesFocusNodeRequest;
-
-    if (targetWindowId && parsed.targetWindowId && parsed.targetWindowId !== targetWindowId) {
-      return null;
-    }
-
-    localStorage.removeItem(FILES_FOCUS_NODE_KEY);
-
-    return parsed;
-  } catch {
-    localStorage.removeItem(FILES_FOCUS_NODE_KEY);
-
-    return null;
-  }
+  return consumeWindowRequest<FilesFocusNodeRequest>(
+    FILES_FOCUS_NODE_KEY,
+    targetWindowId,
+  );
 }
 
 export const FILES_EVENTS = {

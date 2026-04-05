@@ -92,20 +92,6 @@ export const WALLPAPERS: Wallpaper[] = [
 
 export const DEFAULT_WALLPAPER_ID = "default";
 
-export const WALLPAPER_STORAGE_KEY = "portos-wallpaper-id";
-
-export function getStoredWallpaperId(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_WALLPAPER_ID;
-  }
-
-  return window.localStorage.getItem(WALLPAPER_STORAGE_KEY) ?? DEFAULT_WALLPAPER_ID;
-}
-
-export function setStoredWallpaperId(id: string) {
-  window.localStorage.setItem(WALLPAPER_STORAGE_KEY, id);
-}
-
 export function getWallpaperById(id: string): Wallpaper {
   return WALLPAPERS.find((w) => w.id === id) ?? WALLPAPERS[0];
 }

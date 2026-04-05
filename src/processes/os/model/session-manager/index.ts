@@ -19,8 +19,8 @@ import type {
 import { DEFAULT_WORKSPACES } from "../workspace-manager/workspace-manager.types";
 
 export type { PersistedSessionState, PersistedWindowSession, SessionManagerState } from "./session-manager.types";
+export { loadPersistedSession } from "./session-manager.storage";
 
-export const SESSION_STORAGE_KEY = "os-window-session";
 export const SESSION_STORAGE_VERSION = 4 as const;
 
 export const sessionManagerInitialState: SessionManagerState = {

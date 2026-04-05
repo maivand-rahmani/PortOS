@@ -9,14 +9,12 @@ import {
   getWorkspaceIndex,
   isFullscreenWorkspace as isFullscreenWorkspaceModel,
   serializeSessionModel,
-  SESSION_STORAGE_KEY,
   useOSStore,
 } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
 import { runDataMigration } from "@/shared/lib/fs-migration";
-import * as idb from "@/shared/lib/idb-storage";
 import {
   BOOT_PHASE_DURATIONS,
   BOOT_PROGRESS_KEYFRAMES,
@@ -89,6 +87,7 @@ export function useDesktopShell(): UseDesktopShellResult {
   const hydrateFileSystem = useOSStore((state) => state.hydrateFileSystem);
   const hydrateSettings = useOSStore((state) => state.hydrateSettings);
   const hydrateSession = useOSStore((state) => state.hydrateSession);
+  const persistSessionSnapshot = useOSStore((state) => state.persistSessionSnapshot);
   const activateApp = useOSStore((state) => state.activateApp);
   const switchWorkspace = useOSStore((state) => state.switchWorkspace);
   const createDesktop = useOSStore((state) => state.createDesktop);
@@ -311,13 +310,20 @@ export function useDesktopShell(): UseDesktopShellResult {
         currentWorkspaceId: useOSStore.getState().currentWorkspaceId,
       });
 
-      void idb.setMeta(SESSION_STORAGE_KEY, snapshot);
+      void persistSessionSnapshot(snapshot);
     }, 260);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activeWindowId, bootPhase, currentWorkspaceId, sessionHydrated, windows]);
+  }, [
+    activeWindowId,
+    bootPhase,
+    currentWorkspaceId,
+    persistSessionSnapshot,
+    sessionHydrated,
+    windows,
+  ]);
 
   const aiWidgetPosition = useMemo(() => {
     if (customAiWidgetPosition) {

@@ -1,43 +1,53 @@
-import * as idb from "@/shared/lib/idb-storage";
+import { PERSISTED_FILE_PATHS } from "@/shared/lib/fs-paths";
+import { readFsJsonAtPath } from "@/shared/lib/fs-file-storage";
 
 import {
   DEFAULT_OS_SETTINGS,
-  SETTINGS_IDB_KEY,
-  CUSTOM_WALLPAPER_IDB_KEY,
   type OSSettings,
 } from "./settings.types";
 
-// ── Settings Persistence ──────────────────────────────────────────────────────
+type WallpaperPreferences = {
+  wallpaperId: string;
+  customWallpaperDataUrl: string | null;
+};
 
-export async function loadSettings(): Promise<OSSettings> {
-  const stored = await idb.getMeta(SETTINGS_IDB_KEY);
-
-  if (!stored || typeof stored !== "object") {
-    return DEFAULT_OS_SETTINGS;
-  }
-
+function normalizeSettings(stored: Partial<OSSettings> | null | undefined): OSSettings {
   return {
     ...DEFAULT_OS_SETTINGS,
-    ...(stored as Partial<OSSettings>),
+    ...(stored ?? {}),
   };
 }
 
-export async function saveSettings(settings: OSSettings): Promise<void> {
-  await idb.setMeta(SETTINGS_IDB_KEY, settings);
+async function readWallpaperPreferences(): Promise<WallpaperPreferences> {
+  const stored = await readFsJsonAtPath<WallpaperPreferences>(
+    PERSISTED_FILE_PATHS.settingsWallpaper,
+  );
+
+  return {
+    wallpaperId: typeof stored?.wallpaperId === "string" ? stored.wallpaperId : "default",
+    customWallpaperDataUrl:
+      typeof stored?.customWallpaperDataUrl === "string"
+        ? stored.customWallpaperDataUrl
+        : null,
+  };
 }
 
-// ── Custom Wallpaper Persistence ──────────────────────────────────────────────
+export async function loadSettings(): Promise<OSSettings> {
+  const stored = await readFsJsonAtPath<Partial<OSSettings>>(
+    PERSISTED_FILE_PATHS.settingsPreferences,
+  );
+
+  return normalizeSettings(stored);
+}
+
+export async function loadWallpaperId(): Promise<string> {
+  const stored = await readWallpaperPreferences();
+
+  return stored.wallpaperId;
+}
 
 export async function loadCustomWallpaper(): Promise<string | null> {
-  const stored = await idb.getMeta(CUSTOM_WALLPAPER_IDB_KEY);
+  const stored = await readWallpaperPreferences();
 
-  if (typeof stored !== "string") {
-    return null;
-  }
-
-  return stored;
-}
-
-export async function saveCustomWallpaper(dataUrl: string): Promise<void> {
-  await idb.setMeta(CUSTOM_WALLPAPER_IDB_KEY, dataUrl);
+  return stored.customWallpaperDataUrl;
 }
