@@ -13,8 +13,9 @@ import { DockSection } from "./sections/dock-section";
 import { GeneralSection } from "./sections/general-section";
 import { StorageSection } from "./sections/storage-section";
 import { AccessibilitySection } from "./sections/accessibility-section";
+import { KeyboardShortcutsSection } from "./sections/keyboard-shortcuts-section";
 
-type SectionId = "wallpaper" | "appearance" | "dock" | "accessibility" | "storage" | "general";
+type SectionId = "wallpaper" | "appearance" | "dock" | "accessibility" | "shortcuts" | "storage" | "general";
 
 const SECTIONS: Array<{ id: SectionId; label: string; iconPath: string }> = [
   {
@@ -42,6 +43,12 @@ const SECTIONS: Array<{ id: SectionId; label: string; iconPath: string }> = [
       "M12 2a2 2 0 110 4 2 2 0 010-4zm-1 6h2l1 4-2 1v5h-2v-5l-2-1 1-4z",
   },
   {
+    id: "shortcuts",
+    label: "Keyboard Shortcuts",
+    iconPath:
+      "M4 8a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V8zm3 3h2m2 0h2m2 0h2M7 15h6",
+  },
+  {
     id: "storage",
     label: "Storage",
     iconPath:
@@ -60,6 +67,7 @@ export function SettingsApp({}: AppComponentProps) {
 
   const {
     osSettings,
+    shortcutBindings,
     wallpaperId,
     customWallpaperDataUrl,
     processCount,
@@ -68,6 +76,9 @@ export function SettingsApp({}: AppComponentProps) {
     updateSettings,
     setWallpaperId,
     setCustomWallpaper,
+    updateShortcutBinding,
+    resetShortcutBindings,
+    formatShortcutBindingLabel,
     exportVfs,
     clearVfs,
     resetSettings,
@@ -146,6 +157,15 @@ export function SettingsApp({}: AppComponentProps) {
             )}
             {activeSection === "accessibility" && (
               <AccessibilitySection osSettings={osSettings} updateSettings={updateSettings} />
+            )}
+            {activeSection === "shortcuts" && (
+              <KeyboardShortcutsSection
+                shortcutBindings={shortcutBindings}
+                osSettings={osSettings}
+                updateShortcutBinding={updateShortcutBinding}
+                resetShortcutBindings={resetShortcutBindings}
+                formatShortcutBindingLabel={formatShortcutBindingLabel}
+              />
             )}
             {activeSection === "storage" && (
               <StorageSection

@@ -1,5 +1,8 @@
 // ── OS Settings Types ────────────────────────────────────────────────────────
 
+import type { SystemShortcutBindings } from "@/processes/os/model/shortcut-manager/shortcut-manager.types";
+import { DEFAULT_SYSTEM_SHORTCUT_BINDINGS } from "@/processes/os/model/shortcut-manager";
+
 export type ColorScheme = "light" | "dark" | "system";
 
 export type AccentColor =
@@ -19,6 +22,7 @@ export type OSSettings = {
   dockAutohide: boolean;
   reduceMotion: boolean;
   reduceTransparency: boolean;
+  shortcutBindings: SystemShortcutBindings;
 };
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
@@ -30,6 +34,7 @@ export const DEFAULT_OS_SETTINGS: OSSettings = {
   dockAutohide: false,
   reduceMotion: false,
   reduceTransparency: false,
+  shortcutBindings: DEFAULT_SYSTEM_SHORTCUT_BINDINGS,
 };
 
 // ── Accent Color Map ──────────────────────────────────────────────────────────

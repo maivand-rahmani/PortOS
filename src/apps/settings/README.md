@@ -1,6 +1,6 @@
 # settings
 
-System preferences app for wallpaper and desktop-level shell controls.
+System preferences app for wallpaper, desktop-level shell controls, and system-level keyboard shortcut preferences.
 
 ## Files and folders
 

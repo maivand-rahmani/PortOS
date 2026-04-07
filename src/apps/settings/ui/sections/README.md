@@ -8,5 +8,6 @@ Isolated section components rendered in the Settings app content pane. Each sect
 - `appearance-section.tsx` — Color scheme pills (Light / Dark / Auto), accent color swatches, reduce transparency toggle.
 - `dock-section.tsx` — Dock icon size segmented control (Small / Medium / Large), autohide toggle.
 - `accessibility-section.tsx` — Reduce motion and reduce transparency toggles.
+- `keyboard-shortcuts-section.tsx` — System-level shortcut bindings editor with conflict checks and reset support.
 - `storage-section.tsx` — VFS node count, export VFS to JSON, clear all VFS data.
 - `general-section.tsx` — Live runtime stats (processes, windows, FS nodes), reset settings to defaults.
