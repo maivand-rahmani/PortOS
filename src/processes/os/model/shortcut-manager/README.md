@@ -4,14 +4,14 @@ OS-level keyboard shortcut registry and dispatcher.
 
 ## What this folder owns
 
-- Type definitions for shortcuts (key combos, modifiers, scopes)
-- Pure model functions for registering, unregistering, and matching shortcuts
-- Display formatting for shortcut labels (e.g. "⌘ W")
+- Type definitions for runtime shortcuts, system shortcut presets, combo bindings, and sequence bindings
+- Pure model functions for registering, unregistering, and matching combo shortcuts
+- Pure helpers for formatting bindings, matching key sequences, and detecting user-config conflicts
 
 ## Files
 
-- `shortcut-manager.types.ts` — `Shortcut`, `ShortcutModifier`, `ShortcutManagerState`
-- `index.ts` — `registerShortcutModel`, `unregisterShortcutModel`, `matchShortcut`, `formatShortcut`
+- `shortcut-manager.types.ts` — runtime shortcut types plus system-level binding and preset types
+- `index.ts` — combo registry helpers, binding formatting, sequence matching, and conflict detection
 
 ## Integration
 

@@ -9,6 +9,73 @@
 /** Modifier keys used in shortcut combos. */
 export type ShortcutModifier = "meta" | "ctrl" | "alt" | "shift";
 
+export type ShortcutSequenceKey =
+  | "space"
+  | "a"
+  | "b"
+  | "c"
+  | "d"
+  | "e"
+  | "f"
+  | "g"
+  | "h"
+  | "i"
+  | "j"
+  | "k"
+  | "l"
+  | "m"
+  | "n"
+  | "o"
+  | "p"
+  | "q"
+  | "r"
+  | "s"
+  | "t"
+  | "u"
+  | "v"
+  | "w"
+  | "x"
+  | "y"
+  | "z";
+
+export type ShortcutPresetId =
+  | "os:spotlight"
+  | "os:mission-control"
+  | "os:ai-palette"
+  | "os:app-switcher"
+  | "os:close-window"
+  | "os:minimize-window"
+  | "os:quit-app"
+  | "os:hide-app"
+  | "os:cycle-window"
+  | "os:workspace-1"
+  | "os:workspace-2"
+  | "os:workspace-3"
+  | "os:space-left"
+  | "os:space-right";
+
+export type ShortcutBindingCombo = {
+  kind: "combo";
+  key: string;
+  modifiers: ShortcutModifier[];
+};
+
+export type ShortcutBindingSequence = {
+  kind: "sequence";
+  steps: ShortcutSequenceKey[];
+};
+
+export type ShortcutBinding = ShortcutBindingCombo | ShortcutBindingSequence;
+
+export type SystemShortcutBinding = {
+  id: ShortcutPresetId;
+  label: string;
+  scope: "global" | "app";
+  binding: ShortcutBinding;
+};
+
+export type SystemShortcutBindings = Record<ShortcutPresetId, ShortcutBinding>;
+
 /**
  * A single keyboard shortcut registration.
  *
