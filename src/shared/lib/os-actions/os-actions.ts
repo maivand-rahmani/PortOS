@@ -1,4 +1,5 @@
 import { useOSStore } from "@/processes";
+import type { AiServiceContext } from "@/processes/os/model/ai-service";
 import {
   dispatchAgentNotesPrefill,
   dispatchAgentRequest,
@@ -185,4 +186,12 @@ export function getRuntimeSnapshot() {
     bootPhase: state.bootPhase,
     bootProgress: state.bootProgress,
   };
+}
+
+export function openAiPalette(context: AiServiceContext) {
+  useOSStore.getState().aiOpenPalette(context);
+}
+
+export function closeAiPalette() {
+  useOSStore.getState().aiClosePalette();
 }

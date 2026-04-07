@@ -115,13 +115,49 @@ export {
   removeNotificationModel,
 } from "./notification-manager";
 export {
+  bindingMatchesEvent,
+  DEFAULT_SYSTEM_SHORTCUT_BINDINGS,
+  detectShortcutBindingConflict,
   shortcutManagerInitialState,
+  formatShortcutBinding,
+  getSequenceEventKey,
+  getSequenceStepKeyLabel,
+  getSystemShortcutBindings,
+  matchSequenceBinding,
+  SEQUENCE_SHORTCUT_TIMEOUT_MS,
   registerShortcutModel,
   registerShortcutsModel,
   unregisterShortcutModel,
   matchShortcut,
   formatShortcut,
 } from "./shortcut-manager";
+export {
+  AI_ACTIONS,
+  aiServiceManagerInitialState,
+  buildAppStatePayload,
+  buildAiServiceRequest,
+  buildContentPayload,
+  buildDefaultPrompt,
+  canApplyAiResult,
+  canExecuteAiAction,
+  describeContext,
+  generateSessionId,
+  getAiAction,
+  getAiActionDisabledReason,
+  getAvailableActions,
+  hasAiAppStatePayload,
+  hasAiFileContent,
+  hasAiReplaceTarget,
+  hasAiSelection,
+  truncateContent,
+  appendToTranscript,
+  buildTranscriptEntry,
+  buildTranscriptFileName,
+  buildTranscriptPath,
+  createTranscriptFile,
+  MAX_TRANSCRIPT_FILES,
+  serializeTranscript,
+} from "./ai-service";
 export { useOSStore } from "./store/store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
@@ -142,9 +178,29 @@ export type {
   OSNotification,
 } from "./notification-manager";
 export type {
+  ShortcutBinding,
+  ShortcutBindingCombo,
+  ShortcutBindingSequence,
   Shortcut,
   ShortcutModifier,
+  ShortcutPresetId,
+  ShortcutSequenceKey,
+  SystemShortcutBinding,
+  SystemShortcutBindings,
 } from "./shortcut-manager/shortcut-manager.types";
+export type {
+  AiActionDefinition,
+  AiActionId,
+  AiMessage,
+  AiMessageRole,
+  AiServiceContext,
+  AiServiceManagerState,
+  AiServiceRequest,
+  AiServiceResult,
+  AiServiceStatus,
+  AiTranscriptEntry,
+  AiTranscriptFile,
+} from "./ai-service";
 export type { OSBootPhase, OSStore, OSRuntimeSnapshot } from "./store/store";
 export type { ActiveRuntimeTarget } from "./runtime-selectors";
 export type {

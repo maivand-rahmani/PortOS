@@ -13,6 +13,7 @@ import type { WorkspaceManagerState, WorkspaceId } from "../workspace-manager";
 import type { NotificationManagerState, NotificationLevel } from "../notification-manager";
 import type { ShortcutManagerState } from "../shortcut-manager";
 import type { Shortcut } from "../shortcut-manager/shortcut-manager.types";
+import type { AiServiceManagerState, AiActionId, AiServiceContext } from "../ai-service";
 import type { FileNode, FileSystemNode } from "@/entities/file-system";
 import type { WindowPosition } from "@/entities/window";
 import type { WindowResizeDirection } from "../window-manager";
@@ -45,7 +46,8 @@ export type OSStore = AppRegistryState &
   SessionManagerState &
   WorkspaceManagerState &
   NotificationManagerState &
-  ShortcutManagerState & {
+  ShortcutManagerState &
+  AiServiceManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
     bootMessages: string[];
@@ -154,4 +156,14 @@ export type OSStore = AppRegistryState &
     registerShortcut: (shortcut: Shortcut) => void;
     registerShortcuts: (shortcuts: Shortcut[]) => void;
     unregisterShortcut: (shortcutId: string) => void;
+    // AI Service
+    aiOpenPalette: (context: AiServiceContext) => void;
+    aiClosePalette: () => void;
+    aiExecuteAction: (actionId: AiActionId, userPrompt?: string) => Promise<void>;
+    aiApplyResult: (mode?: "replace" | "new-file") => Promise<void>;
+    aiCancelRequest: () => void;
+    aiClearResult: () => void;
+    aiPublishWindowContext: (windowId: string, context: AiServiceContext) => void;
+    aiClearWindowContext: (windowId: string) => void;
+    aiStartNewSession: () => void;
   };

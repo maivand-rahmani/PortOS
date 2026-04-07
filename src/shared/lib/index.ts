@@ -84,6 +84,7 @@ export { calculateExpression } from "./app-data/app-logic";
 export { slugifyDocsHeading } from "./app-data/docs";
 export {
   closeWindowById,
+  closeAiPalette,
   focusOrOpenAppById,
   focusWindowById,
   getRuntimeSnapshot,
@@ -91,6 +92,7 @@ export {
   minimizeWindowById,
   openAppById,
   openAgentWithRequest,
+  openAiPalette,
   openBlogWithFocus,
   openClockWithFocus,
   openNotesWithPrefill,

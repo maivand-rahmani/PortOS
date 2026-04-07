@@ -6,7 +6,7 @@ import {
 export const NOTES_EXTERNAL_REQUEST_EVENT = "portos:notes-external-request";
 const NOTES_EXTERNAL_REQUEST_STORAGE_KEY = "portos-notes-external-request";
 
-export type NotesExternalRequestMode = "create" | "upsert";
+export type NotesExternalRequestMode = "create" | "upsert" | "replace";
 
 export type NotesExternalRequestDetail = {
   mode?: NotesExternalRequestMode;

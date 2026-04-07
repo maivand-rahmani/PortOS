@@ -13,6 +13,7 @@ import { createSessionSlice } from "./slices/session.slice";
 import { createWorkspaceSlice } from "./slices/workspace.slice";
 import { createWindowSlice } from "./slices/window.slice";
 import { createAppSlice } from "./slices/app.slice";
+import { createAiServiceSlice } from "./slices/ai-service.slice";
 
 export type { OSBootPhase, OSRuntimeSnapshot, OSStore } from "./store.types";
 
@@ -27,4 +28,5 @@ export const useOSStore = create<OSStore>()((set, get, api) => ({
   ...createWorkspaceSlice(set, get, api),
   ...createWindowSlice(set, get, api),
   ...createAppSlice(set, get, api),
+  ...createAiServiceSlice(set, get, api),
 }));

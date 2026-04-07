@@ -18,6 +18,7 @@ export const SYSTEM_APP_DIRECTORIES = {
 
 export const SYSTEM_USER_DIRECTORIES = {
   ai: "/System/user/ai" as AbsolutePath,
+  aiTranscripts: "/System/user/ai/transcripts" as AbsolutePath,
   blog: "/System/user/blog" as AbsolutePath,
   calculator: "/System/user/calculator" as AbsolutePath,
   contact: "/System/user/contact" as AbsolutePath,
