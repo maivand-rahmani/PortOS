@@ -23,6 +23,26 @@ export function applyNotesExternalRequest(notes: NoteItem[], request: NotesExter
   const normalizedTags = request.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [];
   const mode = request.mode ?? "create";
 
+  if (mode === "replace") {
+    const existingNote = notes.find((note) => matchesRequest(note, request));
+
+    if (existingNote) {
+      const nextNote: NoteItem = {
+        ...existingNote,
+        title: request.title.trim() || existingNote.title,
+        body: normalizedBody,
+        tags: normalizedTags.length > 0 ? mergeTags(existingNote.tags, normalizedTags) : existingNote.tags,
+        isPinned: request.pinned ?? existingNote.isPinned,
+        updatedAt: new Date().toISOString(),
+      };
+
+      return {
+        note: nextNote,
+        notes: notes.map((note) => (note.id === existingNote.id ? nextNote : note)),
+      };
+    }
+  }
+
   if (mode === "upsert") {
     const existingNote = notes.find((note) => matchesRequest(note, request));
 

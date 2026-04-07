@@ -19,6 +19,7 @@ import {
   FILES_EVENTS,
 } from "@/shared/lib/os-events/files-os-events";
 import { openEditorWithFile } from "@/shared/lib/os-actions/os-actions";
+import { buildFilesAiContext } from "./files-ai-context";
 
 // ── Types ───────────────────────────────────────────────
 
@@ -118,6 +119,8 @@ export function useFilesApp(windowId: string) {
   const fsCopy = useOSStore((s) => s.fsCopy);
   const fsPaste = useOSStore((s) => s.fsPaste);
   const beginFileDrag = useOSStore((s) => s.beginFileDrag);
+  const aiPublishWindowContext = useOSStore((s) => s.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((s) => s.aiClearWindowContext);
 
   const [state, setState] = useState<FilesAppState>({
     currentDirId: null,
@@ -194,6 +197,11 @@ export function useFilesApp(windowId: string) {
 
     return fsNodeMap[state.previewNodeId] ?? null;
   }, [state.previewNodeId, fsNodeMap]);
+
+  const selectedNodes = useMemo(
+    () => Array.from(state.selectedNodeIds).map((id) => fsNodeMap[id]).filter((node): node is FileSystemNode => Boolean(node)),
+    [fsNodeMap, state.selectedNodeIds],
+  );
 
   // ── Navigation ──────────────────────────────────────
 
@@ -630,6 +638,50 @@ export function useFilesApp(windowId: string) {
       window.removeEventListener(FILES_EVENTS.FOCUS_NODE, handleFocusRequest);
     };
   }, [focusNode, windowId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const publishContext = async () => {
+      const selectedFile = selectedNodes.find((node) => node.type === "file") ?? null;
+      const selectedFileContent = selectedFile?.type === "file" ? await fsReadContent(selectedFile.id) : null;
+      const previewContent = previewNode?.type === "file" ? await fsReadContent(previewNode.id) : null;
+      const filePath = previewNode?.type === "file"
+        ? getNodePath(previewNode.id, fsNodeMap)
+        : selectedFile
+          ? getNodePath(selectedFile.id, fsNodeMap)
+          : null;
+
+      if (cancelled) {
+        return;
+      }
+
+      aiPublishWindowContext(
+        windowId,
+        buildFilesAiContext({
+          windowId,
+          currentPath: state.currentPath,
+          selectedNodes,
+          previewNode,
+          previewContent,
+          selectedFileContent,
+          filePath,
+        }),
+      );
+    };
+
+    void publishContext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aiPublishWindowContext, fsNodeMap, fsReadContent, previewNode, selectedNodes, state.currentPath, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   // ── Keyboard shortcuts ──────────────────────────────
 

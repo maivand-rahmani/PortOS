@@ -37,6 +37,7 @@ import {
   type TerminalEntry,
   type TerminalQuickAction,
 } from "../model/terminal-session";
+import { buildTerminalAiContext } from "../model/terminal-ai-context";
 
 const PROMPT_USER = "guest@portos";
 const BASE_COMMANDS = [
@@ -71,6 +72,8 @@ const BASE_COMMANDS = [
 export function TerminalApp({ processId, windowId }: AppComponentProps) {
   const apps = useOSStore((state) => state.apps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const [value, setValue] = useState("");
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [currentPath, setCurrentPath] = useState("/");
@@ -288,6 +291,26 @@ export function TerminalApp({ processId, windowId }: AppComponentProps) {
       window.removeEventListener(TERMINAL_EXTERNAL_REQUEST_EVENT, handleExternalRequest);
     };
   }, [executeCommand, windowId]);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildTerminalAiContext({
+        windowId,
+        currentPath,
+        value,
+        bridgeStatus,
+        history,
+        recentCommands,
+      }),
+    );
+  }, [aiPublishWindowContext, bridgeStatus, currentPath, history, recentCommands, value, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const applyQuickAction = (action: TerminalQuickAction, mode: "prefill" | "run") => {
     if (mode === "run") {

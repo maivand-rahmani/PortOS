@@ -20,6 +20,7 @@ import {
   computeTextStats,
   createEditorDocument,
 } from "./editor.types";
+import { buildEditorAiContext } from "./editor-ai-context";
 
 // ── Hook ────────────────────────────────────────────────
 
@@ -29,8 +30,15 @@ export function useEditor(processId: string, windowId: string) {
   const fsReadContent = useOSStore((s) => s.fsReadContent);
   const fsWriteContent = useOSStore((s) => s.fsWriteContent);
   const fsSetActiveFile = useOSStore((s) => s.fsSetActiveFile);
+  const aiPublishWindowContext = useOSStore((s) => s.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((s) => s.aiClearWindowContext);
 
   const [state, setState] = useState<EditorState>(INITIAL_EDITOR_STATE);
+  const [selectionState, setSelectionState] = useState({
+    text: "",
+    start: 0,
+    end: 0,
+  });
 
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,7 +186,7 @@ export function useEditor(processId: string, windowId: string) {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [state.autoSaveEnabled, state.isDirty, state.document?.content, save]);
+  }, [state.autoSaveEnabled, state.document, state.isDirty, state.document?.content, save]);
 
   // ── Save on unmount if dirty ─────────────────────────
 
@@ -198,9 +206,45 @@ export function useEditor(processId: string, windowId: string) {
       }
 
       fsSetActiveFile(null);
+      aiClearWindowContext(windowId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleSelectionChange = useCallback(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea || !state.document) {
+      setSelectionState({ text: "", start: 0, end: 0 });
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    setSelectionState({
+      text: end > start ? state.document.content.slice(start, end) : "",
+      start,
+      end,
+    });
+  }, [state.document]);
+
+  useEffect(() => {
+    const node = state.document ? (fsNodeMap[state.document.nodeId] as FileNode | undefined) ?? null : null;
+
+    aiPublishWindowContext(
+      windowId,
+      buildEditorAiContext({
+        windowId,
+        node,
+        document: state.document,
+        selectionText: selectionState.text,
+        selectionStart: selectionState.start,
+        selectionEnd: selectionState.end,
+        isDirty: state.isDirty,
+      }),
+    );
+  }, [aiPublishWindowContext, fsNodeMap, selectionState.end, selectionState.start, selectionState.text, state.document, state.isDirty, windowId]);
 
   // ── Push to undo stack (debounced) ───────────────────
 
@@ -524,6 +568,7 @@ export function useEditor(processId: string, windowId: string) {
     formatJSON,
     clearError,
     handleKeyDown,
+    handleSelectionChange,
 
     // Markdown inserts
     insertBold,

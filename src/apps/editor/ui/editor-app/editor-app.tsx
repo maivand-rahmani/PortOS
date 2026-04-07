@@ -153,6 +153,7 @@ export function EditorApp({ processId, windowId }: AppComponentProps) {
           textareaRef={editor.textareaRef}
           onContentChange={editor.updateContent}
           onKeyDown={editor.handleKeyDown}
+          onSelect={editor.handleSelectionChange}
           showLineNumbers={
             editor.document.mode === "code" ||
             editor.document.mode === "json" ||

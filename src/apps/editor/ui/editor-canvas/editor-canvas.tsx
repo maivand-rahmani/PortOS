@@ -12,6 +12,7 @@ type EditorCanvasProps = {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onContentChange: (content: string) => void;
   onKeyDown: (event: React.KeyboardEvent) => void;
+  onSelect?: () => void;
   showLineNumbers?: boolean;
 };
 
@@ -23,6 +24,7 @@ export function EditorCanvas({
   textareaRef,
   onContentChange,
   onKeyDown,
+  onSelect,
   showLineNumbers = true,
 }: EditorCanvasProps) {
   const lineNumbersRef = useRef<HTMLDivElement>(null);
@@ -115,6 +117,7 @@ export function EditorCanvas({
         onChange={(e) => onContentChange(e.target.value)}
         onScroll={handleScroll}
         onKeyDown={handleKeyDownInternal}
+        onSelect={onSelect}
         spellCheck={mode === "plaintext" || mode === "markdown"}
         className="flex-1 resize-none outline-none p-3 min-h-0"
         style={{

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
+import type { FileNode } from "@/entities/file-system";
 import { useOSStore } from "@/processes";
 import {
   AGENT_NOTES_PREFILL_EVENT,
@@ -26,6 +27,7 @@ import {
   type AgentNotesPrefillDetail,
   cn,
 } from "@/shared/lib";
+import { getNodeAtPath } from "@/shared/lib/fs/fs-actions";
 
 import {
   buildNoteExcerpt,
@@ -42,6 +44,7 @@ import {
   updateNotePath,
   updateNoteTimestamp,
 } from "../model/notes-storage";
+import { buildNotesAiContext } from "../model/notes-ai-context";
 import {
   applyNotesExternalRequest,
   type NotesExternalRequestDetail,
@@ -62,6 +65,8 @@ type NoteView = "all" | "pinned" | "untagged";
 
 export function NotesApp({ windowId }: AppComponentProps) {
   const fsHydrated = useOSStore((state) => state.fsHydrated);
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -69,6 +74,11 @@ export function NotesApp({ windowId }: AppComponentProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState("Syncing with file system");
   const [notesHydrated, setNotesHydrated] = useState(false);
+  const [selectionState, setSelectionState] = useState({
+    text: "",
+    start: 0,
+    end: 0,
+  });
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -305,7 +315,9 @@ export function NotesApp({ windowId }: AppComponentProps) {
       }
 
       setSaveStatus(
-        detail.mode === "upsert"
+        detail.mode === "replace"
+          ? `AI updated from ${detail.source ?? "external request"}`
+          : detail.mode === "upsert"
           ? `Updated from ${detail.source ?? "external request"}`
           : `Added from ${detail.source ?? "external request"}`,
       );
@@ -359,6 +371,34 @@ export function NotesApp({ windowId }: AppComponentProps) {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [activeNote, duplicateActiveNote]);
+
+  useEffect(() => {
+    const resolvedNode = activeNote
+      ? ((getNodeAtPath(activeNote.path) as FileNode | null) ?? null)
+      : null;
+
+    aiPublishWindowContext(
+      windowId,
+      buildNotesAiContext({
+        windowId,
+        note: activeNote,
+        noteNode: resolvedNode,
+        filteredNoteCount: filteredNotes.length,
+        selectedView,
+        selectedTag,
+        query,
+        selectionText: selectionState.text,
+        selectionStart: selectionState.start,
+        selectionEnd: selectionState.end,
+      }),
+    );
+  }, [activeNote, aiPublishWindowContext, filteredNotes.length, query, selectedTag, selectedView, selectionState.end, selectionState.start, selectionState.text, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   return (
     <motion.div
@@ -738,11 +778,22 @@ export function NotesApp({ windowId }: AppComponentProps) {
 
                    <div className="relative min-h-0 flex-1 px-5 py-5 md:px-7 md:py-6">
                      <textarea
-                      value={activeNote.body}
-                      onChange={(event) => updateActiveNote((note) => ({ ...note, body: event.target.value }))}
-                      placeholder="Write freely. Draft a plan, dump ideas, or leave yourself a note for later."
-                      className="h-full min-h-[280px] w-full resize-none border-0 bg-transparent text-xl leading-9 text-[#2d2d2d] outline-none placeholder:text-[#2d2d2d]/35"
-                    />
+                       value={activeNote.body}
+                       onChange={(event) => updateActiveNote((note) => ({ ...note, body: event.target.value }))}
+                       onSelect={(event) => {
+                         const textarea = event.currentTarget;
+                         const start = textarea.selectionStart;
+                         const end = textarea.selectionEnd;
+
+                         setSelectionState({
+                           text: end > start ? textarea.value.slice(start, end) : "",
+                           start,
+                           end,
+                         });
+                       }}
+                       placeholder="Write freely. Draft a plan, dump ideas, or leave yourself a note for later."
+                       className="h-full min-h-[280px] w-full resize-none border-0 bg-transparent text-xl leading-9 text-[#2d2d2d] outline-none placeholder:text-[#2d2d2d]/35"
+                     />
                   </div>
                 </motion.article>
               </AnimatePresence>
