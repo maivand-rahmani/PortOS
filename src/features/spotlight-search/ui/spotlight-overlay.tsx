@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { getNodePath, useOSStore } from "@/processes";
+import { getNodePath, useOSStore, getSystemShortcutBindings } from "@/processes";
+import type { ShortcutBinding } from "@/processes";
 import type { AppConfig } from "@/entities/app";
 import {
   spotlightSearch,
@@ -72,6 +73,40 @@ function AppIconSmall({ app }: { app: AppConfig | undefined }) {
   return <Icon className="h-5 w-5 shrink-0" />;
 }
 
+// ── Shortcut binding renderer ───────────────────────────────────────────────────
+
+function ShortcutBindingDisplay({ binding }: { binding: ShortcutBinding }) {
+  if (binding.kind === "sequence") {
+    return (
+      <span className="flex items-center gap-1.5 text-[11px] text-muted/50">
+        {binding.steps.map((step, i) => (
+          <React.Fragment key={i}>
+            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans font-medium uppercase">{step === "space" ? "Space" : step}</kbd>
+            {i < binding.steps.length - 1 && <span>then</span>}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  }
+  
+  // combo
+  const symbols: string[] = [];
+  if (binding.modifiers.includes("ctrl")) symbols.push("⌃");
+  if (binding.modifiers.includes("alt")) symbols.push("⌥");
+  if (binding.modifiers.includes("shift")) symbols.push("⇧");
+  if (binding.modifiers.includes("meta")) symbols.push("⌘");
+  const keyLabel = binding.key.length === 1 ? binding.key.toUpperCase() : binding.key;
+
+  return (
+    <span className="flex items-center gap-1 text-[11px] text-muted/50">
+      {symbols.map((sym, i) => (
+        <kbd key={`mod-${i}`} className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans font-medium">{sym}</kbd>
+      ))}
+      <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans font-medium">{keyLabel}</kbd>
+    </span>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 type SpotlightOverlayProps = {
@@ -79,6 +114,7 @@ type SpotlightOverlayProps = {
   onClose: () => void;
   onOpenApp: (appId: string) => void;
   onFocusWindow: (windowId: string) => void;
+  onRunShortcut: (shortcutId: string, options?: { ignoreSurfaceState?: boolean }) => boolean;
 };
 
 export function SpotlightOverlay({
@@ -86,6 +122,7 @@ export function SpotlightOverlay({
   onClose,
   onOpenApp,
   onFocusWindow,
+  onRunShortcut,
 }: SpotlightOverlayProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -116,9 +153,10 @@ export function SpotlightOverlay({
         appMap,
         fsNodes,
         shortcuts,
+        systemShortcutBindings: getSystemShortcutBindings(osSettings.shortcutBindings),
         getNodePath: getPath,
       }),
-    [query, apps, windows, appMap, fsNodes, shortcuts, getPath],
+    [query, apps, windows, appMap, fsNodes, shortcuts, osSettings.shortcutBindings, getPath],
   );
 
   const flatResults = useMemo(() => flattenResults(groups), [groups]);
@@ -168,9 +206,20 @@ export function SpotlightOverlay({
           break;
         }
         case "shortcut": {
+          if (result.shortcutId === "os:spotlight") {
+            break;
+          }
+
+          if (onRunShortcut(result.shortcutId, { ignoreSurfaceState: true })) {
+            break;
+          }
+
           const shortcut = shortcuts.find((s) => s.id === result.shortcutId);
 
-          if (shortcut) shortcut.action();
+          if (shortcut) {
+            shortcut.action();
+          }
+
           break;
         }
         case "action": {
@@ -188,7 +237,7 @@ export function SpotlightOverlay({
         }
       }
     },
-    [onClose, onOpenApp, onFocusWindow, shortcuts, osSettings, updateSettings],
+    [onClose, onOpenApp, onFocusWindow, onRunShortcut, osSettings, shortcuts, updateSettings],
   );
 
   const handleKeyDown = useCallback(
@@ -337,7 +386,9 @@ export function SpotlightOverlay({
                             <div className="truncate text-[13px] font-medium">
                               {result.label}
                             </div>
-                            {result.detail ? (
+                            {result.category === "shortcut" && result.binding ? (
+                              <ShortcutBindingDisplay binding={result.binding} />
+                            ) : result.detail ? (
                               <div className="truncate text-[11px] text-muted/50">
                                 {result.detail}
                               </div>

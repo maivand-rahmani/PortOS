@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  formatShortcutBinding,
+  useOSStore,
+} from "@/processes";
 import type { DockAppState } from "./desktop-shell.types";
 
-const FALLBACK_MODIFIER_KEY = "Alt";
-const FALLBACK_CYCLE_KEY = "Tab";
-
-export const APP_SWITCHER_FALLBACK_LABEL = "Option + Tab";
-export const APP_SWITCHER_FALLBACK_SYMBOL = "⌥ Tab";
+export const APP_SWITCHER_FALLBACK_LABEL = "App Switcher";
+export const APP_SWITCHER_FALLBACK_SYMBOL = "App Switcher";
 
 type UseAppSwitcherInput = {
   bootReady: boolean;
@@ -21,6 +22,7 @@ type UseAppSwitcherResult = {
   selectedAppId: string | null;
   switcherApps: DockAppState[];
   openAppSwitcher: () => void;
+  cycleAppSwitcher: (direction: 1 | -1) => void;
   closeAppSwitcher: () => void;
   previewApp: (appId: string) => void;
   activateSelectedApp: () => void;
@@ -66,7 +68,15 @@ export function useAppSwitcher({
     return index >= 0 ? index : 0;
   }, [switcherApps]);
 
-  const selectedAppId = switcherApps[selectedIndex]?.app.id ?? null;
+  const boundedSelectedIndex = useMemo(() => {
+    if (switcherApps.length === 0) {
+      return 0;
+    }
+
+    return Math.min(selectedIndex, switcherApps.length - 1);
+  }, [selectedIndex, switcherApps.length]);
+
+  const selectedAppId = switcherApps[boundedSelectedIndex]?.app.id ?? null;
 
   const closeAppSwitcher = useCallback(() => {
     setIsOpen(false);
@@ -83,6 +93,23 @@ export function useAppSwitcher({
     setSelectedIndex(frontmostIndex);
   }, [frontmostIndex, switcherApps.length]);
 
+  const cycleAppSwitcher = useCallback(
+    (direction: 1 | -1) => {
+      if (switcherApps.length === 0) {
+        return;
+      }
+
+      setIsOpen(true);
+      setIsKeyboardSession(true);
+      setSelectedIndex((current) => {
+        const baseIndex = isOpen ? boundedSelectedIndex : frontmostIndex;
+
+        return getWrappedIndex(baseIndex + direction, switcherApps.length);
+      });
+    },
+    [boundedSelectedIndex, frontmostIndex, isOpen, switcherApps.length],
+  );
+
   const previewApp = useCallback(
     (appId: string) => {
       const nextIndex = switcherApps.findIndex((item) => item.app.id === appId);
@@ -95,58 +122,22 @@ export function useAppSwitcher({
   );
 
   const activateSelectedApp = useCallback(() => {
-    const selectedApp = switcherApps[selectedIndex];
+    const selectedApp = switcherApps[boundedSelectedIndex];
 
     if (selectedApp) {
       onActivateApp(selectedApp.app.id);
     }
 
     closeAppSwitcher();
-  }, [closeAppSwitcher, onActivateApp, selectedIndex, switcherApps]);
-
-  useEffect(() => {
-    if (switcherApps.length === 0) {
-      setSelectedIndex(0);
-      return;
-    }
-
-    setSelectedIndex((current) => Math.min(current, switcherApps.length - 1));
-  }, [switcherApps.length]);
-
-  useEffect(() => {
-    if (!bootReady) {
-      closeAppSwitcher();
-    }
-  }, [bootReady, closeAppSwitcher]);
+  }, [boundedSelectedIndex, closeAppSwitcher, onActivateApp, switcherApps]);
 
   useEffect(() => {
     if (!bootReady) {
       return undefined;
     }
 
-    const handleCycle = (direction: 1 | -1) => {
-      if (switcherApps.length === 0) {
-        return;
-      }
-
-      setIsOpen(true);
-      setIsKeyboardSession(true);
-      setSelectedIndex((current) => {
-        const baseIndex = isOpen ? current : frontmostIndex;
-
-        return getWrappedIndex(baseIndex + direction, switcherApps.length);
-      });
-    };
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) {
-        return;
-      }
-
-      if (event.altKey && event.key === FALLBACK_CYCLE_KEY) {
-        event.preventDefault();
-        event.stopPropagation();
-        handleCycle(event.shiftKey ? -1 : 1);
         return;
       }
 
@@ -187,7 +178,13 @@ export function useAppSwitcher({
         return;
       }
 
-      if (event.key === FALLBACK_MODIFIER_KEY) {
+      if (
+        (event.key === "Alt" || event.key === "Meta" || event.key === "Control" || event.key === "Shift") &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey
+      ) {
         event.preventDefault();
         activateSelectedApp();
       }
@@ -212,7 +209,6 @@ export function useAppSwitcher({
     activateSelectedApp,
     bootReady,
     closeAppSwitcher,
-    frontmostIndex,
     isKeyboardSession,
     isOpen,
     switcherApps.length,
@@ -223,6 +219,7 @@ export function useAppSwitcher({
     selectedAppId,
     switcherApps,
     openAppSwitcher,
+    cycleAppSwitcher,
     closeAppSwitcher,
     previewApp,
     activateSelectedApp,

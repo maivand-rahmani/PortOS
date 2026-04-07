@@ -5,6 +5,7 @@ Visual building blocks for the macOS-style desktop shell.
 ## Folders
 
 - `desktop-root/`: top-level shell composition.
+- `ai-command-palette/`: floating `Space+K` system AI palette for file-aware actions and streamed results.
 - `desktop-wallpaper/`: desktop background and ambient layers.
 - `mac-menu-bar/`: persistent top system status bar with app actions, shell indicators, AI access, and fullscreen overlay presentation.
 - `desktop-icons/`: desktop icon field and icon composition.

@@ -1,7 +1,7 @@
 import type { AppConfig } from "@/entities/app";
 import type { FileSystemNode } from "@/entities/file-system";
 import type { WindowInstance } from "@/entities/window";
-import type { Shortcut } from "@/processes";
+import { formatShortcutBinding, type Shortcut, type ShortcutBinding, type SystemShortcutBinding } from "@/processes";
 
 // ── Result types ────────────────────────────────────────────────────────────
 
@@ -40,6 +40,7 @@ export type SpotlightFileResult = SpotlightResultBase & {
 export type SpotlightShortcutResult = SpotlightResultBase & {
   category: "shortcut";
   shortcutId: string;
+  binding?: ShortcutBinding;
 };
 
 export type SpotlightActionResult = SpotlightResultBase & {
@@ -101,22 +102,6 @@ function matchScore(query: string, text: string): number {
   if (lowerText.includes(lowerQuery)) return 60;
   // Fuzzy match is lowest
   return 30;
-}
-
-// ── Format shortcut combo ───────────────────────────────────────────────────
-
-function formatCombo(shortcut: Shortcut): string {
-  const symbols: Record<string, string> = {
-    meta: "\u2318",
-    ctrl: "\u2303",
-    alt: "\u2325",
-    shift: "\u21E7",
-  };
-
-  const mods = shortcut.modifiers.map((m) => symbols[m] ?? m).join("");
-  const key = shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key;
-
-  return `${mods}${key}`;
 }
 
 // ── Individual search functions ─────────────────────────────────────────────
@@ -186,24 +171,57 @@ function searchFiles(
     .sort((a, b) => matchScore(query, b.label) - matchScore(query, a.label));
 }
 
-function searchShortcuts(
+function searchSystemShortcuts(
+  query: string,
+  bindings: SystemShortcutBinding[],
+): SpotlightShortcutResult[] {
+  return bindings
+    .filter(
+      (b) =>
+        fuzzyMatch(query, b.label) ||
+        fuzzyMatch(query, b.id) ||
+        fuzzyMatch(query, formatShortcutBinding(b.binding)),
+    )
+    .map((b) => ({
+      id: `shortcut:${b.id}`,
+      label: b.label,
+      detail: formatShortcutBinding(b.binding),
+      category: "shortcut" as const,
+      shortcutId: b.id,
+      binding: b.binding,
+    }))
+    .sort((a, b) => matchScore(query, b.label) - matchScore(query, a.label));
+}
+
+function searchAppShortcuts(
   query: string,
   shortcuts: Shortcut[],
+  systemBindings: SystemShortcutBinding[],
 ): SpotlightShortcutResult[] {
+  // Exclude shortcuts that are just runtime representations of the system bindings
+  const systemIds = new Set<string>(systemBindings.map((b) => b.id));
+  
   return shortcuts
-    .filter(
-      (s) =>
+    .filter((s) => !systemIds.has(s.id))
+    .filter((s) => {
+      const binding: ShortcutBinding = { kind: "combo", key: s.key, modifiers: s.modifiers };
+      return (
         fuzzyMatch(query, s.label) ||
         fuzzyMatch(query, s.id) ||
-        fuzzyMatch(query, formatCombo(s)),
-    )
-    .map((s) => ({
-      id: `shortcut:${s.id}`,
-      label: s.label,
-      detail: formatCombo(s),
-      category: "shortcut" as const,
-      shortcutId: s.id,
-    }))
+        fuzzyMatch(query, formatShortcutBinding(binding))
+      );
+    })
+    .map((s) => {
+      const binding: ShortcutBinding = { kind: "combo", key: s.key, modifiers: s.modifiers };
+      return {
+        id: `shortcut:${s.id}`,
+        label: s.label,
+        detail: formatShortcutBinding(binding),
+        category: "shortcut" as const,
+        shortcutId: s.id,
+        binding,
+      };
+    })
     .sort((a, b) => matchScore(query, b.label) - matchScore(query, a.label));
 }
 
@@ -241,6 +259,7 @@ export type SpotlightSearchInput = {
   appMap: Record<string, AppConfig>;
   fsNodes: FileSystemNode[];
   shortcuts: Shortcut[];
+  systemShortcutBindings: SystemShortcutBinding[];
   getNodePath: (nodeId: string) => string;
 };
 
@@ -299,13 +318,16 @@ export function spotlightSearch(
     });
   }
 
-  const shortcutResults = searchShortcuts(trimmed, input.shortcuts);
+  const systemShortcutResults = searchSystemShortcuts(trimmed, input.systemShortcutBindings);
+  const appShortcutResults = searchAppShortcuts(trimmed, input.shortcuts, input.systemShortcutBindings);
+  
+  const allShortcutResults = [...systemShortcutResults, ...appShortcutResults].sort((a, b) => matchScore(query, b.label) - matchScore(query, a.label));
 
-  if (shortcutResults.length > 0) {
+  if (allShortcutResults.length > 0) {
     groups.push({
       category: "shortcut",
       label: CATEGORY_LABELS.shortcut,
-      results: shortcutResults,
+      results: allShortcutResults,
     });
   }
 

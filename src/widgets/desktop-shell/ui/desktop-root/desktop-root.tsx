@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import { useOSStore, type FileDropTarget, type Shortcut } from "@/processes";
+import {
+  useOSStore,
+  type FileDropTarget,
+} from "@/processes";
 import { SpotlightOverlay } from "@/features/spotlight-search";
 import { getNodePath } from "@/processes/os/model/file-system";
 import { dispatchOpenFileRequest } from "@/shared/lib/os-events/fs-os-events";
@@ -14,10 +17,13 @@ import {
   FULLSCREEN_CHROME_HIDE_DELAY,
   WORKSPACE_TRACK_TRANSITION,
 } from "../../model/desktop-shell.constants";
+import { useAiCommandPaletteShortcut } from "../../model/use-ai-command-palette";
 import { useDesktopShell } from "../../model/use-desktop-shell";
 import { useMissionControl } from "../../model/use-mission-control";
 import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
 import { useDefaultShortcuts } from "../../model/use-default-shortcuts";
+import { useSystemShortcuts } from "../../model/use-system-shortcuts";
+import { AiCommandPalette } from "../ai-command-palette";
 import { AppSwitcherOverlay } from "../app-switcher-overlay/app-switcher-overlay";
 import { BootOverlay } from "../boot-overlay";
 import { DesktopIcons } from "../desktop-icons";
@@ -66,6 +72,7 @@ export function DesktopShell() {
   const {
     containerRef,
     apps,
+    activeWindow,
     bootPhase,
     bootProgress,
     bootMessages,
@@ -128,12 +135,14 @@ export function DesktopShell() {
   const markNotificationRead = useOSStore((state) => state.markNotificationRead);
   const markAllNotificationsRead = useOSStore((state) => state.markAllNotificationsRead);
   const clearAllNotifications = useOSStore((state) => state.clearAllNotifications);
-  const registerShortcut = useOSStore((state) => state.registerShortcut);
-  const unregisterShortcut = useOSStore((state) => state.unregisterShortcut);
   const shouldReduceMotion = useReducedMotion();
   const [isMenuBarRevealed, setMenuBarRevealed] = useState(false);
   const [isDockRevealed, setDockRevealed] = useState(false);
   const isBooting = bootPhase !== "ready";
+  const closeDesktopTransientUi = useCallback(() => {
+    closeDockMenu();
+    clearDesktopSelection();
+  }, [clearDesktopSelection, closeDockMenu]);
   const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
   const hasReadyNotification = notifications.some(
     (item) => item.title === "PortOS is ready" && item.appId === undefined,
@@ -151,6 +160,7 @@ export function DesktopShell() {
     selectedAppId: selectedSwitcherAppId,
     switcherApps,
     openAppSwitcher: showAppSwitcher,
+    cycleAppSwitcher: runAppSwitcherCycle,
     previewApp: previewSwitcherApp,
     activateSelectedApp,
   } = appSwitcher;
@@ -184,6 +194,42 @@ export function DesktopShell() {
 
     showAppSwitcher();
   }, [pushNotification, showAppSwitcher, switcherApps.length]);
+
+  const cycleAppSwitcher = useCallback(
+    (direction: 1 | -1) => {
+      if (switcherApps.length === 0) {
+        pushNotification({
+          title: "No running apps",
+          body: "Launch an app first to use the switcher. Use Spotlight or the dock to open one.",
+          level: "info",
+        });
+        return;
+      }
+
+      runAppSwitcherCycle(direction);
+    },
+    [pushNotification, runAppSwitcherCycle, switcherApps.length],
+  );
+
+  const { openAiPaletteFromActiveContext } = useAiCommandPaletteShortcut({
+    activeWindow,
+    isBooting,
+    onBeforeSurfaceOpen: closeDesktopTransientUi,
+  });
+
+  const { runSystemShortcut } = useSystemShortcuts({
+    isBooting,
+    isSpotlightOpen,
+    isNotificationCenterOpen,
+    isAppSwitcherOpen,
+    isMissionControlOpen,
+    isInteractiveKeyboardTarget,
+    onBeforeSurfaceOpen: closeDesktopTransientUi,
+    onToggleSpotlight: toggleSpotlight,
+    onOpenMissionControl: openMissionControl,
+    onCycleAppSwitcher: cycleAppSwitcher,
+    onOpenAiPaletteFromActiveContext: openAiPaletteFromActiveContext,
+  });
 
   const resolveDropTarget = useCallback(
     (targetAppId: string, windowId: string): FileDropTarget | null => {
@@ -288,22 +334,6 @@ export function DesktopShell() {
   useKeyboardShortcuts();
   useDefaultShortcuts();
 
-  // Register Cmd+K spotlight shortcut
-  useEffect(() => {
-    if (isBooting) return;
-
-    registerShortcut({
-      id: "os:spotlight",
-      label: "Spotlight Search",
-      key: "k",
-      modifiers: ["meta"],
-      scope: "global",
-      action: toggleSpotlight,
-    });
-
-    return () => unregisterShortcut("os:spotlight");
-  }, [isBooting, registerShortcut, unregisterShortcut, toggleSpotlight]);
-
   useEffect(() => {
     if (bootPhase !== "ready" || hasReadyNotification) {
       return;
@@ -311,7 +341,7 @@ export function DesktopShell() {
 
     pushNotification({
       title: "PortOS is ready",
-      body: "Spotlight search, app switching, and system tools are now available.",
+      body: "System AI and Mission Control are ready. Press Space then K for AI, or press Space twice for Mission Control.",
       level: "success",
     });
   }, [bootPhase, hasReadyNotification, pushNotification]);
@@ -321,119 +351,42 @@ export function DesktopShell() {
       return undefined;
     }
 
-    const shortcuts: Shortcut[] = [
-      {
-        id: "os:workspace-1",
-        label: "Switch to Desktop 1",
-        key: "1",
-        modifiers: ["ctrl", "alt"],
-        scope: "global" as const,
-        action: () => switchWorkspace("space-1"),
-      },
-      {
-        id: "os:workspace-2",
-        label: "Switch to Desktop 2",
-        key: "2",
-        modifiers: ["ctrl", "alt"],
-        scope: "global" as const,
-        action: () => switchWorkspace("space-2"),
-      },
-      {
-        id: "os:workspace-3",
-        label: "Switch to Desktop 3",
-        key: "3",
-        modifiers: ["ctrl", "alt"],
-        scope: "global" as const,
-        action: () => switchWorkspace("space-3"),
-      },
-      {
-        id: "os:space-left",
-        label: "Previous space",
-        key: "ArrowLeft",
-        modifiers: ["ctrl"],
-        scope: "global" as const,
-        action: () => useOSStore.getState().cycleWorkspace(-1),
-      },
-      {
-        id: "os:space-right",
-        label: "Next space",
-        key: "ArrowRight",
-        modifiers: ["ctrl"],
-        scope: "global" as const,
-        action: () => useOSStore.getState().cycleWorkspace(1),
-      },
-    ];
-
-    shortcuts.forEach((shortcut) => registerShortcut(shortcut));
-
-    return () => {
-      shortcuts.forEach((shortcut) => unregisterShortcut(shortcut.id));
-    };
-  }, [isBooting, registerShortcut, switchWorkspace, unregisterShortcut]);
-
-  useEffect(() => {
-    if (isBooting) {
-      return undefined;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isMissionControlOpen) {
-        switch (event.key) {
-          case "ArrowLeft": {
-            event.preventDefault();
-            event.stopPropagation();
-            moveHighlight(-1);
-            return;
-          }
-          case "ArrowRight": {
-            event.preventDefault();
-            event.stopPropagation();
-            moveHighlight(1);
-            return;
-          }
-          case "Enter": {
-            event.preventDefault();
-            event.stopPropagation();
-            confirmSelection();
-            return;
-          }
-          case "Escape": {
-            event.preventDefault();
-            event.stopPropagation();
-            closeMissionControl();
-            return;
-          }
-          case " ": {
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-          }
+      if (!isMissionControlOpen) {
+        return;
+      }
+
+      switch (event.key) {
+        case "ArrowLeft": {
+          event.preventDefault();
+          event.stopPropagation();
+          moveHighlight(-1);
+          return;
         }
-
-        return;
+        case "ArrowRight": {
+          event.preventDefault();
+          event.stopPropagation();
+          moveHighlight(1);
+          return;
+        }
+        case "Enter": {
+          event.preventDefault();
+          event.stopPropagation();
+          confirmSelection();
+          return;
+        }
+        case "Escape": {
+          event.preventDefault();
+          event.stopPropagation();
+          closeMissionControl();
+          return;
+        }
+        case " ": {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
       }
-
-      if (
-        event.key !== " " ||
-        event.code !== "Space" ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        event.shiftKey ||
-        event.repeat ||
-        isSpotlightOpen ||
-        isNotificationCenterOpen ||
-        isAppSwitcherOpen ||
-        isInteractiveKeyboardTarget(event.target as HTMLElement | null)
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      closeDockMenu();
-      clearDesktopSelection();
-      openMissionControl();
     };
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
@@ -441,20 +394,7 @@ export function DesktopShell() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
     };
-  }, [
-    clearDesktopSelection,
-    closeDockMenu,
-    closeMissionControl,
-    confirmSelection,
-    isAppSwitcherOpen,
-    isBooting,
-    isInteractiveKeyboardTarget,
-    isMissionControlOpen,
-    isNotificationCenterOpen,
-    isSpotlightOpen,
-    moveHighlight,
-    openMissionControl,
-  ]);
+  }, [closeMissionControl, confirmSelection, isBooting, isMissionControlOpen, moveHighlight]);
 
   useEffect(() => {
     if (activeToasts.length === 0) {
@@ -583,6 +523,9 @@ export function DesktopShell() {
           isFullscreen={isFullscreenWorkspace}
           onRunAction={runStatusBarCommand}
           onOpenAgent={() => openDesktopApp("ai-agent")}
+          onOpenAiPalette={() => {
+            void openAiPaletteFromActiveContext();
+          }}
           onOpenAppSwitcher={openAppSwitcher}
           notificationCount={unreadNotificationCount}
           onToggleNotifications={toggleNotificationCenter}
@@ -779,12 +722,19 @@ export function DesktopShell() {
         onCloseSpace={closeFullscreenSpace}
       />
 
-      <SpotlightOverlay
-        isOpen={isSpotlightOpen}
-        onClose={() => setSpotlightOpen(false)}
-        onOpenApp={openDesktopApp}
-        onFocusWindow={focusWindow}
-      />
-    </div>
-  );
+      <AiCommandPalette />
+
+        <SpotlightOverlay
+          isOpen={isSpotlightOpen}
+          onClose={() => setSpotlightOpen(false)}
+          onOpenApp={openDesktopApp}
+          onFocusWindow={focusWindow}
+          onRunShortcut={(shortcutId, options) =>
+            runSystemShortcut(shortcutId, {
+              ignoreSurfaceState: options?.ignoreSurfaceState,
+            })
+          }
+        />
+      </div>
+    );
 }

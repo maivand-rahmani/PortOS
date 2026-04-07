@@ -8,6 +8,8 @@ Shell-level model layer for the desktop widget.
 - `desktop-shell.layout.ts`: icon layout and dock-state helpers.
 - `status-bar/`: menu bar derivation and declarative command-running helpers built from runtime state.
 - `desktop-shell.types.ts`: shared shell types used by the UI folders.
+- `use-ai-command-palette.ts`: Space-to-Mission-Control and `Space+K` chord handling, plus active-context AI palette opening.
+- `use-system-shortcuts.ts`: central shell-level execution for configurable system shortcuts across combo and sequence bindings.
 - `use-desktop-shell.ts`: main hook that wires desktop UI state to the OS runtime store, including split-view picker and divider interactions.
 - `use-app-switcher.ts`: app switcher interaction hook for cycling and activating running apps from a shell-level overlay.
 - `use-mission-control.ts`: Mission Control overview state for highlighted spaces and keyboard-confirmed selection.

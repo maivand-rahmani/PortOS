@@ -4,6 +4,7 @@ import {
   BatteryFull,
   Bell,
   Bot,
+  Sparkles,
   Volume2,
   Wifi,
 } from "lucide-react";
@@ -18,6 +19,7 @@ type MacMenuBarProps = {
   isFullscreen?: boolean;
   onRunAction?: (actionId: string) => void;
   onOpenAgent?: () => void;
+  onOpenAiPalette?: () => void;
   notificationCount?: number;
   onToggleNotifications?: () => void;
   onOpenAppSwitcher?: () => void;
@@ -61,6 +63,7 @@ export function MacMenuBar({
   isFullscreen = false,
   onRunAction,
   onOpenAgent,
+  onOpenAiPalette,
   notificationCount = 0,
   onToggleNotifications,
   onOpenAppSwitcher,
@@ -172,6 +175,17 @@ export function MacMenuBar({
           onClick={onOpenAgent}
         >
           <Bot className="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-inherit/88 transition-colors duration-150 hover:bg-black/8 hover:text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:hover:bg-white/12 dark:focus-visible:ring-white/25"
+          title="Open system AI palette (Space+K)"
+          aria-label="Open system AI palette"
+          onClick={onOpenAiPalette}
+        >
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden text-[11px] font-medium lg:inline">Space+K</span>
         </button>
 
         <button
