@@ -47,7 +47,7 @@ export function FilesToolbar({
   onCreateFolder,
 }: FilesToolbarProps) {
   return (
-    <div className="flex h-[var(--files-toolbar-height)] items-center gap-1 border-b border-[var(--files-border)] px-2">
+    <div className="flex h-[var(--files-toolbar-height)] items-center gap-1 border-b border-files-border px-2">
       {/* Navigation */}
       <button
         type="button"
@@ -57,15 +57,15 @@ export function FilesToolbar({
         className={cn(
           "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
           canGoUp
-            ? "text-[var(--files-text-secondary)] hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]"
-            : "cursor-not-allowed text-[var(--files-text-secondary)]/40",
+            ? "text-files-text-secondary hover:bg-files-hover hover:text-files-text"
+            : "cursor-not-allowed text-files-text-secondary/40",
         )}
       >
         <ArrowUp className="h-4 w-4" />
       </button>
 
       {/* Separator */}
-      <div className="mx-1 h-4 w-px bg-[var(--files-border)]" />
+      <div className="mx-1 h-4 w-px bg-files-border" />
 
       {/* Create actions */}
       {canCreate && (
@@ -74,7 +74,7 @@ export function FilesToolbar({
             type="button"
             onClick={onCreateFile}
             title="New file"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--files-text-secondary)] transition-colors hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-files-text-secondary transition-colors hover:bg-files-hover hover:text-files-text"
           >
             <FilePlus className="h-4 w-4" />
           </button>
@@ -83,12 +83,12 @@ export function FilesToolbar({
             type="button"
             onClick={onCreateFolder}
             title="New folder"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--files-text-secondary)] transition-colors hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-files-text-secondary transition-colors hover:bg-files-hover hover:text-files-text"
           >
             <FolderPlus className="h-4 w-4" />
           </button>
 
-          <div className="mx-1 h-4 w-px bg-[var(--files-border)]" />
+          <div className="mx-1 h-4 w-px bg-files-border" />
         </>
       )}
 
@@ -100,15 +100,15 @@ export function FilesToolbar({
         className={cn(
           "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
           showHidden
-            ? "bg-[var(--files-accent-light)] text-[var(--files-accent)]"
-            : "text-[var(--files-text-secondary)] hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]",
+            ? "bg-files-accent-light text-files-accent"
+            : "text-files-text-secondary hover:bg-files-hover hover:text-files-text",
         )}
       >
         {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
       </button>
 
       {/* View mode */}
-      <div className="flex rounded-md border border-[var(--files-border)]">
+      <div className="flex rounded-md border border-files-border">
         <button
           type="button"
           onClick={() => onSetViewMode("grid")}
@@ -116,8 +116,8 @@ export function FilesToolbar({
           className={cn(
             "flex h-6 w-7 items-center justify-center rounded-l-md transition-colors",
             viewMode === "grid"
-              ? "bg-[var(--files-accent)] text-white"
-              : "text-[var(--files-text-secondary)] hover:bg-[var(--files-hover)]",
+              ? "bg-files-accent text-white"
+              : "text-files-text-secondary hover:bg-files-hover",
           )}
         >
           <Grid3X3 className="h-3.5 w-3.5" />
@@ -129,8 +129,8 @@ export function FilesToolbar({
           className={cn(
             "flex h-6 w-7 items-center justify-center rounded-r-md transition-colors",
             viewMode === "list"
-              ? "bg-[var(--files-accent)] text-white"
-              : "text-[var(--files-text-secondary)] hover:bg-[var(--files-hover)]",
+              ? "bg-files-accent text-white"
+              : "text-files-text-secondary hover:bg-files-hover",
           )}
         >
           <List className="h-3.5 w-3.5" />
@@ -142,18 +142,18 @@ export function FilesToolbar({
 
       {/* Search */}
       <div className="relative flex items-center">
-        <Search className="absolute left-2 h-3.5 w-3.5 text-[var(--files-text-secondary)]" />
+        <Search className="absolute left-2 h-3.5 w-3.5 text-files-text-secondary" />
         <input
           value={searchQuery}
           onChange={(e) => onSetSearchQuery(e.target.value)}
           placeholder="Search files..."
-          className="h-7 w-44 rounded-md border border-[var(--files-border)] bg-white pl-7 pr-7 text-[12px] text-[var(--files-text)] outline-none placeholder:text-[var(--files-text-secondary)] focus:border-[var(--files-accent)] focus:ring-1 focus:ring-[var(--files-accent)]/20"
+          className="h-7 w-44 rounded-md border border-files-border bg-white pl-7 pr-7 text-[12px] text-files-text outline-none placeholder:text-files-text-secondary focus:border-files-accent focus:ring-1 focus:ring-files-accent/20"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={onClearSearch}
-            className="absolute right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[var(--files-text-secondary)] hover:text-[var(--files-text)]"
+            className="absolute right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-files-text-secondary hover:text-files-text"
           >
             <X className="h-3 w-3" />
           </button>

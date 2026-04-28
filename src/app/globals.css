@@ -71,6 +71,16 @@
   --shadow-panel: var(--shadow-panel);
   --shadow-window: var(--shadow-window);
   --size-dock-icon: var(--dock-icon-size);
+
+  --color-files-bg: #f8fafc;
+  --color-files-sidebar-bg: #f1f5f9;
+  --color-files-border: #e2e8f0;
+  --color-files-text: #0f172a;
+  --color-files-text-secondary: #64748b;
+  --color-files-accent: #2563eb;
+  --color-files-accent-light: #dbeafe;
+  --color-files-hover: #e2e8f0;
+  --color-files-selected-text: #ffffff;
 }
 
 * {

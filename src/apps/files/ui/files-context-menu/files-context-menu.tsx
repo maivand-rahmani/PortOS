@@ -81,7 +81,7 @@ export function FilesContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[180px] rounded-lg border border-[var(--files-border)] bg-white py-1 shadow-xl"
+      className="fixed z-50 min-w-[180px] rounded-lg border border-files-border bg-white py-1 shadow-xl"
       style={adjustedStyle}
     >
       {nodeId ? (
@@ -176,7 +176,7 @@ export function FilesContextMenu({
           )}
 
           {!canCreate && !hasClipboard && (
-            <div className="px-3 py-2 text-[12px] text-[var(--files-text-secondary)]">
+            <div className="px-3 py-2 text-[12px] text-files-text-secondary">
               No actions available
             </div>
           )}
@@ -207,13 +207,13 @@ function MenuItem({
         "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors",
         destructive
           ? "text-red-600 hover:bg-red-50"
-          : "text-[var(--files-text)] hover:bg-[var(--files-hover)]",
+          : "text-files-text hover:bg-files-hover",
       )}
     >
       {icon && <span className="w-4 flex-shrink-0">{icon}</span>}
       <span className="flex-1">{label}</span>
       {shortcut && (
-        <span className="text-[10px] text-[var(--files-text-secondary)]">
+        <span className="text-[10px] text-files-text-secondary">
           {shortcut}
         </span>
       )}
@@ -222,5 +222,5 @@ function MenuItem({
 }
 
 function MenuSeparator() {
-  return <div className="my-1 h-px bg-[var(--files-border)]" />;
+  return <div className="my-1 h-px bg-files-border" />;
 }

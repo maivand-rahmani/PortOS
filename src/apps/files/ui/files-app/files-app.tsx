@@ -22,7 +22,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
 
   if (!files.fsHydrated) {
     return (
-      <div className="files-app flex h-full items-center justify-center bg-[var(--files-bg)] text-[13px] text-[var(--files-text-secondary)]">
+      <div className="files-app flex h-full items-center justify-center bg-files-bg text-[13px] text-files-text-secondary">
         Loading file system...
       </div>
     );
@@ -42,7 +42,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
       initial={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
       animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="files-app flex h-full flex-col overflow-hidden bg-[var(--files-bg)]"
+      className="files-app flex h-full flex-col overflow-hidden bg-files-bg"
       tabIndex={0}
       onKeyDown={files.handleKeyDown}
     >
@@ -82,7 +82,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
 
           {/* Search indicator */}
           {files.isSearching && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--files-text-secondary)]">
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-files-text-secondary">
               <span>
                 {files.fsSearchResults.length} result{files.fsSearchResults.length !== 1 ? "s" : ""} for &quot;{files.searchQuery}&quot;
               </span>
@@ -138,7 +138,7 @@ export function FilesApp({ windowId }: AppComponentProps) {
           </div>
 
           {/* Status bar */}
-          <div className="flex h-[var(--files-statusbar-height)] items-center border-t border-[var(--files-border)] px-3 text-[11px] text-[var(--files-text-secondary)]">
+          <div className="flex h-[var(--files-statusbar-height)] items-center border-t border-files-border px-3 text-[11px] text-files-text-secondary">
             <span>
               {displayNodes.length} item{displayNodes.length !== 1 ? "s" : ""}
             </span>

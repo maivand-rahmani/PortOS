@@ -53,7 +53,7 @@ export function FilesGrid({
   if (nodes.length === 0) {
     return (
       <div
-        className="flex flex-1 items-center justify-center text-[13px] text-[var(--files-text-secondary)]"
+        className="flex flex-1 items-center justify-center text-[13px] text-files-text-secondary"
         onContextMenu={handleBgContextMenu}
       >
         This folder is empty
@@ -170,8 +170,8 @@ function GridItem({
       className={cn(
         "flex cursor-pointer flex-col items-center gap-1 rounded-lg p-2 transition-colors",
         isSelected
-          ? "bg-[var(--files-accent-light)]"
-          : "hover:bg-[var(--files-hover)]",
+          ? "bg-files-accent-light"
+          : "hover:bg-files-hover",
       )}
     >
       <NodeIcon node={node} size={40} />
@@ -183,14 +183,14 @@ function GridItem({
           onChange={(e) => onSetRenameValue(e.target.value)}
           onBlur={onCommitRename}
           onKeyDown={handleRenameKeyDown}
-          className="w-full rounded border border-[var(--files-accent)] bg-white px-1 py-0.5 text-center text-[11px] text-[var(--files-text)] outline-none"
+          className="w-full rounded border border-files-accent bg-white px-1 py-0.5 text-center text-[11px] text-files-text outline-none"
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
         <span
           className={cn(
             "max-w-full truncate text-center text-[11px] leading-tight",
-            isSelected ? "text-[var(--files-accent)]" : "text-[var(--files-text)]",
+            isSelected ? "text-files-accent" : "text-files-text",
           )}
           title={node.name}
         >

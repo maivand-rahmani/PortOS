@@ -53,7 +53,7 @@ export function FilesList({
   if (nodes.length === 0) {
     return (
       <div
-        className="flex flex-1 items-center justify-center text-[13px] text-[var(--files-text-secondary)]"
+        className="flex flex-1 items-center justify-center text-[13px] text-files-text-secondary"
         onContextMenu={handleBgContextMenu}
       >
         This folder is empty
@@ -68,7 +68,7 @@ export function FilesList({
       onContextMenu={handleBgContextMenu}
     >
       {/* Header row */}
-      <div className="sticky top-0 z-10 grid grid-cols-[1fr_100px_140px] gap-2 border-b border-[var(--files-border)] bg-[var(--files-bg)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--files-text-secondary)]">
+      <div className="sticky top-0 z-10 grid grid-cols-[1fr_100px_140px] gap-2 border-b border-files-border bg-files-bg px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-files-text-secondary">
         <span>Name</span>
         <span className="text-right">Size</span>
         <span className="text-right">Modified</span>
@@ -177,10 +177,10 @@ function ListRow({
       onPointerDown={(event) => onItemPointerDown(node.id, event)}
       onContextMenu={handleContextMenu}
       className={cn(
-        "grid cursor-pointer grid-cols-[1fr_100px_140px] items-center gap-2 border-b border-[var(--files-border)]/50 px-3 py-1.5 transition-colors",
+        "grid cursor-pointer grid-cols-[1fr_100px_140px] items-center gap-2 border-b border-files-border/50 px-3 py-1.5 transition-colors",
         isSelected
-          ? "bg-[var(--files-accent-light)]"
-          : "hover:bg-[var(--files-hover)]",
+          ? "bg-files-accent-light"
+          : "hover:bg-files-hover",
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
@@ -193,14 +193,14 @@ function ListRow({
             onChange={(e) => onSetRenameValue(e.target.value)}
             onBlur={onCommitRename}
             onKeyDown={handleRenameKeyDown}
-            className="min-w-0 flex-1 rounded border border-[var(--files-accent)] bg-white px-1 py-0.5 text-[12px] text-[var(--files-text)] outline-none"
+            className="min-w-0 flex-1 rounded border border-files-accent bg-white px-1 py-0.5 text-[12px] text-files-text outline-none"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
             className={cn(
               "truncate text-[12px]",
-              isSelected ? "text-[var(--files-accent)]" : "text-[var(--files-text)]",
+              isSelected ? "text-files-accent" : "text-files-text",
             )}
             title={node.name}
           >
@@ -209,11 +209,11 @@ function ListRow({
         )}
       </div>
 
-      <span className="text-right text-[11px] text-[var(--files-text-secondary)]">
+      <span className="text-right text-[11px] text-files-text-secondary">
         {sizeText}
       </span>
 
-      <span className="text-right text-[11px] text-[var(--files-text-secondary)]">
+      <span className="text-right text-[11px] text-files-text-secondary">
         {formatNodeDateShort(node.updatedAt)}
       </span>
     </div>

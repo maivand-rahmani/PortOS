@@ -16,7 +16,7 @@ export function FilesBreadcrumb({ trail, onNavigate }: FilesBreadcrumbProps) {
       <button
         type="button"
         onClick={() => onNavigate(null)}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--files-text-secondary)] transition-colors hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-files-text-secondary transition-colors hover:bg-files-hover hover:text-files-text"
       >
         <HardDrive className="h-3 w-3" />
         <span>Root</span>
@@ -24,11 +24,11 @@ export function FilesBreadcrumb({ trail, onNavigate }: FilesBreadcrumbProps) {
 
       {trail.map((node) => (
         <span key={node.id} className="flex items-center gap-0.5">
-          <ChevronRight className="h-3 w-3 text-[var(--files-text-secondary)]/50" />
+          <ChevronRight className="h-3 w-3 text-files-text-secondary/50" />
           <button
             type="button"
             onClick={() => onNavigate(node.id)}
-            className="rounded px-1.5 py-0.5 text-[var(--files-text-secondary)] transition-colors hover:bg-[var(--files-hover)] hover:text-[var(--files-text)]"
+            className="rounded px-1.5 py-0.5 text-files-text-secondary transition-colors hover:bg-files-hover hover:text-files-text"
           >
             {node.name}
           </button>
