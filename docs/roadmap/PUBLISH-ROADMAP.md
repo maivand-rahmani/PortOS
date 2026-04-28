@@ -337,15 +337,15 @@
 - [x] CR-6: Prompt injection filter (1h)
 
 ### Phase 2 — High Priority
-- [ ] H-1 to H-5: Race conditions (2h)
-- [ ] H-6 to H-10: Silent failures (1h)
-- [ ] H-11: DOMPurify (30min)
-- [ ] H-12: ESLint fixes (1h)
-- [ ] H-13: PII removal (30min)
+- [x] H-1 to H-5: Race conditions (2h)
+- [x] H-6 to H-10: Silent failures (1h)
+- [x] H-11: DOMPurify (30min)
+- [x] H-12: ESLint fixes (1h)
+- [x] H-13: PII removal (30min)
 
 ### Phase 3 — Medium Priority
-- [ ] M-1 to M-5: Security + UX (1.5h)
-- [ ] M-6 to M-19: Code quality (1.5h)
+- [x] M-1 to M-5: Security + UX (1.5h)
+- [x] M-6 to M-19: Code quality (1.5h)
 
 ### Phase 4 — Architectural (Post-Launch)
 - [ ] A-1 to A-5: Refactoring (8h+)
@@ -372,8 +372,8 @@
 The system is production-ready when:
 
 1. [x] All Phase 1 items complete (CR-1 through CR-6)
-2. [ ] All Phase 2 items complete (H-1 through H-13)
-3. [ ] System score ≥ 75/100
+2. [x] All Phase 2 items complete (H-1 through H-13)
+ 3. [ ] System score ≥ 75/100 (estimated ~70/100 now)
 4. [ ] Zero console errors on boot
 5. [ ] Window drag runs at 60fps on mid-tier devices
 6. [ ] IDB failure shows user-facing error, not silent crash
@@ -396,4 +396,4 @@ After reaching production readiness (78/100), the following Phase 4 architectura
 
 ---
 
-*Last updated: Phase 1 complete — all 6 critical items implemented*
+*Last updated: Phase 1 + Phase 2 + Phase 3 complete — all 6 critical, 13 high, and 19 medium-priority items implemented*
