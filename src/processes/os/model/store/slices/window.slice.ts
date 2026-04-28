@@ -37,6 +37,8 @@ export type WindowSlice = Pick<
   | "dragState"
   | "resizeState"
   | "windowSnapZone"
+  | "dirtyWindows"
+  | "hasDirtyWindows"
   | "focusWindow"
   | "minimizeWindow"
   | "restoreWindow"
@@ -52,11 +54,33 @@ export type WindowSlice = Pick<
   | "resizeWindowsToBounds"
   | "closeWindow"
   | "terminateProcess"
+  | "markWindowDirty"
+  | "clearWindowDirty"
 >;
 
 export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (set, get) => ({
   ...createWindowManagerModel(),
   windowSnapZone: null,
+  dirtyWindows: new Set<string>(),
+  hasDirtyWindows: false,
+  markWindowDirty: (windowId: string) => {
+    const state = get();
+    if (state.dirtyWindows.has(windowId)) {
+      return;
+    }
+    const nextDirtyWindows = new Set(state.dirtyWindows);
+    nextDirtyWindows.add(windowId);
+    set({ dirtyWindows: nextDirtyWindows, hasDirtyWindows: nextDirtyWindows.size > 0 });
+  },
+  clearWindowDirty: (windowId: string) => {
+    const state = get();
+    if (!state.dirtyWindows.has(windowId)) {
+      return;
+    }
+    const nextDirtyWindows = new Set(state.dirtyWindows);
+    nextDirtyWindows.delete(windowId);
+    set({ dirtyWindows: nextDirtyWindows, hasDirtyWindows: nextDirtyWindows.size > 0 });
+  },
 
   focusWindow: (windowId) => {
     const state = get();
@@ -530,6 +554,8 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
         baseState.currentWorkspaceId
       : baseState.currentWorkspaceId;
 
+    const nextDirtyWindows = new Set(state.dirtyWindows);
+    nextDirtyWindows.delete(windowId);
     set({
       windows: nextWindowState.state.windows,
       currentWorkspaceId: fallbackWorkspaceId,
@@ -540,6 +566,8 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       dragState: nextWindowState.state.dragState,
       resizeState: nextWindowState.state.resizeState,
       processes: nextProcessState.processes,
+      dirtyWindows: nextDirtyWindows,
+      hasDirtyWindows: nextDirtyWindows.size > 0,
     });
   },
 

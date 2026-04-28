@@ -32,6 +32,23 @@ const MAX_NOTIFICATIONS = 100;
 /** Maximum toasts visible simultaneously. */
 const MAX_VISIBLE_TOASTS = 4;
 
+/** Deduplication window in milliseconds (2 seconds). */
+const DEDUP_WINDOW_MS = 2000;
+
+/**
+ * Transient dedup state: key → timestamp when the notification was last pushed.
+ * Module-level so it persists across state updates without being part of the state.
+ */
+const recentNotificationKeys = new Map<string, number>();
+
+/**
+ * Build a deduplication key from title, body, and level.
+ * Notifications with identical keys within DEDUP_WINDOW_MS are suppressed.
+ */
+function buildNotificationKey(title: string, body?: string, level?: NotificationLevel): string {
+  return `${title}|${body ?? ""}|${level ?? "info"}`;
+}
+
 // ── Model functions ─────────────────────────────────────────────────────────
 
 export type PushNotificationInput = {
@@ -49,6 +66,14 @@ export function pushNotificationModel(
   state: NotificationManagerState,
   input: PushNotificationInput,
 ): NotificationManagerState {
+  const key = buildNotificationKey(input.title, input.body, input.level);
+  const now = Date.now();
+  const lastSeen = recentNotificationKeys.get(key);
+
+  if (lastSeen !== undefined && now - lastSeen < DEDUP_WINDOW_MS) {
+    return state;
+  }
+
   const id = crypto.randomUUID();
   const notification: OSNotification = {
     id,
@@ -59,6 +84,8 @@ export function pushNotificationModel(
     createdAt: new Date().toISOString(),
     isRead: false,
   };
+
+  recentNotificationKeys.set(key, now);
 
   const nextNotifications = [notification, ...state.notifications].slice(
     0,

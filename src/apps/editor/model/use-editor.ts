@@ -32,6 +32,8 @@ export function useEditor(processId: string, windowId: string) {
   const fsSetActiveFile = useOSStore((s) => s.fsSetActiveFile);
   const aiPublishWindowContext = useOSStore((s) => s.aiPublishWindowContext);
   const aiClearWindowContext = useOSStore((s) => s.aiClearWindowContext);
+  const markWindowDirty = useOSStore((s) => s.markWindowDirty);
+  const clearWindowDirty = useOSStore((s) => s.clearWindowDirty);
 
   const [state, setState] = useState<EditorState>(INITIAL_EDITOR_STATE);
   const [selectionState, setSelectionState] = useState({
@@ -45,6 +47,7 @@ export function useEditor(processId: string, windowId: string) {
   const lastUndoPushRef = useRef<number>(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const hasMountedRef = useRef(false);
+  const prevIsDirtyRef = useRef(false);
 
   // ── Open File ────────────────────────────────────────
 
@@ -187,6 +190,15 @@ export function useEditor(processId: string, windowId: string) {
       }
     };
   }, [state.autoSaveEnabled, state.document, state.isDirty, state.document?.content, save]);
+
+  useEffect(() => {
+    if (state.isDirty && !prevIsDirtyRef.current) {
+      markWindowDirty(windowId);
+    } else if (!state.isDirty && prevIsDirtyRef.current) {
+      clearWindowDirty(windowId);
+    }
+    prevIsDirtyRef.current = state.isDirty;
+  }, [state.isDirty, windowId, markWindowDirty, clearWindowDirty]);
 
   // ── Save on unmount if dirty ─────────────────────────
 

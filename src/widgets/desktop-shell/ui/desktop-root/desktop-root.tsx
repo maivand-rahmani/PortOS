@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import {
@@ -144,13 +144,20 @@ export function DesktopShell() {
     closeDockMenu();
     clearDesktopSelection();
   }, [clearDesktopSelection, closeDockMenu]);
-  const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((item) => !item.isRead).length,
+    [notifications],
+  );
   const hasReadyNotification = notifications.some(
     (item) => item.title === "PortOS is ready" && item.appId === undefined,
   );
-  const activeToasts = activeToastIds
-    .map((id) => notifications.find((item) => item.id === id) ?? null)
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const activeToasts = useMemo(
+    () =>
+      activeToastIds
+        .map((id) => notifications.find((item) => item.id === id) ?? null)
+        .filter((item): item is NonNullable<typeof item> => item !== null),
+    [activeToastIds, notifications],
+  );
   const appSwitcher = useAppSwitcher({
     bootReady: bootPhase === "ready",
     dockApps,
@@ -346,6 +353,20 @@ export function DesktopShell() {
       level: "success",
     });
   }, [bootPhase, hasReadyNotification, pushNotification]);
+
+  const hasDirtyWindows = useOSStore((s) => s.hasDirtyWindows);
+
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!hasDirtyWindows) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasDirtyWindows]);
 
   useEffect(() => {
     if (isBooting) {

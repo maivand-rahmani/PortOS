@@ -13,6 +13,7 @@ import {
 } from "@/shared/lib/os-events/clock-os-events";
 import { cn } from "@/shared/lib";
 
+import { buildClockAiContext } from "../../model/clock-ai-context";
 import {
   getClockTimeZoneOptions,
   getDefaultClockTimeZones,
@@ -126,9 +127,20 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
 
     updateTick();
 
-    const intervalId = window.setInterval(updateTick, 1000);
+    const msUntilNextSecond = 1000 - (Date.now() % 1000);
+    let intervalId: number | null = null;
 
-    return () => window.clearInterval(intervalId);
+    const timeoutId = window.setTimeout(() => {
+      updateTick();
+      intervalId = window.setInterval(updateTick, 1000);
+    }, msUntilNextSecond);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -231,15 +243,22 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
       .slice(0, normalizedQuery ? 14 : 8);
   }, [favoriteTimeZones, searchQuery, visibleTimeZones]);
 
-  const activeHours = tick
-    ? cities.filter((city) => {
-        const hour = getClockHour(city.timeZone, tick);
+  const activeHours = useMemo(
+    () =>
+      tick
+        ? cities.filter((city) => {
+            const hour = getClockHour(city.timeZone, tick);
 
-        return hour >= 8 && hour < 18;
-      }).length
-    : 0;
+            return hour >= 8 && hour < 18;
+          }).length
+        : 0,
+    [cities, tick],
+  );
 
-  const spotlightCity = cities.find((city) => city.timeZone === resolvedSpotlightTimeZone) ?? cities[0] ?? null;
+  const spotlightCity = useMemo(
+    () => cities.find((city) => city.timeZone === resolvedSpotlightTimeZone) ?? cities[0] ?? null,
+    [cities, resolvedSpotlightTimeZone],
+  );
   const plannerTimestamp = Number.isNaN(Date.parse(plannerValue)) ? null : Date.parse(plannerValue);
 
   const plannerRows = useMemo(() => {
@@ -320,6 +339,29 @@ export function ClockApp({ processId, windowId }: AppComponentProps) {
     );
     setCopyStatus("copied");
   };
+
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildClockAiContext({
+        windowId,
+        trackedCityCount: cities.length,
+        spotlightCity: spotlightCity?.city ?? null,
+        use24Hour,
+        favoriteCount: favoriteCities.length,
+        searchQuery,
+      }),
+    );
+  }, [aiPublishWindowContext, cities.length, favoriteCities.length, searchQuery, spotlightCity, use24Hour, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   return (
     <motion.div

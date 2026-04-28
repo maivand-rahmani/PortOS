@@ -134,4 +134,6 @@ export type AiServiceManagerState = {
   aiPaletteContext: AiServiceContext | null;
   aiWindowContexts: Record<string, AiServiceContext>;
   aiMessages: AiMessage[];
+  /** @internal In-flight abort controller for the current AI request. */
+  abortController: AbortController | null;
 };

@@ -55,6 +55,10 @@ export type OSStore = AppRegistryState &
     customWallpaperDataUrl: string | null;
     osSettings: OSSettings;
     windowSnapZone: WindowSnapZone | null;
+    dirtyWindows: Set<string>;
+    hasDirtyWindows: boolean;
+    markWindowDirty: (windowId: string) => void;
+    clearWindowDirty: (windowId: string) => void;
     setBootPhase: (phase: OSBootPhase) => void;
     setBootProgress: (progress: number) => void;
     addBootMessage: (message: string) => void;

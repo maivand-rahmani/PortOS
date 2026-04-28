@@ -4,6 +4,7 @@ export type ContactFormState = {
   name: string;
   email: string;
   message: string;
+  website: string;
 };
 
 export type ContactPresetId = "recruiter" | "client" | "case-study";
@@ -29,6 +30,7 @@ export const initialContactFormState: ContactFormState = {
   name: "",
   email: "",
   message: "",
+  website: "",
 };
 
 export const contactPresets: ContactPreset[] = [

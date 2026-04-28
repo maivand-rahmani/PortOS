@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   openAgentWithRequest,
@@ -32,6 +32,7 @@ export function useContactWorkspace() {
   const [actionStatus, setActionStatus] = useState<ContactStatus>(null);
   const [submitStatus, setSubmitStatus] = useState<ContactStatus>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionTimestamps = useRef<number[]>([]);
 
   const selectedPreset = useMemo(() => getContactPreset(selectedPresetId), [selectedPresetId]);
 
@@ -114,6 +115,20 @@ export function useContactWorkspace() {
   }, [selectedPreset]);
 
   const submitForm = useCallback(async () => {
+    // Client-side rate limiting: block if 3+ submissions in the last 10 seconds
+    const now = Date.now();
+    const recentTimestamps = submissionTimestamps.current.filter((ts) => now - ts < 10_000);
+    submissionTimestamps.current = [...recentTimestamps, now];
+
+    if (recentTimestamps.length >= 3) {
+      setIsSubmitting(false);
+      setSubmitStatus({
+        tone: "error",
+        message: "Too many submissions. Please wait a moment.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus(null);
 

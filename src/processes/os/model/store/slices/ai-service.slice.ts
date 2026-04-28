@@ -49,19 +49,17 @@ export type AiServiceSlice = Pick<
   aiStartNewSession: () => void;
 };
 
-/** In-flight AbortController for the current AI request. */
-let activeAbortController: AbortController | null = null;
-
 /** Current transcript being built within this session. */
 let currentTranscript: AiTranscriptFile | null = null;
 
 export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice> = (set, get) => ({
   ...aiServiceManagerInitialState,
+  abortController: null as AbortController | null,
 
   aiStartNewSession: () => {
-    if (activeAbortController) {
-      activeAbortController.abort();
-      activeAbortController = null;
+    if (get().abortController) {
+      get().abortController!.abort();
+      set({ abortController: null });
     }
     currentTranscript = null;
     
@@ -120,9 +118,9 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
   },
 
   aiClosePalette: () => {
-    if (activeAbortController) {
-      activeAbortController.abort();
-      activeAbortController = null;
+    if (get().abortController) {
+      get().abortController!.abort();
+      set({ abortController: null });
     }
 
     set({
@@ -148,12 +146,12 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
     const request = buildAiServiceRequest(actionId, context, userPrompt);
 
     // Cancel any in-flight request
-    if (activeAbortController) {
-      activeAbortController.abort();
+    if (get().abortController) {
+      get().abortController!.abort();
     }
 
-    activeAbortController = new AbortController();
-    const signal = activeAbortController.signal;
+    set({ abortController: new AbortController() });
+    const signal = get().abortController!.signal;
 
     const userMessage = {
       id: crypto.randomUUID(),
@@ -273,7 +271,7 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
         void persistTranscript(currentTranscript);
       }
     } finally {
-      activeAbortController = null;
+      set({ abortController: null });
     }
   },
 
@@ -356,9 +354,9 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
   },
 
   aiCancelRequest: () => {
-    if (activeAbortController) {
-      activeAbortController.abort();
-      activeAbortController = null;
+    if (get().abortController) {
+      get().abortController!.abort();
+      set({ abortController: null });
     }
 
     set({

@@ -14,12 +14,13 @@ type ContactMessageWorkspaceProps = {
     name: string;
     email: string;
     message: string;
+    website: string;
   };
   isSubmitting: boolean;
   paperLinesClassName: string;
   selectedPreset: ContactPreset;
   submitStatus: ContactStatus;
-  onFieldChange: (field: "name" | "email" | "message", value: string) => void;
+  onFieldChange: (field: "name" | "email" | "message" | "website", value: string) => void;
   onLoadPreset: () => void;
   onOpenPortfolioEvidence: () => void | Promise<void>;
   onOpenResumeEvidence: () => void | Promise<void>;
@@ -112,6 +113,20 @@ export function ContactMessageWorkspace({
                 className="h-full min-h-[220px] w-full resize-none border-0 bg-transparent text-lg leading-8 text-[#2d2d2d] outline-none placeholder:text-[#2d2d2d]/35"
               />
             </ContactFieldBlock>
+          </div>
+
+          {/* Honeypot field: visually hidden but present for bot detection — do not hide with display:none or type=hidden */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
+            <label htmlFor="website">Website</label>
+            <input
+              id="website"
+              name="website"
+              type="text"
+              value={form.website}
+              onChange={(event) => onFieldChange("website", event.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
           </div>
         </div>
 

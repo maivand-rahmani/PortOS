@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Github, Mail, MapPin } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import { cn, getProfileBasics } from "@/shared/lib";
 
+import { buildContactAiContext } from "../model/contact-ai-context";
 import { useContactWorkspace } from "../model/use-contact-workspace";
 import styles from "../theme.module.css";
 import { ContactMessageWorkspace } from "./contact-message-workspace";
@@ -32,6 +34,8 @@ const profile = getProfileBasics() as ContactProfile;
 
 export function ContactApp({ processId, windowId }: AppComponentProps) {
   const reduceMotion = useReducedMotion();
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const {
     actionStatus,
     form,
@@ -49,6 +53,26 @@ export function ContactApp({ processId, windowId }: AppComponentProps) {
     submitForm,
     submitStatus,
   } = useContactWorkspace();
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildContactAiContext({
+        windowId,
+        selectedPresetId,
+        selectedPresetLabel: selectedPreset.label,
+        formName: form.name,
+        formEmail: form.email,
+        formMessage: form.message,
+      }),
+    );
+  }, [aiPublishWindowContext, form.email, form.message, form.name, selectedPreset.label, selectedPresetId, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const contactItems = useMemo(
     () => [
