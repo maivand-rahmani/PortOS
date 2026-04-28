@@ -3,12 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import { slugifyDocsHeading } from "@/shared/lib";
 import type { DocsDocument } from "@/shared/lib/app-data/docs";
 
+import { buildDocsAiContext } from "../model/docs-ai-context";
+
 type DocsResponse = { documents: DocsDocument[] };
 
-export function DocsApp({ processId }: AppComponentProps) {
+export function DocsApp({ processId, windowId }: AppComponentProps) {
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const [documents, setDocuments] = useState<DocsDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
 
@@ -36,6 +41,24 @@ export function DocsApp({ processId }: AppComponentProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildDocsAiContext({
+        windowId,
+        activeDocumentTitle: activeDocument?.title ?? null,
+        activeDocumentPath: activeDocument?.path ?? null,
+        documentCount: documents.length,
+      }),
+    );
+  }, [activeDocument, aiPublishWindowContext, documents.length, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   return (
     <div className="docs-app flex h-full flex-col gap-4 rounded-[24px] p-4">

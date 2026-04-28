@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import {
   RESUME_FOCUS_REQUEST_EVENT,
   cn,
@@ -26,6 +27,7 @@ import {
 } from "@/shared/lib";
 
 import { resumeContent, type ResumeSectionId } from "../../model/content";
+import { buildResumeAiContext } from "../../model/resume-ai-context";
 import {
   Capsule,
   DockPanel,
@@ -171,6 +173,29 @@ export function ResumeApp({ processId, windowId }: AppComponentProps) {
       window.removeEventListener(RESUME_FOCUS_REQUEST_EVENT, handleResumeFocusRequest);
     };
   }, [applyFocusRequest, windowId]);
+
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildResumeAiContext({
+        windowId,
+        activeSection,
+        selectedProjectId,
+        selectedProjectTitle: selectedProject?.title ?? null,
+        activeLensId: activeLens?.id ?? "balanced",
+        activeLensLabel: activeLens?.label ?? null,
+      }),
+    );
+  }, [activeLens?.id, activeLens?.label, activeSection, aiPublishWindowContext, selectedProject?.title, selectedProjectId, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const toggleSection = (sectionId: ResumeSectionId) => {
     setCollapsedSections((current) => ({

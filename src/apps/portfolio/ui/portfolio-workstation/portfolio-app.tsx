@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import {
   PORTFOLIO_FOCUS_REQUEST_EVENT,
   cn,
@@ -30,6 +31,7 @@ import {
 } from "@/shared/lib";
 
 import { portfolioFilters, portfolioProjects } from "../../model/content";
+import { buildPortfolioAiContext } from "../../model/portfolio-ai-context";
 import {
   Badge,
   DevicePreview,
@@ -166,6 +168,29 @@ export function PortfolioApp({ processId, windowId }: AppComponentProps) {
       window.removeEventListener(PORTFOLIO_FOCUS_REQUEST_EVENT, handlePortfolioFocusRequest);
     };
   }, [applyFocusRequest, windowId]);
+
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildPortfolioAiContext({
+        windowId,
+        activeFilter,
+        selectedProjectId: activeProjectId,
+        selectedProjectTitle: selectedProject?.title ?? null,
+        visibleProjectCount: filteredProjects.length,
+        activeHandoffId: activeHandoffIdValue,
+      }),
+    );
+  }, [activeFilter, activeHandoffIdValue, activeProjectId, aiPublishWindowContext, filteredProjects.length, selectedProject?.title, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const sendBriefToNotes = useCallback(async () => {
     if (!selectedProject || !activeHandoff) {

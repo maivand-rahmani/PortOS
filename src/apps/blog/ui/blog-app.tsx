@@ -15,6 +15,7 @@ import {
 } from "@/shared/lib";
 
 import { buildBlogAgentRequest, buildBlogNoteRequest, resolveBlogPortfolioFocus } from "../model/blog-handoffs";
+import { buildBlogAiContext } from "../model/blog-ai-context";
 import {
   addBlogHighlight,
   createBlogHighlight,
@@ -47,6 +48,8 @@ function describeRequestSource(source: string | undefined) {
 
 export function BlogApp({ processId, windowId }: AppComponentProps) {
   const fsHydrated = useOSStore((state) => state.fsHydrated);
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [query, setQuery] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
@@ -199,6 +202,28 @@ export function BlogApp({ processId, windowId }: AppComponentProps) {
       window.removeEventListener(BLOG_FOCUS_REQUEST_EVENT, handleFocusRequest);
     };
   }, [applyFocusRequest, windowId]);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildBlogAiContext({
+        windowId,
+        activePostTitle: activePost?.title ?? null,
+        activePostId: activePost?.id ?? null,
+        postCount: posts.length,
+        query,
+        queuedCount: readerState.queuedPostIds.length,
+        completedCount,
+        highlightCount: activeHighlights.length,
+      }),
+    );
+  }, [activeHighlights.length, activePost, completedCount, aiPublishWindowContext, posts.length, query, readerState.queuedPostIds.length, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const toggleQueue = useCallback(() => {
     if (!activePost) {

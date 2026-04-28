@@ -3,15 +3,19 @@
 import { useEffect, useRef } from "react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 
+import { buildCalculatorAiContext } from "../model/calculator-ai-context";
 import { useCalculatorController } from "../model/use-calculator-controller";
 import { CalculatorActions } from "./calculator-actions";
 import { CalculatorDisplay } from "./calculator-display";
 import { CalculatorKeypad } from "./calculator-keypad";
 import { CalculatorTape } from "./calculator-tape";
 
-export function CalculatorApp({ processId }: AppComponentProps) {
+export function CalculatorApp({ processId, windowId }: AppComponentProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const {
     activeEntry,
     clearTape,
@@ -31,6 +35,26 @@ export function CalculatorApp({ processId }: AppComponentProps) {
   useEffect(() => {
     rootRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildCalculatorAiContext({
+        windowId,
+        expression,
+        error,
+        tapeEntryCount: tape.length,
+        activeEntryResult: activeEntry?.result ?? null,
+        activeEntryExpression: activeEntry?.expression ?? null,
+      }),
+    );
+  }, [aiPublishWindowContext, error, expression, activeEntry, tape.length, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   return (
     <div

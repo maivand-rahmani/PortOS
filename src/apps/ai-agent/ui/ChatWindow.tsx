@@ -6,17 +6,21 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, RotateCcw, Sparkles } from "lucide-react";
 
 import type { AppComponentProps } from "@/entities/app";
+import { useOSStore } from "@/processes";
 import { cn } from "@/shared/lib";
 
+import { buildAiAgentAiContext } from "../model/ai-agent-ai-context";
 import { useAiAgent } from "../model/agent";
 import { AgentHandoffBar } from "./AgentHandoffBar";
 import { AgentLaunchpad } from "./AgentLaunchpad";
 import { Input } from "./Input";
 import { MessageBubble } from "./MessageBubble";
 
-export function ChatWindow({ processId }: AppComponentProps) {
+export function ChatWindow({ processId, windowId }: AppComponentProps) {
   const reduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const aiPublishWindowContext = useOSStore((state) => state.aiPublishWindowContext);
+  const aiClearWindowContext = useOSStore((state) => state.aiClearWindowContext);
   const {
     messages,
     input,
@@ -43,6 +47,25 @@ export function ChatWindow({ processId }: AppComponentProps) {
 
     node.scrollTo({ top: node.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
   }, [messages, reduceMotion]);
+
+  useEffect(() => {
+    aiPublishWindowContext(
+      windowId,
+      buildAiAgentAiContext({
+        windowId,
+        messageCount: messages.length,
+        isStreaming,
+        hasUserMessages,
+        activeRequestSource: activeRequest?.source?.label ?? null,
+      }),
+    );
+  }, [activeRequest?.source?.label, aiPublishWindowContext, hasUserMessages, isStreaming, messages.length, windowId]);
+
+  useEffect(() => {
+    return () => {
+      aiClearWindowContext(windowId);
+    };
+  }, [aiClearWindowContext, windowId]);
 
   const conversationMessages = useMemo(
     () => messages.filter((message) => message.role !== "system" || message.content.trim()),
