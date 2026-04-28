@@ -61,17 +61,17 @@ export const createSessionSlice: StateCreator<OSStore, [], [], SessionSlice> = (
       await get().loadAppComponent(win.appId);
     }
 
-    set({
+    set((state) => ({
       windows: restored.windows.windows,
       activeWindowId: restored.windows.activeWindowId,
       nextZIndex: restored.windows.nextZIndex,
       dragState: restored.windows.dragState,
       resizeState: restored.windows.resizeState,
       processes: restored.processes.processes,
-      currentWorkspaceId: migratedSession.currentWorkspaceId ?? get().currentWorkspaceId,
+      currentWorkspaceId: migratedSession.currentWorkspaceId ?? state.currentWorkspaceId,
       workspaces: migratedSession.workspaces,
       sessionHydrated: true,
-    });
+    }));
 
     await get().persistSessionSnapshot(
       serializeSessionModel({
@@ -88,6 +88,16 @@ export const createSessionSlice: StateCreator<OSStore, [], [], SessionSlice> = (
       return;
     }
 
-    await writeFsJsonAtPath(get, PERSISTED_FILE_PATHS.sessionSnapshot, snapshot);
+    try {
+      await writeFsJsonAtPath(get, PERSISTED_FILE_PATHS.sessionSnapshot, snapshot);
+    } catch (error) {
+      console.error("Session persistence failed:", error);
+      get().pushNotification({
+        title: "System",
+        body: "Failed to save session state.",
+        level: "warning",
+        appId: "system",
+      });
+    }
   },
 });

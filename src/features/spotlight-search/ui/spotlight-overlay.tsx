@@ -117,8 +117,33 @@ type SpotlightOverlayProps = {
   onRunShortcut: (shortcutId: string, options?: { ignoreSurfaceState?: boolean }) => boolean;
 };
 
-export function SpotlightOverlay({
-  isOpen,
+export function SpotlightOverlay(props: SpotlightOverlayProps) {
+  return (
+    <AnimatePresence>
+      {props.isOpen ? (
+        <motion.div
+          key="spotlight-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-[10000] flex items-start justify-center pt-[18vh]"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) props.onClose();
+          }}
+        >
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onPointerDown={props.onClose}
+          />
+          <SpotlightOverlayContent {...props} />
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function SpotlightOverlayContent({
   onClose,
   onOpenApp,
   onFocusWindow,
@@ -161,22 +186,7 @@ export function SpotlightOverlay({
 
   const flatResults = useMemo(() => flattenResults(groups), [groups]);
 
-  // Reset state when opened/closed
-  useEffect(() => {
-    if (isOpen) {
-      setQuery("");
-      setSelectedIndex(0);
-      // Small delay to ensure DOM is mounted
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [isOpen]);
-
-  // Clamp selected index when results change
-  useEffect(() => {
-    if (selectedIndex >= flatResults.length) {
-      setSelectedIndex(Math.max(0, flatResults.length - 1));
-    }
-  }, [flatResults.length, selectedIndex]);
+  const safeSelectedIndex = Math.min(selectedIndex, Math.max(0, flatResults.length - 1));
 
   // Scroll selected item into view
   useEffect(() => {
@@ -187,7 +197,7 @@ export function SpotlightOverlay({
     if (selected) {
       selected.scrollIntoView({ block: "nearest" });
     }
-  }, [selectedIndex]);
+  }, [safeSelectedIndex]);
 
   const executeResult = useCallback(
     (result: SpotlightResult) => {
@@ -257,8 +267,8 @@ export function SpotlightOverlay({
           break;
         case "Enter":
           event.preventDefault();
-          if (flatResults[selectedIndex]) {
-            executeResult(flatResults[selectedIndex]);
+          if (flatResults[safeSelectedIndex]) {
+            executeResult(flatResults[safeSelectedIndex]);
           }
           break;
         case "Escape":
@@ -267,37 +277,18 @@ export function SpotlightOverlay({
           break;
       }
     },
-    [flatResults, selectedIndex, executeResult, onClose],
+    [flatResults, safeSelectedIndex, executeResult, onClose],
   );
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      {isOpen ? (
-        <motion.div
-          key="spotlight-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[10000] flex items-start justify-center pt-[18vh]"
-          onPointerDown={(e) => {
-            if (e.target === e.currentTarget) onClose();
-          }}
-        >
-          {/* Backdrop blur layer */}
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onPointerDown={onClose} />
-
-          {/* Search panel */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -8 }}
-            transition={{ type: "spring", stiffness: 500, damping: 32 }}
-            className="relative w-full max-w-[580px] overflow-hidden rounded-2xl border border-white/15 bg-surface/90 shadow-[0_24px_80px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-2xl"
-            onKeyDown={handleKeyDown}
-          >
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: -8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96, y: -8 }}
+      transition={{ type: "spring", stiffness: 500, damping: 32 }}
+      className="relative w-full max-w-[580px] overflow-hidden rounded-2xl border border-white/15 bg-surface/90 shadow-[0_24px_80px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-2xl"
+      onKeyDown={handleKeyDown}
+    >
             {/* Search input row */}
             <div className="flex items-center gap-3 border-b border-white/8 px-5 py-3.5">
               <svg
@@ -358,7 +349,7 @@ export function SpotlightOverlay({
                     </div>
                     {group.results.map((result) => {
                       const globalIndex = flatResults.indexOf(result);
-                      const isSelected = globalIndex === selectedIndex;
+                      const isSelected = globalIndex === safeSelectedIndex;
                       const app =
                         result.category === "app" || result.category === "window"
                           ? appMap[result.appId]
@@ -433,8 +424,5 @@ export function SpotlightOverlay({
               ) : null}
             </div>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
   );
 }

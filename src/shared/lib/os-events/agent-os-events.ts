@@ -16,6 +16,7 @@ export type AgentNotesPrefillDetail = {
   body: string;
   tags?: string[];
   pinned?: boolean;
+  targetWindowId?: string;
 };
 
 export type AgentExternalRequest = {

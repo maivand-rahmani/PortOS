@@ -2,7 +2,7 @@ type TargetedWindowRequest = {
   targetWindowId?: string;
 };
 
-const pendingRequests = new Map<string, unknown>();
+const pendingRequests = new Map<string, unknown[]>();
 
 export function dispatchWindowRequest<T>(
   storageKey: string,
@@ -13,7 +13,9 @@ export function dispatchWindowRequest<T>(
     return;
   }
 
-  pendingRequests.set(storageKey, detail);
+  const existing = pendingRequests.get(storageKey) ?? [];
+  existing.push(detail);
+  pendingRequests.set(storageKey, existing);
   window.dispatchEvent(new CustomEvent<T>(eventName, { detail }));
 }
 
@@ -29,11 +31,10 @@ export function consumeWindowRequest<T extends TargetedWindowRequest>(
     return null;
   }
 
-  const pending = pendingRequests.get(storageKey);
-
-  if (!pending) {
-    return null;
-  }
+  const queue = pendingRequests.get(storageKey);
+  if (!queue || queue.length === 0) return null;
+  const pending = queue.shift()!;
+  if (queue.length === 0) pendingRequests.delete(storageKey);
 
   const parsed = pending as T;
 
@@ -45,8 +46,6 @@ export function consumeWindowRequest<T extends TargetedWindowRequest>(
     return null;
   }
 
-  pendingRequests.delete(storageKey);
-
   return parsed;
 }
 
@@ -55,13 +54,10 @@ export function consumeUntargetedWindowRequest<T>(storageKey: string): T | null 
     return null;
   }
 
-  const pending = pendingRequests.get(storageKey);
-
-  if (!pending) {
-    return null;
-  }
-
-  pendingRequests.delete(storageKey);
+  const queue = pendingRequests.get(storageKey);
+  if (!queue || queue.length === 0) return null;
+  const pending = queue.shift()!;
+  if (queue.length === 0) pendingRequests.delete(storageKey);
 
   return pending as T;
 }

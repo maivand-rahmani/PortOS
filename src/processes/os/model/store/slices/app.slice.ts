@@ -77,55 +77,60 @@ export const createAppSlice: StateCreator<OSStore, [], [], AppSlice> = (set, get
       return null;
     }
 
-    const currentState = get();
-    const currentWorkspace = getWorkspaceById(
-      currentState.workspaces,
-      currentState.currentWorkspaceId,
-    );
-    const launchWorkspaceId = isFullscreenWorkspace(currentWorkspace)
-      ? currentState.windows.find((w) => w.id === currentState.activeWindowId)
-          ?.fullscreenRestoreWorkspaceId ?? workspaceManagerInitialState.currentWorkspaceId
-      : currentState.currentWorkspaceId;
-    const processResult = startProcessModel(
-      { processes: currentState.processes },
-      app,
-    );
-    const windowResult = openWindowModel(
-      {
-        windows: currentState.windows,
-        activeWindowId: currentState.activeWindowId,
-        nextZIndex: currentState.nextZIndex,
-        dragState: currentState.dragState,
-        resizeState: currentState.resizeState,
-      },
-      {
+    let resultWindowId: string | null = null;
+
+    set((state) => {
+      const currentWorkspace = getWorkspaceById(
+        state.workspaces,
+        state.currentWorkspaceId,
+      );
+      const launchWorkspaceId = isFullscreenWorkspace(currentWorkspace)
+        ? state.windows.find((w) => w.id === state.activeWindowId)
+            ?.fullscreenRestoreWorkspaceId ?? workspaceManagerInitialState.currentWorkspaceId
+        : state.currentWorkspaceId;
+      const processResult = startProcessModel(
+        { processes: state.processes },
         app,
+      );
+      const windowResult = openWindowModel(
+        {
+          windows: state.windows,
+          activeWindowId: state.activeWindowId,
+          nextZIndex: state.nextZIndex,
+          dragState: state.dragState,
+          resizeState: state.resizeState,
+        },
+        {
+          app,
+          processId: processResult.process.id,
+          instanceIndex: state.windows.length,
+          bounds,
+          workspaceId: launchWorkspaceId,
+        },
+      );
+      const linkedProcesses = attachWindowToProcessModel(processResult.state, {
         processId: processResult.process.id,
-        instanceIndex: currentState.windows.length,
-        bounds,
-        workspaceId: launchWorkspaceId,
-      },
-    );
-    const linkedProcesses = attachWindowToProcessModel(processResult.state, {
-      processId: processResult.process.id,
-      windowId: windowResult.window.id,
+        windowId: windowResult.window.id,
+      });
+
+      resultWindowId = windowResult.window.id;
+
+      return {
+        processes: linkedProcesses.processes,
+        windows: windowResult.state.windows,
+        activeWindowId: windowResult.state.activeWindowId,
+        nextZIndex: windowResult.state.nextZIndex,
+        dragState: windowResult.state.dragState,
+      };
     });
 
-    set({
-      processes: linkedProcesses.processes,
-      windows: windowResult.state.windows,
-      activeWindowId: windowResult.state.activeWindowId,
-      nextZIndex: windowResult.state.nextZIndex,
-      dragState: windowResult.state.dragState,
-    });
-
-    if (app.window.launchMaximized) {
+    if (app.window.launchMaximized && resultWindowId) {
       const maximizeBounds = bounds ?? DEFAULT_LAUNCH_BOUNDS;
 
-      get().toggleWindowMaximize(windowResult.window.id, maximizeBounds);
+      get().toggleWindowMaximize(resultWindowId, maximizeBounds);
     }
 
-    return windowResult.window.id;
+    return resultWindowId;
   },
 
   activateApp: async (appId, bounds) => {

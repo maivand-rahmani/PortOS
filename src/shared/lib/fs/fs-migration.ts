@@ -356,15 +356,48 @@ export async function runDataMigration(): Promise<MigrationResult> {
     };
   }
 
-  const [notesMigrated, blogMigrated, calculatorMigrated, aiAgentMigrated, wallpaperMigrated, clockMigrated] =
-    await Promise.all([
-      migrateNotes(),
-      migrateBlog(),
-      migrateCalculator(),
-      migrateAiAgent(),
-      migrateWallpaper(),
-      migrateClock(),
-    ]);
+  let notesMigrated = 0;
+  let blogMigrated = false;
+  let calculatorMigrated = false;
+  let aiAgentMigrated = false;
+  let wallpaperMigrated = false;
+  let clockMigrated = false;
+
+  try {
+    notesMigrated = await migrateNotes();
+  } catch (e) {
+    console.warn("Notes migration failed:", e);
+  }
+
+  try {
+    blogMigrated = await migrateBlog();
+  } catch (e) {
+    console.warn("Blog migration failed:", e);
+  }
+
+  try {
+    calculatorMigrated = await migrateCalculator();
+  } catch (e) {
+    console.warn("Calculator migration failed:", e);
+  }
+
+  try {
+    aiAgentMigrated = await migrateAiAgent();
+  } catch (e) {
+    console.warn("AI agent migration failed:", e);
+  }
+
+  try {
+    wallpaperMigrated = await migrateWallpaper();
+  } catch (e) {
+    console.warn("Wallpaper migration failed:", e);
+  }
+
+  try {
+    clockMigrated = await migrateClock();
+  } catch (e) {
+    console.warn("Clock migration failed:", e);
+  }
 
   await setMeta(MIGRATION_META_KEY, true);
 

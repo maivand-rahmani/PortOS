@@ -46,6 +46,16 @@ export const createSettingsSlice: StateCreator<OSStore, [], [], SettingsSlice> =
     applySettingsToDOM(next);
     set({ osSettings: next });
 
-    await writeFsJsonAtPath(get, PERSISTED_FILE_PATHS.settingsPreferences, next);
+    try {
+      await writeFsJsonAtPath(get, PERSISTED_FILE_PATHS.settingsPreferences, next);
+    } catch (error) {
+      console.error("Settings persistence failed:", error);
+      get().pushNotification({
+        title: "System",
+        body: "Failed to save settings.",
+        level: "warning",
+        appId: "system",
+      });
+    }
   },
 });

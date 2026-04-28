@@ -333,6 +333,26 @@ export async function buildAiAgentContext({
 
   const profile = JSON.parse(profileRaw) as ProfileInfo;
   const catalog = JSON.parse(catalogRaw) as ProjectCatalog;
+
+  // Strip PII fields for defense-in-depth
+  const safeProfile: ProfileInfo = {
+    ...profile,
+    personal: profile.personal ? {
+      name: profile.personal.name,
+      role: profile.personal.role,
+      level: profile.personal.level,
+      focus: profile.personal.focus,
+      // Explicitly omitted: age, location, university
+    } : undefined,
+    links: profile.links ? {
+      github: profile.links.github,
+      // Explicitly omitted: gmail
+    } : undefined,
+    // Education is intentionally omitted (contains university info)
+    education: undefined,
+    // Keep everything else
+  };
+
   const roadmapContent = await readFile(path.join(process.cwd(), "docs/roadmap/README.md"), "utf8");
 
   const rankedDocs = [
@@ -355,14 +375,14 @@ export async function buildAiAgentContext({
     .slice(0, MAX_CONTEXT_SECTIONS);
 
   const contextSections = [
-    `Profile\n${buildProfileSummary(profile, catalog)}`,
+    `Profile\n${buildProfileSummary(safeProfile, catalog)}`,
     ...rankedDocs.map((document) => `Doc: ${document.path}\n${document.snippet}`),
   ];
   const runtimeSummary = formatRuntimeSummary(runtime);
 
   return {
     systemPrompt: buildSystemPrompt({
-      profile,
+      profile: safeProfile,
       runtimeSummary,
       contextSections,
       requestedAction,

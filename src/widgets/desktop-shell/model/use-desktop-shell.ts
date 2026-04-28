@@ -299,6 +299,35 @@ export function useDesktopShell(): UseDesktopShellResult {
     void hydrateSession(desktopBounds);
   }, [desktopBounds, hydrateSession, sessionHydrated]);
 
+  // ── Network connectivity listener ────────────────────────────────────────────
+  useEffect(() => {
+    const handleOffline = () => {
+      useOSStore.getState().pushNotification({
+        title: "Network",
+        body: "You are offline. Some features may be unavailable.",
+        level: "warning",
+        appId: "system",
+      });
+    };
+
+    const handleOnline = () => {
+      useOSStore.getState().pushNotification({
+        title: "Network",
+        body: "You are back online.",
+        level: "info",
+        appId: "system",
+      });
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
   useEffect(() => {
     if (!sessionHydrated || bootPhase !== "ready") {
       return undefined;
@@ -351,8 +380,32 @@ export function useDesktopShell(): UseDesktopShellResult {
     // Check sessionStorage for same-session revisit (auto-skip)
     if (typeof window !== "undefined" && sessionStorage.getItem(BOOT_SESSION_KEY)) {
       // Fast boot: skip cinematic sequence, still hydrate data
-      hydrateFileSystem().then(() => runDataMigration());
-      void hydrateSettings();
+      const fastBootHydration = hydrateFileSystem()
+        .then(() => runDataMigration())
+        .catch((err) => {
+          console.error("Boot hydration failed:", err);
+          useOSStore.getState().pushNotification({
+            title: "System",
+            body: "Failed to restore file system. Some data may be unavailable.",
+            level: "warning",
+            appId: "system",
+          });
+        });
+
+      void fastBootHydration;
+
+      const settingsPromise = hydrateSettings().catch((err) => {
+        console.error("Settings hydration failed:", err);
+        useOSStore.getState().pushNotification({
+          title: "System",
+          body: "Failed to load settings. Using defaults.",
+          level: "warning",
+          appId: "system",
+        });
+      });
+
+      void settingsPromise;
+
       setBootProgress(100);
       addBootMessage("System ready");
       completeBoot();
@@ -383,8 +436,27 @@ export function useDesktopShell(): UseDesktopShellResult {
     }
 
     // Start hydration in parallel with logo animation
-    const hydrationPromise = hydrateFileSystem().then(() => runDataMigration());
-    const settingsPromise = hydrateSettings();
+    const hydrationPromise = hydrateFileSystem()
+      .then(() => runDataMigration())
+      .catch((err) => {
+        console.error("Boot hydration failed:", err);
+        useOSStore.getState().pushNotification({
+          title: "System",
+          body: "Failed to restore file system. Some data may be unavailable.",
+          level: "warning",
+          appId: "system",
+        });
+      });
+
+    const settingsPromise = hydrateSettings().catch((err) => {
+      console.error("Settings hydration failed:", err);
+      useOSStore.getState().pushNotification({
+        title: "System",
+        body: "Failed to load settings. Using defaults.",
+        level: "warning",
+        appId: "system",
+      });
+    });
 
     const duration = shouldReduceMotion ? 200 : BOOT_PHASE_DURATIONS.logo;
     const timer = window.setTimeout(async () => {

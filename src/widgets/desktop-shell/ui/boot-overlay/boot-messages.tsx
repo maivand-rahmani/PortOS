@@ -29,7 +29,7 @@ export function BootMessages({ messages }: BootMessagesProps) {
               {latestMessage}
             </span>
           ) : (
-            <TypewriterText text={latestMessage} />
+            <TypewriterText key={latestMessage} text={latestMessage} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -41,8 +41,6 @@ function TypewriterText({ text }: { text: string }) {
   const [charCount, setCharCount] = useState(0);
 
   useEffect(() => {
-    setCharCount(0);
-
     if (text.length === 0) return undefined;
 
     let frame: number;

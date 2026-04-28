@@ -59,6 +59,41 @@ function getFallbackNodes(): FileSystemNode[] {
   return [...fallbackNodes.values()];
 }
 
+// ── Cross-Tab Sync (BroadcastChannel) ───────────────────
+const SYNC_CHANNEL = "portos-idb-sync";
+
+let syncChannel: BroadcastChannel | null = null;
+
+function getSyncChannel(): BroadcastChannel | null {
+  if (typeof window === "undefined") return null;
+  if (!syncChannel) {
+    try {
+      syncChannel = new BroadcastChannel(SYNC_CHANNEL);
+    } catch {
+      return null;
+    }
+  }
+  return syncChannel;
+}
+
+export function setupCrossTabSync() {
+  const channel = getSyncChannel();
+  if (!channel) return;
+
+  channel.onmessage = (event) => {
+    const msg = event.data as { type: string; store: string; timestamp: number };
+    if (msg?.type === "write") {
+      console.warn(`[IDB Sync] Another tab modified ${msg.store} at ${new Date(msg.timestamp).toISOString()}`);
+    }
+  };
+}
+
+function broadcastWrite(storeName: string) {
+  const channel = getSyncChannel();
+  if (!channel) return;
+  channel.postMessage({ type: "write", store: storeName, timestamp: Date.now() });
+}
+
 // ── Singleton Connection ────────────────────────────────
 
 let dbInstance: IDBPDatabase<PortosFSDB> | null = null;
@@ -170,6 +205,7 @@ export async function putNode(node: FileSystemNode): Promise<void> {
   }
 
   await db.put(STORE_NODES, node);
+  broadcastWrite(STORE_NODES);
 }
 
 export async function putNodeAndContent(
@@ -197,6 +233,7 @@ export async function putNodeAndContent(
   }
 
   await tx.done;
+  broadcastWrite("nodes+contents");
 }
 
 export async function putNodes(nodes: FileSystemNode[]): Promise<void> {
@@ -217,6 +254,7 @@ export async function putNodes(nodes: FileSystemNode[]): Promise<void> {
   }
 
   await tx.done;
+  broadcastWrite(STORE_NODES);
 }
 
 export async function deleteNode(id: string): Promise<void> {
@@ -228,6 +266,32 @@ export async function deleteNode(id: string): Promise<void> {
   }
 
   await db.delete(STORE_NODES, id);
+  broadcastWrite(STORE_NODES);
+}
+
+export async function deleteNodeAndContents(nodeIds: string[]): Promise<void> {
+  const db = await getDB();
+
+  if (!db) {
+    for (const id of nodeIds) {
+      fallbackNodes.delete(id);
+      fallbackContents.delete(id);
+    }
+    return;
+  }
+
+  const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
+
+  for (const id of nodeIds) {
+    await tx.objectStore(STORE_NODES).delete(id);
+  }
+
+  for (const id of nodeIds) {
+    await tx.objectStore(STORE_CONTENTS).delete(id);
+  }
+
+  await tx.done;
+  broadcastWrite("nodes+contents");
 }
 
 export async function deleteNodes(ids: string[]): Promise<void> {
@@ -248,6 +312,7 @@ export async function deleteNodes(ids: string[]): Promise<void> {
   }
 
   await tx.done;
+  broadcastWrite(STORE_NODES);
 }
 
 // ── Content Operations ──────────────────────────────────
@@ -273,6 +338,7 @@ export async function putContent(content: FileContent): Promise<void> {
   }
 
   await db.put(STORE_CONTENTS, content);
+  broadcastWrite(STORE_CONTENTS);
 }
 
 export async function putContents(contents: FileContent[]): Promise<void> {
@@ -293,6 +359,7 @@ export async function putContents(contents: FileContent[]): Promise<void> {
   }
 
   await tx.done;
+  broadcastWrite(STORE_CONTENTS);
 }
 
 export async function putNodeContentAndMeta(input: {
@@ -340,6 +407,7 @@ export async function putNodeContentAndMeta(input: {
   }
 
   await tx.done;
+  broadcastWrite("nodes+contents+meta");
 }
 
 function splitPath(path: AbsolutePath) {
@@ -508,6 +576,7 @@ export async function writeJsonFile(path: AbsolutePath, value: unknown): Promise
       checksum: computeChecksum(content),
     });
     await tx.done;
+    broadcastWrite(STORE_NODES);
     return;
   }
 
@@ -535,6 +604,7 @@ export async function writeJsonFile(path: AbsolutePath, value: unknown): Promise
     checksum: computeChecksum(content),
   });
   await tx.done;
+  broadcastWrite(STORE_NODES);
 }
 
 export async function deleteContent(nodeId: string): Promise<void> {
@@ -546,6 +616,7 @@ export async function deleteContent(nodeId: string): Promise<void> {
   }
 
   await db.delete(STORE_CONTENTS, nodeId);
+  broadcastWrite(STORE_CONTENTS);
 }
 
 export async function deleteContents(nodeIds: string[]): Promise<void> {
@@ -566,6 +637,7 @@ export async function deleteContents(nodeIds: string[]): Promise<void> {
   }
 
   await tx.done;
+  broadcastWrite(STORE_CONTENTS);
 }
 
 export async function getAllContents(): Promise<FileContent[]> {
@@ -611,6 +683,7 @@ export async function setMeta(key: string, value: unknown): Promise<void> {
   }
 
   await db.put(STORE_METADATA, { key, value });
+  broadcastWrite(STORE_METADATA);
 }
 
 // ── Seeding ─────────────────────────────────────────────
@@ -731,6 +804,7 @@ export async function seedDefaultFileSystem(): Promise<FileSystemNode[]> {
   ];
 
   await putNodes(defaultDirs);
+  broadcastWrite(STORE_NODES);
   await setMeta(SEED_META_KEY, true);
 
   return defaultDirs;
@@ -773,6 +847,7 @@ export async function clearAll(): Promise<void> {
     tx.objectStore(STORE_METADATA).clear(),
     tx.done,
   ]);
+  broadcastWrite("all");
 }
 
 // ── Default Directory IDs (for app migration) ───────────

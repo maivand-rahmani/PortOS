@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { WorkspaceId } from "@/entities/workspace";
 
@@ -70,14 +70,6 @@ export function useMissionControl({
     () => getDefaultSelectedWindowId(highlightedWorkspace),
     [highlightedWorkspace],
   );
-
-  useEffect(() => {
-    if (isOpen) {
-      return;
-    }
-
-    setHighlightedWorkspaceId(currentWorkspaceId);
-  }, [currentWorkspaceId, isOpen]);
 
   const openMissionControl = useCallback(() => {
     setHighlightedWorkspaceId(currentWorkspaceId);

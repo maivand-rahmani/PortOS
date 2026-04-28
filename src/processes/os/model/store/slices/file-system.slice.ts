@@ -1,6 +1,7 @@
 import type { StateCreator } from "zustand";
 import type { OSStore } from "../store.types";
 import * as idb from "@/shared/lib/fs/idb-storage";
+import { fsQueue } from "@/shared/lib/fs/fs-queue";
 import { dispatchFileSystemChange } from "@/shared/lib/fs/fs-events";
 import {
   beginFileDragModel,
@@ -98,68 +99,72 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsCreateFile: async (parentId, name, content) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const result = createFileModel(get(), { parentId, name, content });
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const result = createFileModel(get(), { parentId, name, content });
 
-    set({
-      fsNodes: result.state.fsNodes,
-      fsNodeMap: result.state.fsNodeMap,
-      fsChildMap: result.state.fsChildMap,
-    });
+      set({
+        fsNodes: result.state.fsNodes,
+        fsNodeMap: result.state.fsNodeMap,
+        fsChildMap: result.state.fsChildMap,
+      });
 
-    try {
-      await idb.putNode(result.node);
+      try {
+        await idb.putNode(result.node);
 
-      if (content) {
-        await idb.putContent({
-          nodeId: result.node.id,
-          data: content,
-          encoding: "utf-8",
-          checksum: idb.computeChecksum(content),
-        });
+        if (content) {
+          await idb.putContent({
+            nodeId: result.node.id,
+            data: content,
+            encoding: "utf-8",
+            checksum: idb.computeChecksum(content),
+          });
+        }
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to save file.", level: "warning", appId: "system" });
+        return null;
       }
-    } catch {
-      set(prev);
-      get().pushNotification({ title: "File system", body: "Failed to save file.", level: "warning", appId: "system" });
-      return null;
-    }
 
-    dispatchFileSystemChange({
-      type: "file-created",
-      nodeId: result.node.id,
-      nodeType: result.node.type,
-      path: getNodePath(result.node.id, result.state.fsNodeMap),
+      dispatchFileSystemChange({
+        type: "file-created",
+        nodeId: result.node.id,
+        nodeType: result.node.type,
+        path: getNodePath(result.node.id, result.state.fsNodeMap),
+      });
+
+      return result.node;
     });
-
-    return result.node;
   },
 
   fsCreateDirectory: async (parentId, name) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const result = createDirectoryModel(get(), { parentId, name });
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const result = createDirectoryModel(get(), { parentId, name });
 
-    set({
-      fsNodes: result.state.fsNodes,
-      fsNodeMap: result.state.fsNodeMap,
-      fsChildMap: result.state.fsChildMap,
+      set({
+        fsNodes: result.state.fsNodes,
+        fsNodeMap: result.state.fsNodeMap,
+        fsChildMap: result.state.fsChildMap,
+      });
+
+      try {
+        await idb.putNode(result.node);
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to create directory.", level: "warning", appId: "system" });
+        return null;
+      }
+
+      dispatchFileSystemChange({
+        type: "directory-created",
+        nodeId: result.node.id,
+        nodeType: result.node.type,
+        path: getNodePath(result.node.id, result.state.fsNodeMap),
+      });
+
+      return result.node;
     });
-
-    try {
-      await idb.putNode(result.node);
-    } catch {
-      set(prev);
-      get().pushNotification({ title: "File system", body: "Failed to create directory.", level: "warning", appId: "system" });
-      return null;
-    }
-
-    dispatchFileSystemChange({
-      type: "directory-created",
-      nodeId: result.node.id,
-      nodeType: result.node.type,
-      path: getNodePath(result.node.id, result.state.fsNodeMap),
-    });
-
-    return result.node;
   },
 
   fsReadContent: async (nodeId) => {
@@ -169,187 +174,197 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsWriteContent: async (nodeId, content) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const previousNode = get().fsNodeMap[nodeId];
-    const size = new Blob([content]).size;
-    const nextState = updateFileMetadataModel(get(), nodeId, { size });
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const previousNode = get().fsNodeMap[nodeId];
+      const size = new Blob([content]).size;
+      const nextState = updateFileMetadataModel(get(), nodeId, { size });
 
-    set({
-      fsNodes: nextState.fsNodes,
-      fsNodeMap: nextState.fsNodeMap,
-      fsChildMap: nextState.fsChildMap,
-    });
+      set({
+        fsNodes: nextState.fsNodes,
+        fsNodeMap: nextState.fsNodeMap,
+        fsChildMap: nextState.fsChildMap,
+      });
 
-    try {
-      const updatedNode = nextState.fsNodeMap[nodeId];
+      try {
+        const updatedNode = nextState.fsNodeMap[nodeId];
 
-      if (updatedNode) {
-        await idb.putNode(updatedNode);
+        if (updatedNode) {
+          await idb.putNode(updatedNode);
+        }
+
+        await idb.putContent({
+          nodeId,
+          data: content,
+          encoding: "utf-8",
+          checksum: idb.computeChecksum(content),
+        });
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to save file content.", level: "warning", appId: "system" });
+        return;
       }
 
-      await idb.putContent({
-        nodeId,
-        data: content,
-        encoding: "utf-8",
-        checksum: idb.computeChecksum(content),
-      });
-    } catch {
-      set(prev);
-      get().pushNotification({ title: "File system", body: "Failed to save file content.", level: "warning", appId: "system" });
-      return;
-    }
-
-    if (previousNode?.type === "file") {
-      dispatchFileSystemChange({
-        type: "file-written",
-        nodeId,
-        nodeType: previousNode.type,
-        path: getNodePath(nodeId, nextState.fsNodeMap),
-      });
-    }
+      if (previousNode?.type === "file") {
+        dispatchFileSystemChange({
+          type: "file-written",
+          nodeId,
+          nodeType: previousNode.type,
+          path: getNodePath(nodeId, nextState.fsNodeMap),
+        });
+      }
+    });
   },
 
   fsDeleteNode: async (nodeId) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap, fsActiveFileId: get().fsActiveFileId, fsClipboard: get().fsClipboard };
-    const previousNode = get().fsNodeMap[nodeId];
-    const previousPath = previousNode
-      ? getNodePath(nodeId, get().fsNodeMap)
-      : undefined;
-    const result = deleteNodeModel(get(), nodeId);
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap, fsActiveFileId: get().fsActiveFileId, fsClipboard: get().fsClipboard };
+      const previousNode = get().fsNodeMap[nodeId];
+      const previousPath = previousNode
+        ? getNodePath(nodeId, get().fsNodeMap)
+        : undefined;
+      const result = deleteNodeModel(get(), nodeId);
 
-    set({
-      fsNodes: result.state.fsNodes,
-      fsNodeMap: result.state.fsNodeMap,
-      fsChildMap: result.state.fsChildMap,
-      fsActiveFileId: result.state.fsActiveFileId,
-      fsClipboard: result.state.fsClipboard,
-    });
-
-    try {
-      await idb.deleteNodes(result.deletedIds);
-      await idb.deleteContents(result.deletedIds);
-    } catch {
-      set(prev);
-      get().pushNotification({ title: "File system", body: "Failed to delete node.", level: "warning", appId: "system" });
-      return;
-    }
-
-    if (previousNode) {
-      dispatchFileSystemChange({
-        type: "node-deleted",
-        nodeId,
-        nodeType: previousNode.type,
-        previousPath,
+      set({
+        fsNodes: result.state.fsNodes,
+        fsNodeMap: result.state.fsNodeMap,
+        fsChildMap: result.state.fsChildMap,
+        fsActiveFileId: result.state.fsActiveFileId,
+        fsClipboard: result.state.fsClipboard,
       });
-    }
+
+      try {
+        await idb.deleteNodes(result.deletedIds);
+        await idb.deleteContents(result.deletedIds);
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to delete node.", level: "warning", appId: "system" });
+        return;
+      }
+
+      if (previousNode) {
+        dispatchFileSystemChange({
+          type: "node-deleted",
+          nodeId,
+          nodeType: previousNode.type,
+          previousPath,
+        });
+      }
+    });
   },
 
   fsRenameNode: async (nodeId, newName) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const previousNode = get().fsNodeMap[nodeId];
-    const previousPath = previousNode
-      ? getNodePath(nodeId, get().fsNodeMap)
-      : undefined;
-    const nextState = renameNodeModel(get(), nodeId, newName);
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const previousNode = get().fsNodeMap[nodeId];
+      const previousPath = previousNode
+        ? getNodePath(nodeId, get().fsNodeMap)
+        : undefined;
+      const nextState = renameNodeModel(get(), nodeId, newName);
 
-    set({
-      fsNodes: nextState.fsNodes,
-      fsNodeMap: nextState.fsNodeMap,
-      fsChildMap: nextState.fsChildMap,
-    });
-
-    const updatedNode = nextState.fsNodeMap[nodeId];
-
-    if (updatedNode) {
-      try {
-        await idb.putNode(updatedNode);
-      } catch {
-        set(prev);
-        get().pushNotification({ title: "File system", body: "Failed to rename node.", level: "warning", appId: "system" });
-        return;
-      }
-
-      dispatchFileSystemChange({
-        type: "node-renamed",
-        nodeId,
-        nodeType: updatedNode.type,
-        path: getNodePath(nodeId, nextState.fsNodeMap),
-        previousPath,
+      set({
+        fsNodes: nextState.fsNodes,
+        fsNodeMap: nextState.fsNodeMap,
+        fsChildMap: nextState.fsChildMap,
       });
-    }
+
+      const updatedNode = nextState.fsNodeMap[nodeId];
+
+      if (updatedNode) {
+        try {
+          await idb.putNode(updatedNode);
+        } catch {
+          set(prev);
+          get().pushNotification({ title: "File system", body: "Failed to rename node.", level: "warning", appId: "system" });
+          return;
+        }
+
+        dispatchFileSystemChange({
+          type: "node-renamed",
+          nodeId,
+          nodeType: updatedNode.type,
+          path: getNodePath(nodeId, nextState.fsNodeMap),
+          previousPath,
+        });
+      }
+    });
   },
 
   fsMoveNode: async (nodeId, newParentId) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const previousNode = get().fsNodeMap[nodeId];
-    const previousPath = previousNode
-      ? getNodePath(nodeId, get().fsNodeMap)
-      : undefined;
-    const nextState = moveNodeModel(get(), nodeId, newParentId);
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const previousNode = get().fsNodeMap[nodeId];
+      const previousPath = previousNode
+        ? getNodePath(nodeId, get().fsNodeMap)
+        : undefined;
+      const nextState = moveNodeModel(get(), nodeId, newParentId);
 
-    set({
-      fsNodes: nextState.fsNodes,
-      fsNodeMap: nextState.fsNodeMap,
-      fsChildMap: nextState.fsChildMap,
-    });
-
-    const updatedNode = nextState.fsNodeMap[nodeId];
-
-    if (updatedNode) {
-      try {
-        await idb.putNode(updatedNode);
-      } catch {
-        set(prev);
-        get().pushNotification({ title: "File system", body: "Failed to move node.", level: "warning", appId: "system" });
-        return;
-      }
-
-      dispatchFileSystemChange({
-        type: "node-moved",
-        nodeId,
-        nodeType: updatedNode.type,
-        path: getNodePath(nodeId, nextState.fsNodeMap),
-        previousPath,
+      set({
+        fsNodes: nextState.fsNodes,
+        fsNodeMap: nextState.fsNodeMap,
+        fsChildMap: nextState.fsChildMap,
       });
-    }
+
+      const updatedNode = nextState.fsNodeMap[nodeId];
+
+      if (updatedNode) {
+        try {
+          await idb.putNode(updatedNode);
+        } catch {
+          set(prev);
+          get().pushNotification({ title: "File system", body: "Failed to move node.", level: "warning", appId: "system" });
+          return;
+        }
+
+        dispatchFileSystemChange({
+          type: "node-moved",
+          nodeId,
+          nodeType: updatedNode.type,
+          path: getNodePath(nodeId, nextState.fsNodeMap),
+          previousPath,
+        });
+      }
+    });
   },
 
   fsCopyNode: async (nodeId, newParentId) => {
-    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
-    const result = copyNodeModel(get(), nodeId, newParentId);
+    return fsQueue.enqueue(async () => {
+      const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
+      const result = copyNodeModel(get(), nodeId, newParentId);
 
-    if (!result.newNode) {
-      return null;
-    }
-
-    set({
-      fsNodes: result.state.fsNodes,
-      fsNodeMap: result.state.fsNodeMap,
-      fsChildMap: result.state.fsChildMap,
-    });
-
-    try {
-      await idb.putNode(result.newNode);
-
-      if (result.newNode.type === "file") {
-        const sourceContent = await idb.getContent(nodeId);
-
-        if (sourceContent) {
-          await idb.putContent({
-            nodeId: result.newNode.id,
-            data: sourceContent.data,
-            encoding: sourceContent.encoding,
-            checksum: sourceContent.checksum,
-          });
-        }
+      if (!result.newNode) {
+        return null;
       }
-    } catch {
-      set(prev);
-      get().pushNotification({ title: "File system", body: "Failed to copy node.", level: "warning", appId: "system" });
-      return null;
-    }
 
-    return result.newNode;
+      set({
+        fsNodes: result.state.fsNodes,
+        fsNodeMap: result.state.fsNodeMap,
+        fsChildMap: result.state.fsChildMap,
+      });
+
+      try {
+        await idb.putNode(result.newNode);
+
+        if (result.newNode.type === "file") {
+          const sourceContent = await idb.getContent(nodeId);
+
+          if (sourceContent) {
+            await idb.putContent({
+              nodeId: result.newNode.id,
+              data: sourceContent.data,
+              encoding: sourceContent.encoding,
+              checksum: sourceContent.checksum,
+            });
+          }
+        }
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to copy node.", level: "warning", appId: "system" });
+        return null;
+      }
+
+      return result.newNode;
+    });
   },
 
   fsSearch: (query) => {

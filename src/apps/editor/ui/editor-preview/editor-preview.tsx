@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import DOMPurify from "dompurify";
 
 // ── Types ───────────────────────────────────────────────
 
@@ -188,7 +189,18 @@ function escapeHTML(text: string): string {
 // ── Component ───────────────────────────────────────────
 
 export function EditorPreview({ content }: EditorPreviewProps) {
-  const html = useMemo(() => renderMarkdownToHTML(content), [content]);
+  const html = useMemo(() => {
+    const raw = renderMarkdownToHTML(content);
+    return DOMPurify.sanitize(raw, {
+      ALLOWED_TAGS: [
+        "p", "br", "strong", "em", "s", "code", "pre",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "ul", "ol", "li", "blockquote", "hr",
+        "a", "img", "span", "div", "del",
+      ],
+      ALLOWED_ATTR: ["class", "href", "src", "alt", "target", "rel"],
+    });
+  }, [content]);
 
   return (
     <div

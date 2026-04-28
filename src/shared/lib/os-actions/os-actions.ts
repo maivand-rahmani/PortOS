@@ -54,8 +54,14 @@ export function maximizeWindowById(windowId: string) {
 }
 
 export async function openNotesWithPrefill(detail: AgentNotesPrefillDetail) {
-  dispatchAgentNotesPrefill(detail);
-  return useOSStore.getState().activateApp("notes");
+  const windowId = await useOSStore.getState().activateApp("notes");
+  if (windowId) {
+    dispatchAgentNotesPrefill({
+      ...detail,
+      targetWindowId: windowId,
+    });
+  }
+  return windowId;
 }
 
 export async function openEditorWithFile(detail: Omit<OpenFileRequest, "targetWindowId">) {
@@ -72,8 +78,11 @@ export async function openEditorWithFile(detail: Omit<OpenFileRequest, "targetWi
 }
 
 export async function openAgentWithRequest(input: AgentExternalRequest | string) {
-  dispatchAgentRequest(input);
-  return useOSStore.getState().activateApp("ai-agent");
+  const windowId = await useOSStore.getState().activateApp("ai-agent");
+  if (windowId) {
+    dispatchAgentRequest(input);
+  }
+  return windowId;
 }
 
 export async function openBlogWithFocus(detail: BlogFocusRequest) {
