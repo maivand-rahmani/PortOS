@@ -50,7 +50,9 @@ export function normalizePath(path: string): AbsolutePath {
     }
 
     if (part === "..") {
-      resolved.pop();
+      if (resolved.length > 0) {
+        resolved.pop();
+      }
 
       continue;
     }

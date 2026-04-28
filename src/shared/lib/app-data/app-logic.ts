@@ -75,22 +75,184 @@ export type TerminalProcessAction = {
 type TerminalContext = {
   runtime?: RuntimeSnapshot;
 };
+// ── Math Expression Parser ────────────────────────────
+
+type MathToken =
+  | { type: "NUMBER"; value: number }
+  | { type: "PLUS" }
+  | { type: "MINUS" }
+  | { type: "STAR" }
+  | { type: "SLASH" }
+  | { type: "LPAREN" }
+  | { type: "RPAREN" }
+  | { type: "EOF" };
+
+function tokenizeMath(input: string): MathToken[] {
+  const tokens: MathToken[] = [];
+  let i = 0;
+
+  while (i < input.length) {
+    const ch = input[i];
+
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+
+    if (/\d/.test(ch)) {
+      let num = "";
+      while (i < input.length && /\d/.test(input[i])) {
+        num += input[i];
+        i++;
+      }
+      if (i < input.length && input[i] === ".") {
+        num += ".";
+        i++;
+        while (i < input.length && /\d/.test(input[i])) {
+          num += input[i];
+          i++;
+        }
+      }
+      tokens.push({ type: "NUMBER", value: parseFloat(num) });
+      continue;
+    }
+
+    switch (ch) {
+      case "+":
+        tokens.push({ type: "PLUS" });
+        break;
+      case "-":
+        tokens.push({ type: "MINUS" });
+        break;
+      case "*":
+        tokens.push({ type: "STAR" });
+        break;
+      case "/":
+        tokens.push({ type: "SLASH" });
+        break;
+      case "(":
+        tokens.push({ type: "LPAREN" });
+        break;
+      case ")":
+        tokens.push({ type: "RPAREN" });
+        break;
+      default:
+        throw new Error("Invalid character");
+    }
+    i++;
+  }
+
+  tokens.push({ type: "EOF" });
+  return tokens;
+}
+
+function parseMath(tokens: MathToken[]): number {
+  let pos = 0;
+
+  function peek(): MathToken {
+    return tokens[pos];
+  }
+
+  function advance(): MathToken {
+    return tokens[pos++];
+  }
+
+  function parseExpression(): number {
+    let result = parseTerm();
+
+    while (peek().type === "PLUS" || peek().type === "MINUS") {
+      const op = advance();
+      const right = parseTerm();
+      if (op.type === "PLUS") {
+        result += right;
+      } else {
+        result -= right;
+      }
+    }
+
+    return result;
+  }
+
+  function parseTerm(): number {
+    let result = parseFactor();
+
+    while (peek().type === "STAR" || peek().type === "SLASH") {
+      const op = advance();
+      const right = parseFactor();
+      if (op.type === "STAR") {
+        result *= right;
+      } else {
+        if (right === 0) {
+          throw new Error("Division by zero");
+        }
+        result /= right;
+      }
+    }
+
+    return result;
+  }
+
+  function parseFactor(): number {
+    const token = peek();
+
+    if (token.type === "MINUS") {
+      advance();
+      return -parseFactor();
+    }
+
+    if (token.type === "NUMBER") {
+      advance();
+      return token.value;
+    }
+
+    if (token.type === "LPAREN") {
+      advance();
+      const result = parseExpression();
+      if (peek().type !== "RPAREN") {
+        throw new Error("Missing closing parenthesis");
+      }
+      advance();
+      return result;
+    }
+
+    throw new Error("Unexpected token");
+  }
+
+  const result = parseExpression();
+
+  if (peek().type !== "EOF") {
+    throw new Error("Unexpected token");
+  }
+
+  return result;
+}
 
 export function calculateExpression(expression: string) {
-  const safeExpression = expression.replace(/[^0-9+\-*/().%\s]/g, "");
+  const normalized = expression.replace(/%/g, "/100");
 
-  if (!safeExpression.trim()) {
+  if (!normalized.trim()) {
     return "0";
   }
 
-  const normalized = safeExpression.replace(/%/g, "/100");
-  const result = Function(`"use strict"; return (${normalized});`)();
+  try {
+    const tokens = tokenizeMath(normalized);
+    const result = parseMath(tokens);
 
-  if (typeof result !== "number" || Number.isNaN(result) || !Number.isFinite(result)) {
+    if (!Number.isFinite(result)) {
+      throw new Error("Invalid calculation");
+    }
+
+    if (Number.isInteger(result)) {
+      return String(result);
+    }
+
+    return result
+      .toFixed(6)
+      .replace(/0+$/, "")
+      .replace(/\.$/, "");
+  } catch {
     throw new Error("Invalid calculation");
   }
-
-  return Number.isInteger(result) ? String(result) : result.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 export function buildFormattedWorldClockTime(timeZone: string, use24Hour: boolean, value: number | Date = Date.now()) {
@@ -153,7 +315,9 @@ function normalizeTerminalPath(currentPath: string, targetPath: string) {
     }
 
     if (segment === "..") {
-      normalized.pop();
+      if (normalized.length > 0) {
+        normalized.pop();
+      }
       return;
     }
 

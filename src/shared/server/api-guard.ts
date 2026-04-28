@@ -61,6 +61,25 @@ const AI_ACTIONS = new Set([
   "organize",
 ] as const);
 
+const ALLOWED_AGENT_ACTIONS = new Set([
+  "OPEN_TOUR",
+  "OPEN_CONTACT_FLOW",
+  "OPEN_NOTES_DRAFT",
+]);
+
+function isValidAgentAction(value: string): boolean {
+  if (ALLOWED_AGENT_ACTIONS.has(value)) {
+    return true;
+  }
+  if (value.startsWith("OPEN_APP:") && value.length > 9) {
+    return true;
+  }
+  if (value.startsWith("OPEN_APP_MISSING:") && value.length > 17) {
+    return true;
+  }
+  return false;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -218,15 +237,25 @@ export function validateAgentRequest(body: unknown): ValidatedAgentRequest | nul
     bootProgress: typeof body.runtime.bootProgress === "number" ? body.runtime.bootProgress : undefined,
   } : undefined;
 
+  const requestedAction = (() => {
+    if (typeof body.requestedAction === "string") {
+      const sliced = body.requestedAction.slice(0, 120);
+      return isValidAgentAction(sliced) ? sliced : null;
+    }
+    if (body.requestedAction === null) {
+      return null;
+    }
+    return undefined;
+  })();
+
+  if (requestedAction === null) {
+    return null;
+  }
+
   return {
     messages,
     runtime,
-    requestedAction:
-      typeof body.requestedAction === "string"
-        ? body.requestedAction.slice(0, 120)
-        : body.requestedAction === null
-          ? null
-          : undefined,
+    requestedAction,
   };
 }
 

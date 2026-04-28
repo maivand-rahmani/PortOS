@@ -99,6 +99,8 @@ function buildSystemPrompt(action: AiServiceActionId, fileName: string | null, m
 }
 
 function buildErrorMessage(error: unknown): string {
+  console.error("AI Service error:", error);
+
   if (error instanceof openRouterErrors.UnauthorizedResponseError) {
     return "OpenRouter authentication failed. Check OPENROUTER_API_KEY.";
   }
@@ -112,12 +114,10 @@ function buildErrorMessage(error: unknown): string {
     error instanceof openRouterErrors.InternalServerResponseError ||
     error instanceof openRouterErrors.OpenRouterError
   ) {
-    const errorBody = error.body?.trim();
-
-    return errorBody || error.message || "OpenRouter request failed.";
+    return "OpenRouter request failed.";
   }
 
-  return error instanceof Error ? error.message : "Unexpected AI service error.";
+  return "Unexpected AI service error.";
 }
 
 export async function POST(request: Request) {
@@ -173,7 +173,6 @@ export async function POST(request: Request) {
         status: 502,
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
-          "X-PortOS-Provider-Error": message,
         },
       });
     }

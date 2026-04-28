@@ -76,7 +76,9 @@ function buildFallbackResponse(userMessage: string, fallbackBrief: string) {
   return directReply;
 }
 
-function buildErrorMessage(error: unknown) {
+function buildErrorMessage(error: unknown): string {
+  console.error("AI Agent error:", error);
+
   if (error instanceof openRouterErrors.UnauthorizedResponseError) {
     return "OpenRouter authentication failed. Check `OPENROUTER_API_KEY`.";
   }
@@ -90,12 +92,10 @@ function buildErrorMessage(error: unknown) {
     error instanceof openRouterErrors.InternalServerResponseError ||
     error instanceof openRouterErrors.OpenRouterError
   ) {
-    const errorBody = error.body?.trim();
-
-    return errorBody || error.message || "OpenRouter request failed.";
+    return "OpenRouter request failed.";
   }
 
-  return error instanceof Error ? error.message : "Unexpected AI agent error.";
+  return "Unexpected AI agent error.";
 }
 
 function buildConversation(messages: AgentRequestMessageInput[], systemPrompt: string): Message[] {
@@ -180,14 +180,14 @@ export async function POST(request: Request) {
     } catch (providerError) {
       const encoder = new TextEncoder();
       const fallbackText = buildFallbackResponse(latestUserMessage, context.fallbackBrief);
-      const providerMessage = buildErrorMessage(providerError);
+
+      console.error("AI Agent provider error:", providerError);
 
       return new Response(encoder.encode(fallbackText), {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "no-store",
           "X-PortOS-Context": context.contextPreview.join(", "),
-          "X-PortOS-Provider-Error": providerMessage,
           "X-PortOS-Fallback": "local-context",
         },
       });
