@@ -228,7 +228,27 @@ Current in-progress runtime upgrade:
 
 ---
 
-## 10. Settings App Overhaul
+## 10. Production Readiness
+
+**Description:** Prepare the system for production release by addressing critical issues in error handling, data persistence, security, and performance.
+
+* [ ] Follow the [Publish Roadmap](./PUBLISH-ROADMAP.md) for detailed implementation steps
+* Current system score: **58/100** → Target: **~78/100**
+* Estimated effort: ~14 hours
+
+**Quick Reference:**
+
+| Phase | Priority | Issues | Effort |
+|-------|----------|--------|--------|
+| Phase 1 | CRITICAL | CR-1 to CR-6 (release blockers) | ~8h |
+| Phase 2 | HIGH | H-1 to H-13 (race conditions, silent failures) | ~4h |
+| Phase 3 | MEDIUM | 19 issues (security, UX, code quality) | ~3h |
+| Phase 4 | ARCHITECTURAL | God component, flat store (post-launch) | 8h+ |
+| Phase 5 | LOW | 9 items (polish) | ~2h |
+
+---
+
+## 11. Settings App Overhaul
 
 **Description:** Replace the stub Settings app with a fully functional, production-quality preferences panel with real behavior for every control.
 
