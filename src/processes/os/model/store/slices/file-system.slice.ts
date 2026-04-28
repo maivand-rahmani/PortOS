@@ -74,18 +74,31 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       return;
     }
 
-    const nodes = await idb.seedDefaultFileSystem();
-    const nextState = hydrateFileSystemModel(get(), nodes);
+    try {
+      const nodes = await idb.seedDefaultFileSystem();
+      const nextState = hydrateFileSystemModel(get(), nodes);
 
-    set({
-      fsNodes: nextState.fsNodes,
-      fsNodeMap: nextState.fsNodeMap,
-      fsChildMap: nextState.fsChildMap,
-      fsHydrated: nextState.fsHydrated,
-    });
+      set({
+        fsNodes: nextState.fsNodes,
+        fsNodeMap: nextState.fsNodeMap,
+        fsChildMap: nextState.fsChildMap,
+        fsHydrated: nextState.fsHydrated,
+      });
+    } catch {
+      const nextState = hydrateFileSystemModel(get(), []);
+      nextState.fsHydrated = true;
+
+      set({
+        fsNodes: nextState.fsNodes,
+        fsNodeMap: nextState.fsNodeMap,
+        fsChildMap: nextState.fsChildMap,
+        fsHydrated: true,
+      });
+    }
   },
 
   fsCreateFile: async (parentId, name, content) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const result = createFileModel(get(), { parentId, name, content });
 
     set({
@@ -94,15 +107,21 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       fsChildMap: result.state.fsChildMap,
     });
 
-    await idb.putNode(result.node);
+    try {
+      await idb.putNode(result.node);
 
-    if (content) {
-      await idb.putContent({
-        nodeId: result.node.id,
-        data: content,
-        encoding: "utf-8",
-        checksum: idb.computeChecksum(content),
-      });
+      if (content) {
+        await idb.putContent({
+          nodeId: result.node.id,
+          data: content,
+          encoding: "utf-8",
+          checksum: idb.computeChecksum(content),
+        });
+      }
+    } catch {
+      set(prev);
+      get().pushNotification({ title: "File system", body: "Failed to save file.", level: "warning", appId: "system" });
+      return null;
     }
 
     dispatchFileSystemChange({
@@ -116,6 +135,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsCreateDirectory: async (parentId, name) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const result = createDirectoryModel(get(), { parentId, name });
 
     set({
@@ -124,7 +144,13 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       fsChildMap: result.state.fsChildMap,
     });
 
-    await idb.putNode(result.node);
+    try {
+      await idb.putNode(result.node);
+    } catch {
+      set(prev);
+      get().pushNotification({ title: "File system", body: "Failed to create directory.", level: "warning", appId: "system" });
+      return null;
+    }
 
     dispatchFileSystemChange({
       type: "directory-created",
@@ -143,6 +169,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsWriteContent: async (nodeId, content) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const previousNode = get().fsNodeMap[nodeId];
     const size = new Blob([content]).size;
     const nextState = updateFileMetadataModel(get(), nodeId, { size });
@@ -153,18 +180,24 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       fsChildMap: nextState.fsChildMap,
     });
 
-    const updatedNode = nextState.fsNodeMap[nodeId];
+    try {
+      const updatedNode = nextState.fsNodeMap[nodeId];
 
-    if (updatedNode) {
-      await idb.putNode(updatedNode);
+      if (updatedNode) {
+        await idb.putNode(updatedNode);
+      }
+
+      await idb.putContent({
+        nodeId,
+        data: content,
+        encoding: "utf-8",
+        checksum: idb.computeChecksum(content),
+      });
+    } catch {
+      set(prev);
+      get().pushNotification({ title: "File system", body: "Failed to save file content.", level: "warning", appId: "system" });
+      return;
     }
-
-    await idb.putContent({
-      nodeId,
-      data: content,
-      encoding: "utf-8",
-      checksum: idb.computeChecksum(content),
-    });
 
     if (previousNode?.type === "file") {
       dispatchFileSystemChange({
@@ -177,6 +210,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsDeleteNode: async (nodeId) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap, fsActiveFileId: get().fsActiveFileId, fsClipboard: get().fsClipboard };
     const previousNode = get().fsNodeMap[nodeId];
     const previousPath = previousNode
       ? getNodePath(nodeId, get().fsNodeMap)
@@ -191,8 +225,14 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       fsClipboard: result.state.fsClipboard,
     });
 
-    await idb.deleteNodes(result.deletedIds);
-    await idb.deleteContents(result.deletedIds);
+    try {
+      await idb.deleteNodes(result.deletedIds);
+      await idb.deleteContents(result.deletedIds);
+    } catch {
+      set(prev);
+      get().pushNotification({ title: "File system", body: "Failed to delete node.", level: "warning", appId: "system" });
+      return;
+    }
 
     if (previousNode) {
       dispatchFileSystemChange({
@@ -205,6 +245,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsRenameNode: async (nodeId, newName) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const previousNode = get().fsNodeMap[nodeId];
     const previousPath = previousNode
       ? getNodePath(nodeId, get().fsNodeMap)
@@ -220,7 +261,13 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
     const updatedNode = nextState.fsNodeMap[nodeId];
 
     if (updatedNode) {
-      await idb.putNode(updatedNode);
+      try {
+        await idb.putNode(updatedNode);
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to rename node.", level: "warning", appId: "system" });
+        return;
+      }
 
       dispatchFileSystemChange({
         type: "node-renamed",
@@ -233,6 +280,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsMoveNode: async (nodeId, newParentId) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const previousNode = get().fsNodeMap[nodeId];
     const previousPath = previousNode
       ? getNodePath(nodeId, get().fsNodeMap)
@@ -248,7 +296,13 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
     const updatedNode = nextState.fsNodeMap[nodeId];
 
     if (updatedNode) {
-      await idb.putNode(updatedNode);
+      try {
+        await idb.putNode(updatedNode);
+      } catch {
+        set(prev);
+        get().pushNotification({ title: "File system", body: "Failed to move node.", level: "warning", appId: "system" });
+        return;
+      }
 
       dispatchFileSystemChange({
         type: "node-moved",
@@ -261,6 +315,7 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
   },
 
   fsCopyNode: async (nodeId, newParentId) => {
+    const prev = { fsNodes: get().fsNodes, fsNodeMap: get().fsNodeMap, fsChildMap: get().fsChildMap };
     const result = copyNodeModel(get(), nodeId, newParentId);
 
     if (!result.newNode) {
@@ -273,20 +328,25 @@ export const createFileSystemSlice: StateCreator<OSStore, [], [], FileSystemSlic
       fsChildMap: result.state.fsChildMap,
     });
 
-    await idb.putNode(result.newNode);
+    try {
+      await idb.putNode(result.newNode);
 
-    // Copy content if it is a file
-    if (result.newNode.type === "file") {
-      const sourceContent = await idb.getContent(nodeId);
+      if (result.newNode.type === "file") {
+        const sourceContent = await idb.getContent(nodeId);
 
-      if (sourceContent) {
-        await idb.putContent({
-          nodeId: result.newNode.id,
-          data: sourceContent.data,
-          encoding: sourceContent.encoding,
-          checksum: sourceContent.checksum,
-        });
+        if (sourceContent) {
+          await idb.putContent({
+            nodeId: result.newNode.id,
+            data: sourceContent.data,
+            encoding: sourceContent.encoding,
+            checksum: sourceContent.checksum,
+          });
+        }
       }
+    } catch {
+      set(prev);
+      get().pushNotification({ title: "File system", body: "Failed to copy node.", level: "warning", appId: "system" });
+      return null;
     }
 
     return result.newNode;

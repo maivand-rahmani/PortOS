@@ -1,6 +1,12 @@
 import { OpenRouter } from "@openrouter/sdk";
 import * as openRouterErrors from "@openrouter/sdk/models/errors";
 
+import {
+  validateAiServiceRequest,
+  detectPromptInjection,
+  createPlainTextError,
+} from "@/shared/server/api-guard";
+
 export const runtime = "nodejs";
 
 type AiServiceActionId =
@@ -116,15 +122,18 @@ function buildErrorMessage(error: unknown): string {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as AiServiceRouteRequest;
+    const rawBody = await request.json();
+    const validated = validateAiServiceRequest(rawBody);
 
-    if (!body.action || !body.prompt) {
-      return new Response("Missing action or prompt.", { status: 400 });
+    if (!validated) {
+      return createPlainTextError("Invalid AI service request format.", 400);
     }
 
-    if (!body.content?.trim()) {
-      return new Response("Missing content to process.", { status: 400 });
+    if (detectPromptInjection(validated.prompt) || detectPromptInjection(validated.content)) {
+      return createPlainTextError("Message contains disallowed patterns.", 400);
     }
+
+    const body = validated as AiServiceRouteRequest;
 
     const apiKey = process.env.OPENROUTER_API_KEY;
 

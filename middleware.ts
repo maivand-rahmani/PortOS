@@ -13,7 +13,7 @@ const contactBucket = new Map<string, RateLimitBucket>();
 function getClientKey(request: NextRequest) {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 
-  return forwarded || request.headers.get("x-real-ip") || request.ip || "anonymous";
+  return forwarded || request.headers.get("x-real-ip") || "anonymous";
 }
 
 function isSameOrigin(request: NextRequest) {

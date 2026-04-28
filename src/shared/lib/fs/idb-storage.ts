@@ -43,45 +43,71 @@ type PortosFSDB = DBSchema & {
   };
 };
 
+// ── In-Memory Fallback ──────────────────────────────────
+
+let isFallbackMode = false;
+
+const fallbackNodes = new Map<string, FileSystemNode>();
+const fallbackContents = new Map<string, FileContent>();
+const fallbackMeta = new Map<string, unknown>();
+
+export function isUsingFallback(): boolean {
+  return isFallbackMode;
+}
+
+function getFallbackNodes(): FileSystemNode[] {
+  return [...fallbackNodes.values()];
+}
+
 // ── Singleton Connection ────────────────────────────────
 
 let dbInstance: IDBPDatabase<PortosFSDB> | null = null;
 
-async function getDB(): Promise<IDBPDatabase<PortosFSDB>> {
+async function getDB(): Promise<IDBPDatabase<PortosFSDB> | null> {
+  if (isFallbackMode) {
+    return null;
+  }
+
   if (dbInstance) {
     return dbInstance;
   }
 
-  dbInstance = await openDB<PortosFSDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Nodes store
-      if (!db.objectStoreNames.contains(STORE_NODES)) {
-        const nodeStore = db.createObjectStore(STORE_NODES, {
-          keyPath: "id",
-        });
+  try {
+    dbInstance = await openDB<PortosFSDB>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        // Nodes store
+        if (!db.objectStoreNames.contains(STORE_NODES)) {
+          const nodeStore = db.createObjectStore(STORE_NODES, {
+            keyPath: "id",
+          });
 
-        nodeStore.createIndex("by-parent", "parentId");
-        nodeStore.createIndex("by-type", "type");
-        nodeStore.createIndex("by-updated", "updatedAt");
-      }
+          nodeStore.createIndex("by-parent", "parentId");
+          nodeStore.createIndex("by-type", "type");
+          nodeStore.createIndex("by-updated", "updatedAt");
+        }
 
-      // Contents store
-      if (!db.objectStoreNames.contains(STORE_CONTENTS)) {
-        db.createObjectStore(STORE_CONTENTS, {
-          keyPath: "nodeId",
-        });
-      }
+        // Contents store
+        if (!db.objectStoreNames.contains(STORE_CONTENTS)) {
+          db.createObjectStore(STORE_CONTENTS, {
+            keyPath: "nodeId",
+          });
+        }
 
-      // Metadata store
-      if (!db.objectStoreNames.contains(STORE_METADATA)) {
-        db.createObjectStore(STORE_METADATA, {
-          keyPath: "key",
-        });
-      }
-    },
-  });
+        // Metadata store
+        if (!db.objectStoreNames.contains(STORE_METADATA)) {
+          db.createObjectStore(STORE_METADATA, {
+            keyPath: "key",
+          });
+        }
+      },
+    });
 
-  return dbInstance;
+    return dbInstance;
+  } catch (error) {
+    console.warn("IndexedDB unavailable, using in-memory fallback:", error);
+    isFallbackMode = true;
+    return null;
+  }
 }
 
 // ── Checksum ────────────────────────────────────────────
@@ -104,6 +130,10 @@ export function computeChecksum(data: string): string {
 export async function getAllNodes(): Promise<FileSystemNode[]> {
   const db = await getDB();
 
+  if (!db) {
+    return getFallbackNodes();
+  }
+
   return db.getAll(STORE_NODES);
 }
 
@@ -111,6 +141,10 @@ export async function getNode(
   id: string,
 ): Promise<FileSystemNode | undefined> {
   const db = await getDB();
+
+  if (!db) {
+    return fallbackNodes.get(id);
+  }
 
   return db.get(STORE_NODES, id);
 }
@@ -120,11 +154,20 @@ export async function getNodesByParent(
 ): Promise<FileSystemNode[]> {
   const db = await getDB();
 
+  if (!db) {
+    return getFallbackNodes().filter((node) => node.parentId === parentId);
+  }
+
   return db.getAllFromIndex(STORE_NODES, "by-parent", parentId);
 }
 
 export async function putNode(node: FileSystemNode): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    fallbackNodes.set(node.id, node);
+    return;
+  }
 
   await db.put(STORE_NODES, node);
 }
@@ -134,6 +177,17 @@ export async function putNodeAndContent(
   content?: FileContent,
 ): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    fallbackNodes.set(node.id, node);
+
+    if (content) {
+      fallbackContents.set(content.nodeId, content);
+    }
+
+    return;
+  }
+
   const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
 
   await tx.objectStore(STORE_NODES).put(node);
@@ -147,6 +201,15 @@ export async function putNodeAndContent(
 
 export async function putNodes(nodes: FileSystemNode[]): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    for (const node of nodes) {
+      fallbackNodes.set(node.id, node);
+    }
+
+    return;
+  }
+
   const tx = db.transaction(STORE_NODES, "readwrite");
 
   for (const node of nodes) {
@@ -159,11 +222,25 @@ export async function putNodes(nodes: FileSystemNode[]): Promise<void> {
 export async function deleteNode(id: string): Promise<void> {
   const db = await getDB();
 
+  if (!db) {
+    fallbackNodes.delete(id);
+    return;
+  }
+
   await db.delete(STORE_NODES, id);
 }
 
 export async function deleteNodes(ids: string[]): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    for (const id of ids) {
+      fallbackNodes.delete(id);
+    }
+
+    return;
+  }
+
   const tx = db.transaction(STORE_NODES, "readwrite");
 
   for (const id of ids) {
@@ -180,17 +257,35 @@ export async function getContent(
 ): Promise<FileContent | undefined> {
   const db = await getDB();
 
+  if (!db) {
+    return fallbackContents.get(nodeId);
+  }
+
   return db.get(STORE_CONTENTS, nodeId);
 }
 
 export async function putContent(content: FileContent): Promise<void> {
   const db = await getDB();
 
+  if (!db) {
+    fallbackContents.set(content.nodeId, content);
+    return;
+  }
+
   await db.put(STORE_CONTENTS, content);
 }
 
 export async function putContents(contents: FileContent[]): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    for (const content of contents) {
+      fallbackContents.set(content.nodeId, content);
+    }
+
+    return;
+  }
+
   const tx = db.transaction(STORE_CONTENTS, "readwrite");
 
   for (const content of contents) {
@@ -206,6 +301,25 @@ export async function putNodeContentAndMeta(input: {
   metadata?: Array<{ key: string; value: unknown }>;
 }): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    if (input.node) {
+      fallbackNodes.set(input.node.id, input.node);
+    }
+
+    if (input.content) {
+      fallbackContents.set(input.content.nodeId, input.content);
+    }
+
+    if (input.metadata) {
+      for (const entry of input.metadata) {
+        fallbackMeta.set(entry.key, entry.value);
+      }
+    }
+
+    return;
+  }
+
   const tx = db.transaction(
     [STORE_NODES, STORE_CONTENTS, STORE_METADATA],
     "readwrite",
@@ -337,9 +451,35 @@ async function ensureDirectoryTreeInTx(
 
 export async function writeJsonFile(path: AbsolutePath, value: unknown): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
   const content = JSON.stringify(value, null, 2);
   const { normalized, parentPath, name } = splitPath(path);
+
+  if (!db) {
+    const allNodes = getFallbackNodes();
+    const nodeMap = buildNodeMap(allNodes);
+    const childMap = buildChildMap(allNodes);
+    const existing = resolveNodeByPath(normalized, allNodes, nodeMap, childMap);
+
+    if (existing && existing.type === "file") {
+      const updatedNode: FileNode = {
+        ...existing,
+        updatedAt: new Date().toISOString(),
+        size: new Blob([content]).size,
+        version: existing.version + 1,
+      };
+      fallbackNodes.set(existing.id, updatedNode);
+      fallbackContents.set(existing.id, {
+        nodeId: existing.id,
+        data: content,
+        encoding: "utf-8",
+        checksum: computeChecksum(content),
+      });
+    }
+
+    return;
+  }
+
+  const tx = db.transaction([STORE_NODES, STORE_CONTENTS], "readwrite");
   const parent = await ensureDirectoryTreeInTx(tx, parentPath);
 
   if (!parent) {
@@ -400,11 +540,25 @@ export async function writeJsonFile(path: AbsolutePath, value: unknown): Promise
 export async function deleteContent(nodeId: string): Promise<void> {
   const db = await getDB();
 
+  if (!db) {
+    fallbackContents.delete(nodeId);
+    return;
+  }
+
   await db.delete(STORE_CONTENTS, nodeId);
 }
 
 export async function deleteContents(nodeIds: string[]): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    for (const nodeId of nodeIds) {
+      fallbackContents.delete(nodeId);
+    }
+
+    return;
+  }
+
   const tx = db.transaction(STORE_CONTENTS, "readwrite");
 
   for (const nodeId of nodeIds) {
@@ -417,6 +571,10 @@ export async function deleteContents(nodeIds: string[]): Promise<void> {
 export async function getAllContents(): Promise<FileContent[]> {
   const db = await getDB();
 
+  if (!db) {
+    return [...fallbackContents.values()];
+  }
+
   return db.getAll(STORE_CONTENTS);
 }
 
@@ -424,6 +582,11 @@ export async function getAllContents(): Promise<FileContent[]> {
 
 export async function getMeta(key: string): Promise<unknown | undefined> {
   const db = await getDB();
+
+  if (!db) {
+    return fallbackMeta.get(key);
+  }
+
   const entry = await db.get(STORE_METADATA, key);
 
   return entry?.value;
@@ -432,11 +595,20 @@ export async function getMeta(key: string): Promise<unknown | undefined> {
 export async function getAllMeta(): Promise<Array<{ key: string; value: unknown }>> {
   const db = await getDB();
 
+  if (!db) {
+    return [...fallbackMeta.entries()].map(([key, value]) => ({ key, value }));
+  }
+
   return db.getAll(STORE_METADATA);
 }
 
 export async function setMeta(key: string, value: unknown): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    fallbackMeta.set(key, value);
+    return;
+  }
 
   await db.put(STORE_METADATA, { key, value });
 }
@@ -582,6 +754,14 @@ export async function exportAll(): Promise<{
 
 export async function clearAll(): Promise<void> {
   const db = await getDB();
+
+  if (!db) {
+    fallbackNodes.clear();
+    fallbackContents.clear();
+    fallbackMeta.clear();
+    return;
+  }
+
   const tx = db.transaction(
     [STORE_NODES, STORE_CONTENTS, STORE_METADATA],
     "readwrite",

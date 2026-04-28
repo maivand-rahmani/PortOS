@@ -70,11 +70,11 @@ export function WindowSurface({
         isActive && !isFullscreen ? "ring-1 ring-white/40" : "opacity-[0.985] saturate-[0.92]",
       )}
       style={{
-        left: window.position.x,
-        top: window.position.y,
         width: window.size.width,
         height: window.size.height,
         zIndex: window.zIndex,
+        transform: `translate3d(${window.position.x}px, ${window.position.y}px, 0)`,
+        willChange: "transform",
       }}
       onMouseDown={onFocus}
       onPointerDown={(event) => {

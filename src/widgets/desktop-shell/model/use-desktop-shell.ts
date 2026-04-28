@@ -48,6 +48,8 @@ import type {
 
 export function useDesktopShell(): UseDesktopShellResult {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragRafRef = useRef<number | null>(null);
+  const pendingPointerEventRef = useRef<PointerEvent | null>(null);
   const [desktopBounds, setDesktopBounds] = useState<DesktopBounds | null>(null);
   const [selectedDesktopAppId, setSelectedDesktopAppId] = useState<string | null>(null);
   const [customDesktopIconPositions, setDesktopIconPositions] = useState<DesktopIconMap>({});
@@ -445,7 +447,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       return undefined;
     }
 
-    const handlePointerMove = (event: PointerEvent) => {
+    const processPointerEvent = (event: PointerEvent) => {
       const nextPointer = getContainerPointer({
         x: event.clientX,
         y: event.clientY,
@@ -496,6 +498,22 @@ export function useDesktopShell(): UseDesktopShellResult {
       updateWindowResize(nextPointer, desktopBounds);
     };
 
+    const handlePointerMove = (event: PointerEvent) => {
+      pendingPointerEventRef.current = event;
+
+      if (dragRafRef.current === null) {
+        dragRafRef.current = requestAnimationFrame(() => {
+          dragRafRef.current = null;
+          const latest = pendingPointerEventRef.current;
+
+          if (latest) {
+            pendingPointerEventRef.current = null;
+            processPointerEvent(latest);
+          }
+        });
+      }
+    };
+
     const handlePointerUp = () => {
       // Apply snap if a zone was active when drag ended
       const currentState = useOSStore.getState();
@@ -523,6 +541,11 @@ export function useDesktopShell(): UseDesktopShellResult {
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+
+      if (dragRafRef.current !== null) {
+        cancelAnimationFrame(dragRafRef.current);
+        dragRafRef.current = null;
+      }
     };
   }, [
     desktopBounds,

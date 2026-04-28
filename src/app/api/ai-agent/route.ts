@@ -3,29 +3,14 @@ import type { Message } from "@openrouter/sdk/models";
 import * as openRouterErrors from "@openrouter/sdk/models/errors";
 
 import { buildAiAgentContext } from "@/shared/server/ai-agent-context";
+import {
+  validateAgentRequest,
+  detectPromptInjection,
+  createPlainTextError,
+} from "@/shared/server/api-guard";
+import type { AgentRequestMessageInput } from "@/shared/server/api-guard";
 
 export const runtime = "nodejs";
-
-type AgentRequestMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
-
-type AgentRuntimeContext = {
-  apps?: Array<{ id: string; name: string; description?: string }>;
-  processes?: Array<{ id: string; appId: string; name: string }>;
-  windows?: Array<{ id: string; appId: string; title: string; isMinimized: boolean }>;
-  activeWindowId?: string | null;
-  bootPhase?: string;
-  bootProgress?: number;
-};
-
-type AgentRouteRequest = {
-  messages?: AgentRequestMessage[];
-  runtime?: AgentRuntimeContext;
-  requestedAction?: string | null;
-};
 
 const MODEL_ID = "openrouter/free";
 
@@ -113,7 +98,7 @@ function buildErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected AI agent error.";
 }
 
-function buildConversation(messages: AgentRequestMessage[], systemPrompt: string): Message[] {
+function buildConversation(messages: AgentRequestMessageInput[], systemPrompt: string): Message[] {
   return [
     {
       role: "system",
@@ -135,12 +120,22 @@ function buildConversation(messages: AgentRequestMessage[], systemPrompt: string
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as AgentRouteRequest;
-    const messages = body.messages?.filter((message) => message.content.trim()) ?? [];
+    const rawBody = await request.json();
+    const validated = validateAgentRequest(rawBody);
+
+    if (!validated) {
+      return createPlainTextError("Invalid agent request format.", 400);
+    }
+
+    const messages = validated.messages.filter((message) => message.content.trim());
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content;
 
     if (!latestUserMessage) {
-      return new Response("Missing user message.", { status: 400 });
+      return createPlainTextError("Missing user message.", 400);
+    }
+
+    if (detectPromptInjection(latestUserMessage)) {
+      return createPlainTextError("Message contains disallowed patterns.", 400);
     }
 
     const shortReply = buildShortHumanReply(latestUserMessage);
@@ -163,8 +158,8 @@ export async function POST(request: Request) {
 
     const context = await buildAiAgentContext({
       userMessage: latestUserMessage,
-      runtime: body.runtime,
-      requestedAction: body.requestedAction,
+      runtime: validated.runtime,
+      requestedAction: validated.requestedAction,
     });
 
     const client = new OpenRouter({ apiKey });

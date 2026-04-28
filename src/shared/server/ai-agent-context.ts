@@ -228,12 +228,9 @@ function buildProfileSummary(profile: ProfileInfo, catalog: ProjectCatalog) {
 
   return [
     `Name: ${personal?.name ?? "Maivand Rahmani"}`,
-    `Age: ${personal?.age ?? "Unknown"}`,
     `Role: ${personal?.role ?? "Frontend & AI Product Engineer"}`,
     `Level: ${personal?.level ?? "Unknown"}`,
-    `Location: ${personal?.location ?? "Unknown"}`,
     `Focus: ${personal?.focus ?? "Architecture-first product engineering"}`,
-    `Education: ${profile.education?.institution ?? "Unknown"} | ${profile.education?.program ?? "Unknown"} | year ${profile.education?.year ?? "Unknown"}`,
     `GitHub: ${profile.links?.github ?? "Unknown"}`,
     `Primary mindset: ${(profile.mindset?.priorities ?? []).join(", ") || "Architecture first, clarity, scalability"}`,
     `Decision style: ${profile.decision_making?.approach ?? "Analytical"}`,
@@ -254,7 +251,7 @@ function buildIdentityDirective(profile: ProfileInfo) {
   const currentGoals = (profile.goals?.["3_months"] ?? []).join(" | ");
 
   return [
-    `Identity: You are ${personal?.name ?? "Maivand Rahmani"}, a ${personal?.age ?? "young"}-year-old ${personal?.role ?? "product engineer"} based in ${personal?.location ?? "Moscow"}.`,
+    `Identity: You are ${personal?.name ?? "Maivand Rahmani"}, a ${personal?.role ?? "product engineer"}.`,
     `Career stage: ${personal?.level ?? "junior+"}. Speak from that real level: strong in thinking and building, still learning some areas, never pretending to be infinitely experienced.`,
     `Core focus: ${personal?.focus ?? "building scalable web products with strong architecture and AI integration"}.`,
     `Communication tone: ${communication?.tone ?? "calm and direct"}. Preferred response length: ${communication?.length ?? "medium"}. Style traits: ${(communication?.style ?? []).join(", ")}.`,

@@ -329,12 +329,12 @@
 ## Completion Tracking
 
 ### Phase 1 — Critical (Release Blockers)
-- [ ] CR-1: Error boundaries (2h)
-- [ ] CR-2: IndexedDB fallback (3h)
-- [ ] CR-3: API authentication (2h)
-- [ ] CR-4: Rate limiting (1h)
-- [ ] CR-5: Drag/resize throttling (1h)
-- [ ] CR-6: Prompt injection filter (1h)
+- [x] CR-1: Error boundaries (2h)
+- [x] CR-2: IndexedDB fallback (3h)
+- [x] CR-3: API authentication (2h)
+- [x] CR-4: Rate limiting (1h)
+- [x] CR-5: Drag/resize throttling (1h)
+- [x] CR-6: Prompt injection filter (1h)
 
 ### Phase 2 — High Priority
 - [ ] H-1 to H-5: Race conditions (2h)
@@ -371,7 +371,7 @@
 
 The system is production-ready when:
 
-1. [ ] All Phase 1 items complete (CR-1 through CR-6)
+1. [x] All Phase 1 items complete (CR-1 through CR-6)
 2. [ ] All Phase 2 items complete (H-1 through H-13)
 3. [ ] System score ≥ 75/100
 4. [ ] Zero console errors on boot
@@ -396,4 +396,4 @@ After reaching production readiness (78/100), the following Phase 4 architectura
 
 ---
 
-*Last updated: Phase 1 implementation*
+*Last updated: Phase 1 complete — all 6 critical items implemented*

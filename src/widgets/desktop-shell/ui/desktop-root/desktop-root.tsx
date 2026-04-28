@@ -39,6 +39,7 @@ import { DockMenu } from "../dock-menu";
 import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { SplitViewDivider } from "../split-view-divider/split-view-divider";
 import { SplitViewPicker } from "../split-view-picker/split-view-picker";
+import { WindowErrorBoundary } from "@/shared/ui/window-error-boundary";
 import { WindowSurface } from "../window-surface";
 
 export function DesktopShell() {
@@ -594,7 +595,13 @@ export function DesktopShell() {
                         }
                       >
                         {AppComponent ? (
-                          <AppComponent processId={window.processId} windowId={window.id} />
+                          <WindowErrorBoundary
+                            appName={app.name}
+                            windowTitle={window.title}
+                            onClose={() => closeWindow(window.id)}
+                          >
+                            <AppComponent processId={window.processId} windowId={window.id} />
+                          </WindowErrorBoundary>
                         ) : (
                           <div className="flex h-full items-center justify-center text-sm text-muted">
                             Loading {app.name}...

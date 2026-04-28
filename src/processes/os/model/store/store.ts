@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { devtools } from 'zustand/middleware'
 
 import type { OSStore } from "./store.types";
 import { createBootSlice } from "./slices/boot.slice";
@@ -17,7 +18,7 @@ import { createAiServiceSlice } from "./slices/ai-service.slice";
 
 export type { OSBootPhase, OSRuntimeSnapshot, OSStore } from "./store.types";
 
-export const useOSStore = create<OSStore>()((set, get, api) => ({
+export const useOSStore = create<OSStore>()(devtools((set, get, api) => ({
   ...createBootSlice(set, get, api),
   ...createNotificationSlice(set, get, api),
   ...createShortcutSlice(set, get, api),
@@ -29,4 +30,4 @@ export const useOSStore = create<OSStore>()((set, get, api) => ({
   ...createWindowSlice(set, get, api),
   ...createAppSlice(set, get, api),
   ...createAiServiceSlice(set, get, api),
-}));
+})));
