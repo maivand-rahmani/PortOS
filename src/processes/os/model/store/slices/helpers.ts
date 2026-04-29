@@ -74,7 +74,7 @@ export function collapseSplitWorkspaceForWindow(input: {
   bounds: Pick<DesktopBounds, "width" | "height">;
 }) {
   const workspace = getWorkspaceById(input.state.workspaces, input.state.currentWorkspaceId);
-  const targetWindow = input.state.windows.find((window) => window.id === input.windowId);
+  const targetWindow = input.state.windowRecord[input.windowId];
 
   if (!workspace || !targetWindow || !workspace.splitView) {
     return null;
@@ -96,7 +96,7 @@ export function collapseSplitWorkspaceForWindow(input: {
     workspaceId: workspace.id,
     splitView: null,
   });
-  const remainingWindow = input.state.windows.find((window) => window.id === remainingWindowId);
+  const remainingWindow = input.state.windowRecord[remainingWindowId];
 
   if (!remainingWindow) {
     return {

@@ -18,6 +18,7 @@ import {
   updateDraggedWindowModel,
   updateResizedWindowModel,
 } from "../../window-manager";
+import { buildWindowRecord } from "../../window-manager/window-manager.helpers";
 import {
   detectSnapZone,
   getSnapFrame,
@@ -26,12 +27,13 @@ import {
   removeWorkspaceModel,
   createFullscreenWorkspaceModel,
 } from "../../workspace-manager";
-import { stopProcessModel } from "../../process-manager";
+import { stopProcessModel, buildProcessRecord } from "../../process-manager";
 import { collapseSplitWorkspaceForWindow, DEFAULT_LAUNCH_BOUNDS } from "./helpers";
 
 export type WindowSlice = Pick<
   OSStore,
   | "windows"
+  | "windowRecord"
   | "activeWindowId"
   | "nextZIndex"
   | "dragState"
@@ -84,36 +86,23 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
 
   focusWindow: (windowId) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) {
       return;
     }
 
-    const nextWindowState = focusWindowModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      windowId,
-    );
+    const nextWindowState = focusWindowModel(state, windowId);
 
     set({
-      windows: nextWindowState.windows,
+      ...nextWindowState,
       currentWorkspaceId: targetWindow.workspaceId,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
     });
   },
 
   minimizeWindow: (windowId) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) {
       return;
@@ -132,6 +121,7 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       if (collapsedSplit) {
         set({
           windows: collapsedSplit.windows,
+          windowRecord: buildWindowRecord(collapsedSplit.windows),
           workspaces: collapsedSplit.workspaces,
           splitResizeState: collapsedSplit.splitResizeState,
           activeWindowId: collapsedSplit.activeWindowId,
@@ -145,82 +135,42 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
     }
 
     const refreshedState = get();
-    const nextWindowState = minimizeWindowModel(
-      {
-        windows: refreshedState.windows,
-        activeWindowId: refreshedState.activeWindowId,
-        nextZIndex: refreshedState.nextZIndex,
-        dragState: refreshedState.dragState,
-        resizeState: refreshedState.resizeState,
-      },
-      windowId,
-    );
+    const nextWindowState = minimizeWindowModel(refreshedState, windowId);
 
     set({
-      windows: nextWindowState.windows,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   restoreWindow: (windowId) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) {
       return;
     }
 
-    const nextWindowState = restoreWindowModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      windowId,
-    );
-
-    const restoredWindow = nextWindowState.windows.find((w) => w.id === windowId);
+    const nextWindowState = restoreWindowModel(state, windowId);
+    const restoredWindow = nextWindowState.windowRecord[windowId];
 
     set({
-      windows: nextWindowState.windows,
+      ...nextWindowState,
       currentWorkspaceId: restoredWindow?.workspaceId ?? targetWindow.workspaceId,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
     });
   },
 
   toggleWindowMaximize: (windowId, bounds) => {
     const state = get();
-    const nextWindowState = toggleWindowMaximizeModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { windowId, bounds },
-    );
+    const nextWindowState = toggleWindowMaximizeModel(state, { windowId, bounds });
 
     set({
-      windows: nextWindowState.windows,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   toggleWindowFullscreen: (windowId, bounds) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) {
       return;
@@ -233,6 +183,7 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
         const nextWindowState = exitWindowFullscreenModel(
           {
             windows: collapsedSplit.windows,
+            windowRecord: buildWindowRecord(collapsedSplit.windows),
             activeWindowId: collapsedSplit.activeWindowId,
             nextZIndex: state.nextZIndex,
             dragState: state.dragState,
@@ -247,10 +198,11 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
             },
           },
         );
-        const restoredWindow = nextWindowState.windows.find((w) => w.id === windowId);
+        const restoredWindow = nextWindowState.windowRecord[windowId];
 
         set({
           windows: nextWindowState.windows,
+          windowRecord: nextWindowState.windowRecord,
           currentWorkspaceId:
             restoredWindow?.workspaceId ?? collapsedSplit.activeWindowId ?? state.currentWorkspaceId,
           workspaces: collapsedSplit.workspaces,
@@ -264,28 +216,20 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
         return;
       }
 
-      const nextWindowState = exitWindowFullscreenModel(
-        {
-          windows: state.windows,
-          activeWindowId: state.activeWindowId,
-          nextZIndex: state.nextZIndex,
-          dragState: state.dragState,
-          resizeState: state.resizeState,
+      const nextWindowState = exitWindowFullscreenModel(state, {
+        windowId,
+        bounds: {
+          ...DEFAULT_LAUNCH_BOUNDS,
+          width: bounds.width,
+          height: bounds.height,
         },
-        {
-          windowId,
-          bounds: {
-            ...DEFAULT_LAUNCH_BOUNDS,
-            width: bounds.width,
-            height: bounds.height,
-          },
-        },
-      );
+      });
       const nextWorkspaceState = removeWorkspaceModel(state, targetWindow.workspaceId);
-      const restoredWindow = nextWindowState.windows.find((w) => w.id === windowId);
+      const restoredWindow = nextWindowState.windowRecord[windowId];
 
       set({
         windows: nextWindowState.windows,
+        windowRecord: nextWindowState.windowRecord,
         currentWorkspaceId:
           restoredWindow?.workspaceId ?? nextWorkspaceState.currentWorkspaceId,
         workspaces: nextWorkspaceState.workspaces,
@@ -302,24 +246,16 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       ownerWindowId: windowId,
       label: targetWindow.title,
     });
-    const nextWindowState = enterWindowFullscreenModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      {
-        windowId,
-        bounds,
-        restoreWorkspaceId: targetWindow.workspaceId,
-        fullscreenWorkspaceId: fullscreenWorkspace.workspace.id,
-      },
-    );
+    const nextWindowState = enterWindowFullscreenModel(state, {
+      windowId,
+      bounds,
+      restoreWorkspaceId: targetWindow.workspaceId,
+      fullscreenWorkspaceId: fullscreenWorkspace.workspace.id,
+    });
 
     set({
       windows: nextWindowState.windows,
+      windowRecord: nextWindowState.windowRecord,
       currentWorkspaceId: fullscreenWorkspace.state.currentWorkspaceId,
       workspaces: fullscreenWorkspace.state.workspaces,
       activeWindowId: nextWindowState.activeWindowId,
@@ -331,45 +267,21 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
 
   beginWindowDrag: (windowId, pointer) => {
     const state = get();
-    const nextWindowState = beginWindowDragModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { windowId, pointer },
-    );
+    const nextWindowState = beginWindowDragModel(state, { windowId, pointer });
 
     set({
-      windows: nextWindowState.windows,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   updateWindowDrag: (pointer, bounds) => {
     const state = get();
-    const nextWindowState = updateDraggedWindowModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { pointer, bounds },
-    );
+    const nextWindowState = updateDraggedWindowModel(state, { pointer, bounds });
 
     const snapZone = state.dragState ? detectSnapZone(pointer, bounds) : null;
 
     set({
-      windows: nextWindowState.windows,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
       windowSnapZone: snapZone,
     });
   },
@@ -378,17 +290,10 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
     const state = get();
     const { dragState, windowSnapZone } = state;
 
-    const nextWindowState = endWindowDragModel({
-      windows: state.windows,
-      activeWindowId: state.activeWindowId,
-      nextZIndex: state.nextZIndex,
-      dragState: state.dragState,
-      resizeState: state.resizeState,
-    });
+    const nextWindowState = endWindowDragModel(state);
 
     set({
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
       windowSnapZone: null,
     });
 
@@ -401,111 +306,71 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
 
   snapWindowToZone: (windowId, zone, bounds) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) return;
 
     const frame = getSnapFrame(zone, bounds);
+    const nextWindows = state.windows.map((w) =>
+      w.id === windowId
+        ? {
+            ...w,
+            position: frame.position,
+            size: frame.size,
+            isMaximized: zone === "top",
+            restoredFrame:
+              zone === "top" && !w.restoredFrame
+                ? { position: w.position, size: w.size }
+                : w.restoredFrame,
+          }
+        : w,
+    );
 
     set({
-      windows: state.windows.map((w) =>
-        w.id === windowId
-          ? {
-              ...w,
-              position: frame.position,
-              size: frame.size,
-              isMaximized: zone === "top",
-              restoredFrame:
-                zone === "top" && !w.restoredFrame
-                  ? { position: w.position, size: w.size }
-                  : w.restoredFrame,
-            }
-          : w,
-      ),
+      windows: nextWindows,
+      windowRecord: buildWindowRecord(nextWindows),
     });
   },
 
   beginWindowResize: (windowId, direction, pointer) => {
     const state = get();
-    const nextWindowState = beginWindowResizeModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { windowId, direction, pointer },
-    );
+    const nextWindowState = beginWindowResizeModel(state, { windowId, direction, pointer });
 
     set({
-      windows: nextWindowState.windows,
-      activeWindowId: nextWindowState.activeWindowId,
-      nextZIndex: nextWindowState.nextZIndex,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   updateWindowResize: (pointer, bounds) => {
     const state = get();
-    const nextWindowState = updateResizedWindowModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { pointer, bounds },
-    );
+    const nextWindowState = updateResizedWindowModel(state, { pointer, bounds });
 
     set({
-      windows: nextWindowState.windows,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   endWindowResize: () => {
     const state = get();
-    const nextWindowState = endWindowResizeModel({
-      windows: state.windows,
-      activeWindowId: state.activeWindowId,
-      nextZIndex: state.nextZIndex,
-      dragState: state.dragState,
-      resizeState: state.resizeState,
-    });
+    const nextWindowState = endWindowResizeModel(state);
 
     set({
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   resizeWindowsToBounds: (bounds) => {
     const state = get();
-    const nextWindowState = resizeWindowsToBoundsModel(
-      {
-        windows: state.windows,
-        activeWindowId: state.activeWindowId,
-        nextZIndex: state.nextZIndex,
-        dragState: state.dragState,
-        resizeState: state.resizeState,
-      },
-      { bounds, workspaces: state.workspaces },
-    );
+    const nextWindowState = resizeWindowsToBoundsModel(state, { bounds, workspaces: state.workspaces });
 
     set({
-      windows: nextWindowState.windows,
-      dragState: nextWindowState.dragState,
-      resizeState: nextWindowState.resizeState,
+      ...nextWindowState,
     });
   },
 
   closeWindow: (windowId) => {
     const state = get();
-    const targetWindow = state.windows.find((w) => w.id === windowId);
+    const targetWindow = state.windowRecord[windowId];
 
     if (!targetWindow) {
       return;
@@ -525,25 +390,17 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       ? {
           ...state,
           windows: collapsedSplit.windows,
+          windowRecord: buildWindowRecord(collapsedSplit.windows),
           workspaces: collapsedSplit.workspaces,
           splitResizeState: collapsedSplit.splitResizeState,
           activeWindowId: collapsedSplit.activeWindowId,
         }
       : state;
-    const nextWindowState = closeWindowModel(
-      {
-        windows: baseState.windows,
-        activeWindowId: baseState.activeWindowId,
-        nextZIndex: baseState.nextZIndex,
-        dragState: baseState.dragState,
-        resizeState: baseState.resizeState,
-      },
-      windowId,
-    );
     const nextProcessState = stopProcessModel(
-      { processes: baseState.processes },
+      { processes: baseState.processes, processRecord: baseState.processRecord },
       targetWindow.processId,
     );
+    const nextWindowState = closeWindowModel(baseState, windowId);
     const isSingleFullscreen = targetWindow.isFullscreen && !collapsedSplit;
     const nextWorkspaceState = isSingleFullscreen
       ? removeWorkspaceModel(baseState, targetWindow.workspaceId)
@@ -558,6 +415,7 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
     nextDirtyWindows.delete(windowId);
     set({
       windows: nextWindowState.state.windows,
+      windowRecord: nextWindowState.state.windowRecord,
       currentWorkspaceId: fallbackWorkspaceId,
       workspaces: nextWorkspaceState?.workspaces ?? baseState.workspaces,
       splitResizeState: nextWorkspaceState?.splitResizeState ?? baseState.splitResizeState,
@@ -566,6 +424,7 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       dragState: nextWindowState.state.dragState,
       resizeState: nextWindowState.state.resizeState,
       processes: nextProcessState.processes,
+      processRecord: nextProcessState.processRecord,
       dirtyWindows: nextDirtyWindows,
       hasDirtyWindows: nextDirtyWindows.size > 0,
     });
@@ -573,13 +432,13 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
 
   terminateProcess: (processId) => {
     const state = get();
-    const targetProcess = state.processes.find((p) => p.id === processId);
+    const targetProcess = state.processRecord[processId];
 
     if (!targetProcess) {
       return;
     }
 
-    const processWindow = state.windows.find((w) => w.id === targetProcess.windowId);
+    const processWindow = targetProcess.windowId ? state.windowRecord[targetProcess.windowId] : undefined;
     const collapsedSplit = processWindow?.isFullscreen
       ? collapseSplitWorkspaceForWindow({
           state,
@@ -594,35 +453,32 @@ export const createWindowSlice: StateCreator<OSStore, [], [], WindowSlice> = (se
       ? {
           ...state,
           windows: collapsedSplit.windows,
+          windowRecord: buildWindowRecord(collapsedSplit.windows),
           workspaces: collapsedSplit.workspaces,
           splitResizeState: collapsedSplit.splitResizeState,
           activeWindowId: collapsedSplit.activeWindowId,
         }
       : state;
     const nextProcessState = stopProcessModel(
-      { processes: baseState.processes },
+      { processes: baseState.processes, processRecord: baseState.processRecord },
       processId,
     );
 
     if (!targetProcess.windowId) {
-      set({ processes: nextProcessState.processes });
+      set({
+        processes: nextProcessState.processes,
+        processRecord: nextProcessState.processRecord,
+      });
       return;
     }
 
-    const nextWindowState = closeWindowModel(
-      {
-        windows: baseState.windows,
-        activeWindowId: baseState.activeWindowId,
-        nextZIndex: baseState.nextZIndex,
-        dragState: baseState.dragState,
-        resizeState: baseState.resizeState,
-      },
-      targetProcess.windowId,
-    );
+    const nextWindowState = closeWindowModel(baseState, targetProcess.windowId);
 
     set({
       processes: nextProcessState.processes,
+      processRecord: nextProcessState.processRecord,
       windows: nextWindowState.state.windows,
+      windowRecord: nextWindowState.state.windowRecord,
       workspaces: baseState.workspaces,
       splitResizeState: baseState.splitResizeState,
       activeWindowId: nextWindowState.state.activeWindowId,

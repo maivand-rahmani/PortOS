@@ -110,6 +110,10 @@ export function clampWindowPosition(
   };
 }
 
+export function buildWindowRecord(windows: WindowInstance[]): Record<string, WindowInstance> {
+  return Object.fromEntries(windows.map((w) => [w.id, w]));
+}
+
 export function replaceWindow(
   windows: WindowInstance[],
   windowId: string,

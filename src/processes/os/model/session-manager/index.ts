@@ -3,10 +3,12 @@ import type { WorkspaceDefinition } from "@/entities/workspace";
 import type { DesktopBounds, WindowFrame, WindowInstance } from "@/entities/window";
 
 import {
+  buildWindowRecord,
   clampWindowPosition,
   getFullscreenFrame,
   resolveWindowSize,
 } from "../window-manager/window-manager.helpers";
+import { buildProcessRecord } from "../process-manager";
 import type { ProcessManagerState } from "../process-manager";
 import type { WindowManagerState } from "../window-manager";
 import type {
@@ -268,6 +270,7 @@ export function restoreSessionModel(input: {
   return {
     windows: {
       windows: restoredWindows,
+      windowRecord: buildWindowRecord(restoredWindows),
       activeWindowId: restoredActiveWindowId,
       nextZIndex,
       dragState: null,
@@ -275,6 +278,7 @@ export function restoreSessionModel(input: {
     },
     processes: {
       processes: restoredProcesses,
+      processRecord: buildProcessRecord(restoredProcesses),
     },
   };
 }

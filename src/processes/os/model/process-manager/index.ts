@@ -3,11 +3,19 @@ import type { ProcessInstance } from "@/entities/process";
 
 export type ProcessManagerState = {
   processes: ProcessInstance[];
+  processRecord: Record<string, ProcessInstance>;
 };
 
 export const processManagerInitialState: ProcessManagerState = {
   processes: [],
+  processRecord: {},
 };
+
+export function buildProcessRecord(
+  processes: ProcessInstance[],
+): Record<string, ProcessInstance> {
+  return Object.fromEntries(processes.map((p) => [p.id, p]));
+}
 
 export function createProcessManagerModel(
   overrides: Partial<ProcessManagerState> = {},
@@ -31,9 +39,12 @@ export function startProcessModel(
     status: "running",
   };
 
+  const nextProcesses = [...state.processes, process];
+
   return {
     state: {
-      processes: [...state.processes, process],
+      processes: nextProcesses,
+      processRecord: buildProcessRecord(nextProcesses),
     },
     process,
   };
@@ -46,15 +57,18 @@ export function attachWindowToProcessModel(
     windowId: string;
   },
 ): ProcessManagerState {
+  const nextProcesses = state.processes.map((process) =>
+    process.id === input.processId
+      ? {
+          ...process,
+          windowId: input.windowId,
+        }
+      : process,
+  );
+
   return {
-    processes: state.processes.map((process) =>
-      process.id === input.processId
-        ? {
-            ...process,
-            windowId: input.windowId,
-          }
-        : process,
-    ),
+    processes: nextProcesses,
+    processRecord: buildProcessRecord(nextProcesses),
   };
 }
 
@@ -62,7 +76,10 @@ export function stopProcessModel(
   state: ProcessManagerState,
   processId: string,
 ): ProcessManagerState {
+  const nextProcesses = state.processes.filter((process) => process.id !== processId);
+
   return {
-    processes: state.processes.filter((process) => process.id !== processId),
+    processes: nextProcesses,
+    processRecord: buildProcessRecord(nextProcesses),
   };
 }

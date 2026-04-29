@@ -3,6 +3,7 @@ import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/w
 import type { WorkspaceDefinition, WorkspaceId, WorkspaceSplitView } from "@/entities/workspace";
 
 import {
+  buildWindowRecord,
   clampWindowPosition,
   clampSplitViewRatio,
   getFullscreenFrame,
@@ -146,9 +147,12 @@ export function openWindowModel(
       fullscreenRestoreMaximized: false,
     };
 
+  const nextWindows = [...state.windows, window];
+
   return {
     state: {
-      windows: [...state.windows, window],
+      windows: nextWindows,
+      windowRecord: buildWindowRecord(nextWindows),
       activeWindowId: window.id,
       nextZIndex: state.nextZIndex + 1,
       dragState: null,
@@ -162,15 +166,18 @@ export function focusWindowModel(
   state: WindowManagerState,
   windowId: string,
 ): WindowManagerState {
-  if (!state.windows.some((window) => window.id === windowId)) {
+  if (!state.windowRecord[windowId]) {
     return state;
   }
 
+  const nextWindows = replaceWindow(state.windows, windowId, (window) => ({
+    ...window,
+    zIndex: state.nextZIndex,
+  }));
+
   return {
-    windows: replaceWindow(state.windows, windowId, (window) => ({
-      ...window,
-      zIndex: state.nextZIndex,
-    })),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: windowId,
     nextZIndex: state.nextZIndex + 1,
     dragState: state.dragState,
@@ -183,7 +190,7 @@ export function beginWindowDragModel(
   input: WindowDragInput,
 ): WindowManagerState {
   const focusedState = focusWindowModel(state, input.windowId);
-  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+  const targetWindow = focusedState.windowRecord[input.windowId];
 
   if (!targetWindow || targetWindow.isMinimized || targetWindow.isMaximized) {
     return {
@@ -214,7 +221,7 @@ export function updateDraggedWindowModel(
     return state;
   }
 
-  const targetWindow = state.windows.find((window) => window.id === state.dragState?.windowId);
+  const targetWindow = state.windowRecord[state.dragState.windowId];
 
   if (!targetWindow || targetWindow.isMaximized || targetWindow.isMinimized) {
     return {
@@ -232,12 +239,15 @@ export function updateDraggedWindowModel(
     input.bounds,
   );
 
+  const nextWindows = replaceWindow(state.windows, targetWindow.id, (window) => ({
+    ...window,
+    position,
+  }));
+
   return {
     ...state,
-    windows: replaceWindow(state.windows, targetWindow.id, (window) => ({
-      ...window,
-      position,
-    })),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
   };
 }
 
@@ -263,6 +273,7 @@ export function minimizeWindowModel(
 
   return {
     windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: getTopVisibleWindowId(nextWindows),
     nextZIndex: state.nextZIndex,
     dragState: state.dragState?.windowId === windowId ? null : state.dragState,
@@ -274,16 +285,19 @@ export function restoreWindowModel(
   state: WindowManagerState,
   windowId: string,
 ): WindowManagerState {
-  if (!state.windows.some((window) => window.id === windowId)) {
+  if (!state.windowRecord[windowId]) {
     return state;
   }
 
+  const nextWindows = replaceWindow(state.windows, windowId, (window) => ({
+    ...window,
+    isMinimized: false,
+    zIndex: state.nextZIndex,
+  }));
+
   return {
-    windows: replaceWindow(state.windows, windowId, (window) => ({
-      ...window,
-      isMinimized: false,
-      zIndex: state.nextZIndex,
-    })),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: windowId,
     nextZIndex: state.nextZIndex + 1,
     dragState: null,
@@ -296,37 +310,39 @@ export function toggleWindowMaximizeModel(
   input: MaximizeWindowInput,
 ): WindowManagerState {
   const focusedState = focusWindowModel(state, input.windowId);
-  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+  const targetWindow = focusedState.windowRecord[input.windowId];
 
   if (!targetWindow || targetWindow.isMinimized || targetWindow.isFullscreen) {
     return focusedState;
   }
 
   const maximizedFrame = getWindowFrameFromBounds(input.bounds);
-
-  return {
-    windows: replaceWindow(focusedState.windows, input.windowId, (window) => {
-      if (window.isMaximized && window.restoredFrame) {
-        return {
-          ...window,
-          position: window.restoredFrame.position,
-          size: resolveWindowSize(window.restoredFrame.size, window.minSize, input.bounds),
-          isMaximized: false,
-          restoredFrame: null,
-        };
-      }
-
+  const nextWindows = replaceWindow(focusedState.windows, input.windowId, (window) => {
+    if (window.isMaximized && window.restoredFrame) {
       return {
         ...window,
-        position: maximizedFrame.position,
-        size: maximizedFrame.size,
-        isMaximized: true,
-        restoredFrame: {
-          position: window.position,
-          size: window.size,
-        },
+        position: window.restoredFrame.position,
+        size: resolveWindowSize(window.restoredFrame.size, window.minSize, input.bounds),
+        isMaximized: false,
+        restoredFrame: null,
       };
-    }),
+    }
+
+    return {
+      ...window,
+      position: maximizedFrame.position,
+      size: maximizedFrame.size,
+      isMaximized: true,
+      restoredFrame: {
+        position: window.position,
+        size: window.size,
+      },
+    };
+  });
+
+  return {
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: input.windowId,
     nextZIndex: focusedState.nextZIndex,
     dragState: null,
@@ -348,31 +364,33 @@ export function enterWindowFullscreenModel(
   input: FullscreenWindowInput,
 ): WindowManagerState {
   const focusedState = focusWindowModel(state, input.windowId);
-  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+  const targetWindow = focusedState.windowRecord[input.windowId];
 
   if (!targetWindow || targetWindow.isMinimized || targetWindow.isFullscreen) {
     return focusedState;
   }
 
   const fullscreenFrame = getFullscreenFrame(input.bounds);
+  const nextWindows = replaceWindow(focusedState.windows, input.windowId, (window) => ({
+    ...window,
+    workspaceId: input.fullscreenWorkspaceId,
+    position: fullscreenFrame.position,
+    size: fullscreenFrame.size,
+    isMaximized: false,
+    isFullscreen: true,
+    restoredFrame: window.isMaximized
+      ? window.restoredFrame
+      : {
+          position: window.position,
+          size: window.size,
+        },
+    fullscreenRestoreWorkspaceId: input.restoreWorkspaceId,
+    fullscreenRestoreMaximized: window.isMaximized,
+  }));
 
   return {
-    windows: replaceWindow(focusedState.windows, input.windowId, (window) => ({
-      ...window,
-      workspaceId: input.fullscreenWorkspaceId,
-      position: fullscreenFrame.position,
-      size: fullscreenFrame.size,
-      isMaximized: false,
-      isFullscreen: true,
-      restoredFrame: window.isMaximized
-        ? window.restoredFrame
-        : {
-            position: window.position,
-            size: window.size,
-          },
-      fullscreenRestoreWorkspaceId: input.restoreWorkspaceId,
-      fullscreenRestoreMaximized: window.isMaximized,
-    })),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: input.windowId,
     nextZIndex: focusedState.nextZIndex,
     dragState: null,
@@ -385,34 +403,36 @@ export function exitWindowFullscreenModel(
   input: ExitFullscreenWindowInput,
 ): WindowManagerState {
   const focusedState = focusWindowModel(state, input.windowId);
-  const targetWindow = focusedState.windows.find((window) => window.id === input.windowId);
+  const targetWindow = focusedState.windowRecord[input.windowId];
 
   if (!targetWindow || !targetWindow.isFullscreen || !targetWindow.fullscreenRestoreWorkspaceId) {
     return focusedState;
   }
 
   const maximizedFrame = getWindowFrameFromBounds(input.bounds);
+  const nextWindows = replaceWindow(focusedState.windows, input.windowId, (window) => {
+    const restoredFrame = window.restoredFrame;
+
+    return {
+      ...window,
+      workspaceId: window.fullscreenRestoreWorkspaceId ?? window.workspaceId,
+      position: window.fullscreenRestoreMaximized
+        ? maximizedFrame.position
+        : restoredFrame?.position ?? window.position,
+      size: window.fullscreenRestoreMaximized
+        ? maximizedFrame.size
+        : resolveWindowSize(restoredFrame?.size ?? window.size, window.minSize, input.bounds),
+      isMaximized: window.fullscreenRestoreMaximized,
+      isFullscreen: false,
+      restoredFrame: window.fullscreenRestoreMaximized ? restoredFrame : null,
+      fullscreenRestoreWorkspaceId: null,
+      fullscreenRestoreMaximized: false,
+    };
+  });
 
   return {
-    windows: replaceWindow(focusedState.windows, input.windowId, (window) => {
-      const restoredFrame = window.restoredFrame;
-
-      return {
-        ...window,
-        workspaceId: window.fullscreenRestoreWorkspaceId ?? window.workspaceId,
-        position: window.fullscreenRestoreMaximized
-          ? maximizedFrame.position
-          : restoredFrame?.position ?? window.position,
-        size: window.fullscreenRestoreMaximized
-          ? maximizedFrame.size
-          : resolveWindowSize(restoredFrame?.size ?? window.size, window.minSize, input.bounds),
-        isMaximized: window.fullscreenRestoreMaximized,
-        isFullscreen: false,
-        restoredFrame: window.fullscreenRestoreMaximized ? restoredFrame : null,
-        fullscreenRestoreWorkspaceId: null,
-        fullscreenRestoreMaximized: false,
-      };
-    }),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     activeWindowId: input.windowId,
     nextZIndex: focusedState.nextZIndex,
     dragState: null,
@@ -424,8 +444,8 @@ export function applySplitViewFramesModel(
   state: WindowManagerState,
   input: ApplySplitViewInput,
 ): WindowManagerState {
-  const leftWindow = state.windows.find((window) => window.id === input.splitView.leftWindowId);
-  const rightWindow = state.windows.find((window) => window.id === input.splitView.rightWindowId);
+  const leftWindow = state.windowRecord[input.splitView.leftWindowId];
+  const rightWindow = state.windowRecord[input.splitView.rightWindowId];
 
   if (!leftWindow || !rightWindow) {
     return state;
@@ -437,31 +457,34 @@ export function applySplitViewFramesModel(
     rightMinWidth: rightWindow.minSize.width,
   });
 
+  const nextWindows = state.windows.map((window) => {
+    if (window.id === leftWindow.id) {
+      return {
+        ...window,
+        workspaceId: input.workspaceId,
+        isFullscreen: true,
+        position: frames.left.position,
+        size: frames.left.size,
+      };
+    }
+
+    if (window.id === rightWindow.id) {
+      return {
+        ...window,
+        workspaceId: input.workspaceId,
+        isFullscreen: true,
+        position: frames.right.position,
+        size: frames.right.size,
+      };
+    }
+
+    return window;
+  });
+
   return {
     ...state,
-    windows: state.windows.map((window) => {
-      if (window.id === leftWindow.id) {
-        return {
-          ...window,
-          workspaceId: input.workspaceId,
-          isFullscreen: true,
-          position: frames.left.position,
-          size: frames.left.size,
-        };
-      }
-
-      if (window.id === rightWindow.id) {
-        return {
-          ...window,
-          workspaceId: input.workspaceId,
-          isFullscreen: true,
-          position: frames.right.position,
-          size: frames.right.size,
-        };
-      }
-
-      return window;
-    }),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
   };
 }
 
@@ -470,87 +493,89 @@ export function resizeWindowsToBoundsModel(
   input: ResizeWindowsToBoundsInput,
 ): WindowManagerState {
   const workspaces = input.workspaces ?? [];
+  const nextWindows = state.windows.map((window) => {
+    const workspace = workspaces.find((entry) => entry.id === window.workspaceId) ?? null;
+    const splitView = workspace?.splitView;
 
-  return {
-    ...state,
-    windows: state.windows.map((window) => {
-      const workspace = workspaces.find((entry) => entry.id === window.workspaceId) ?? null;
-      const splitView = workspace?.splitView;
+    if (
+      splitView &&
+      (splitView.leftWindowId === window.id || splitView.rightWindowId === window.id)
+    ) {
+      const siblingId =
+        splitView.leftWindowId === window.id ? splitView.rightWindowId : splitView.leftWindowId;
+      const siblingWindow = state.windowRecord[siblingId];
 
-      if (
-        splitView &&
-        (splitView.leftWindowId === window.id || splitView.rightWindowId === window.id)
-      ) {
-        const siblingId =
-          splitView.leftWindowId === window.id ? splitView.rightWindowId : splitView.leftWindowId;
-        const siblingWindow = state.windows.find((entry) => entry.id === siblingId);
-
-        if (!siblingWindow) {
-          return window;
-        }
-
-        const ratio = clampSplitViewRatio(input.bounds, {
-          ratio: splitView.ratio,
-          leftMinWidth:
-            splitView.leftWindowId === window.id
-              ? window.minSize.width
-              : siblingWindow.minSize.width,
-          rightMinWidth:
-            splitView.rightWindowId === window.id
-              ? window.minSize.width
-              : siblingWindow.minSize.width,
-        });
-        const frames = getSplitViewFrames(input.bounds, {
-          ratio,
-          leftMinWidth:
-            splitView.leftWindowId === window.id
-              ? window.minSize.width
-              : siblingWindow.minSize.width,
-          rightMinWidth:
-            splitView.rightWindowId === window.id
-              ? window.minSize.width
-              : siblingWindow.minSize.width,
-        });
-
-        return {
-          ...window,
-          position:
-            splitView.leftWindowId === window.id
-              ? frames.left.position
-              : frames.right.position,
-          size:
-            splitView.leftWindowId === window.id ? frames.left.size : frames.right.size,
-        };
+      if (!siblingWindow) {
+        return window;
       }
 
-      if (window.isFullscreen) {
-        const frame = getFullscreenFrame(input.bounds);
-
-        return {
-          ...window,
-          position: frame.position,
-          size: frame.size,
-        };
-      }
-
-      if (window.isMaximized) {
-        const frame = getWindowFrameFromBounds(input.bounds);
-
-        return {
-          ...window,
-          position: frame.position,
-          size: frame.size,
-        };
-      }
-
-      const size = resolveWindowSize(window.size, window.minSize, input.bounds);
+      const ratio = clampSplitViewRatio(input.bounds, {
+        ratio: splitView.ratio,
+        leftMinWidth:
+          splitView.leftWindowId === window.id
+            ? window.minSize.width
+            : siblingWindow.minSize.width,
+        rightMinWidth:
+          splitView.rightWindowId === window.id
+            ? window.minSize.width
+            : siblingWindow.minSize.width,
+      });
+      const frames = getSplitViewFrames(input.bounds, {
+        ratio,
+        leftMinWidth:
+          splitView.leftWindowId === window.id
+            ? window.minSize.width
+            : siblingWindow.minSize.width,
+        rightMinWidth:
+          splitView.rightWindowId === window.id
+            ? window.minSize.width
+            : siblingWindow.minSize.width,
+      });
 
       return {
         ...window,
-        size,
-        position: clampWindowPosition(window.position, size, input.bounds),
+        position:
+          splitView.leftWindowId === window.id
+            ? frames.left.position
+            : frames.right.position,
+        size:
+          splitView.leftWindowId === window.id ? frames.left.size : frames.right.size,
       };
-    }),
+    }
+
+    if (window.isFullscreen) {
+      const frame = getFullscreenFrame(input.bounds);
+
+      return {
+        ...window,
+        position: frame.position,
+        size: frame.size,
+      };
+    }
+
+    if (window.isMaximized) {
+      const frame = getWindowFrameFromBounds(input.bounds);
+
+      return {
+        ...window,
+        position: frame.position,
+        size: frame.size,
+      };
+    }
+
+    const size = resolveWindowSize(window.size, window.minSize, input.bounds);
+
+    return {
+      ...window,
+      size,
+      position: clampWindowPosition(window.position, size, input.bounds),
+    };
+  });
+
+  return {
+    ...state,
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
     dragState: state.dragState,
     resizeState: state.resizeState,
   };
@@ -565,6 +590,7 @@ export function closeWindowModel(
   return {
     state: {
       windows: nextWindows,
+      windowRecord: buildWindowRecord(nextWindows),
       activeWindowId: getTopVisibleWindowId(nextWindows),
       nextZIndex: Math.max(
         state.nextZIndex,

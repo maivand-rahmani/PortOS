@@ -16,6 +16,7 @@ type BuildMetricsInput = {
   apps: AppConfig[];
   processes: ProcessInstance[];
   windows: WindowInstance[];
+  windowRecord?: Record<string, WindowInstance>;
   activeWindowId: string | null;
   bootProgress: number;
 };
@@ -229,7 +230,9 @@ export function buildSystemInfoContent(input: BuildMetricsInput): SystemInfoCont
   const runningProcesses = input.processes.filter((process) => process.status === "running");
   const visibleWindows = input.windows.filter((window) => !window.isMinimized);
   const maximizedWindows = input.windows.filter((window) => window.isMaximized);
-  const focusedWindow = input.windows.find((window) => window.id === input.activeWindowId) ?? null;
+  const focusedWindow = input.activeWindowId
+    ? (input.windowRecord?.[input.activeWindowId] ?? input.windows.find((window) => window.id === input.activeWindowId) ?? null)
+    : null;
 
   const cpuUsage = clampMetric(14 + runningProcesses.length * 11 + visibleWindows.length * 7);
   const memoryUsage = clampMetric(20 + input.windows.length * 9 + maximizedWindows.length * 10);

@@ -160,7 +160,7 @@ export function useSystemShortcuts({
           return true;
         }
         case "os:quit-app": {
-          const activeWindow = state.windows.find((window) => window.id === state.activeWindowId);
+          const activeWindow = state.activeWindowId ? state.windowRecord[state.activeWindowId] : undefined;
 
           if (!activeWindow) {
             return false;
@@ -175,7 +175,7 @@ export function useSystemShortcuts({
           return true;
         }
         case "os:hide-app": {
-          const activeWindow = state.windows.find((window) => window.id === state.activeWindowId);
+          const activeWindow = state.activeWindowId ? state.windowRecord[state.activeWindowId] : undefined;
 
           if (!activeWindow) {
             return false;

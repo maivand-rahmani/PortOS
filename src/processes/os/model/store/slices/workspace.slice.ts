@@ -20,6 +20,7 @@ import {
   applySplitViewFramesModel,
   exitWindowFullscreenModel,
 } from "../../window-manager";
+import { buildWindowRecord } from "../../window-manager/window-manager.helpers";
 import { collapseSplitWorkspaceForWindow, DEFAULT_LAUNCH_BOUNDS } from "./helpers";
 
 export type WorkspaceSlice = Pick<
@@ -46,6 +47,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     const nextWorkspaceState = switchWorkspaceModel(state, workspaceId);
     const nextActiveWindow = syncActiveWindowToWorkspace({
       windows: state.windows,
+      windowRecord: state.windowRecord,
       activeWindowId: state.activeWindowId,
       nextZIndex: state.nextZIndex,
       dragState: state.dragState,
@@ -64,6 +66,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     const nextWorkspaceState = cycleWorkspaceModel(state, direction);
     const nextActiveWindow = syncActiveWindowToWorkspace({
       windows: state.windows,
+      windowRecord: state.windowRecord,
       activeWindowId: state.activeWindowId,
       nextZIndex: state.nextZIndex,
       dragState: state.dragState,
@@ -91,8 +94,8 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
 
   enterSplitView: (anchorWindowId, companionWindowId, side, bounds) => {
     const state = get();
-    const anchorWindow = state.windows.find((w) => w.id === anchorWindowId);
-    const companionWindow = state.windows.find((w) => w.id === companionWindowId);
+    const anchorWindow = state.windowRecord[anchorWindowId];
+    const companionWindow = state.windowRecord[companionWindowId];
 
     if (!anchorWindow || !companionWindow || anchorWindowId === companionWindowId) {
       return;
@@ -105,7 +108,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
       get().toggleWindowFullscreen(anchorWindowId, bounds);
       runtimeState = get();
       fullscreenWorkspaceId =
-        runtimeState.windows.find((w) => w.id === anchorWindowId)?.workspaceId ??
+        runtimeState.windowRecord[anchorWindowId]?.workspaceId ??
         anchorWindow.workspaceId;
     }
 
@@ -123,7 +126,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
       rightWindowId,
       ratio: 0.5,
     });
-    const companionSourceWindow = runtimeState.windows.find((w) => w.id === companionWindowId);
+    const companionSourceWindow = runtimeState.windowRecord[companionWindowId];
     const nextWindows = runtimeState.windows.map((w) => {
       if (w.id !== companionWindowId) {
         return w;
@@ -157,6 +160,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     const nextWindowState = applySplitViewFramesModel(
       {
         windows: nextWindows,
+        windowRecord: buildWindowRecord(nextWindows),
         activeWindowId: runtimeState.activeWindowId,
         nextZIndex: runtimeState.nextZIndex,
         dragState: runtimeState.dragState,
@@ -175,6 +179,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
 
     set({
       windows: nextWindowState.windows,
+      windowRecord: nextWindowState.windowRecord,
       currentWorkspaceId: fullscreenWorkspaceId,
       workspaces: nextWorkspaceState.workspaces,
       activeWindowId: anchorWindowId,
@@ -193,8 +198,8 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
       return;
     }
 
-    const leftWindow = state.windows.find((w) => w.id === splitView.leftWindowId);
-    const rightWindow = state.windows.find((w) => w.id === splitView.rightWindowId);
+    const leftWindow = state.windowRecord[splitView.leftWindowId];
+    const rightWindow = state.windowRecord[splitView.rightWindowId];
 
     if (!leftWindow || !rightWindow) {
       return;
@@ -210,6 +215,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     const nextWindowState = applySplitViewFramesModel(
       {
         windows: state.windows,
+        windowRecord: state.windowRecord,
         activeWindowId: state.activeWindowId,
         nextZIndex: state.nextZIndex,
         dragState: state.dragState,
@@ -229,6 +235,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
       workspaces: nextWorkspaceState.workspaces,
       splitResizeState: nextWorkspaceState.splitResizeState,
       windows: nextWindowState.windows,
+      windowRecord: nextWindowState.windowRecord,
     });
   },
 
@@ -280,6 +287,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     };
     const desktopWorkspace = state.workspaces.find((w) => w.kind === "desktop") ?? null;
     let currentWindows = state.windows;
+    let currentWindowRecord = state.windowRecord;
     let currentWorkspaces = state.workspaces;
     let currentSplitResizeState = state.splitResizeState;
 
@@ -292,6 +300,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
 
       if (collapsedSplit) {
         currentWindows = collapsedSplit.windows;
+        currentWindowRecord = buildWindowRecord(collapsedSplit.windows);
         currentWorkspaces = collapsedSplit.workspaces;
         currentSplitResizeState = collapsedSplit.splitResizeState;
       }
@@ -302,11 +311,13 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
     );
 
     let finalWindows = currentWindows;
+    let finalWindowRecord = currentWindowRecord;
 
     for (const win of windowsInSpace) {
       const exitResult = exitWindowFullscreenModel(
         {
           windows: finalWindows,
+          windowRecord: finalWindowRecord,
           activeWindowId: state.activeWindowId,
           nextZIndex: state.nextZIndex,
           dragState: state.dragState,
@@ -322,6 +333,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
         },
       );
       finalWindows = exitResult.windows;
+      finalWindowRecord = exitResult.windowRecord;
     }
 
     const nextWorkspaceState = removeWorkspaceModel(
@@ -340,6 +352,7 @@ export const createWorkspaceSlice: StateCreator<OSStore, [], [], WorkspaceSlice>
 
     set({
       windows: finalWindows,
+      windowRecord: buildWindowRecord(finalWindows),
       workspaces: nextWorkspaceState.workspaces,
       currentWorkspaceId: fallbackWorkspaceId,
       splitResizeState: nextWorkspaceState.splitResizeState,

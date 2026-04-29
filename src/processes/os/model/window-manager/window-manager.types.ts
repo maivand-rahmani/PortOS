@@ -16,6 +16,7 @@ export type WindowResizeState = {
 
 export type WindowManagerState = {
   windows: WindowInstance[];
+  windowRecord: Record<string, WindowInstance>;
   activeWindowId: string | null;
   nextZIndex: number;
   dragState: WindowDragState | null;
@@ -24,6 +25,7 @@ export type WindowManagerState = {
 
 export const windowManagerInitialState: WindowManagerState = {
   windows: [],
+  windowRecord: {},
   activeWindowId: null,
   nextZIndex: 100,
   dragState: null,

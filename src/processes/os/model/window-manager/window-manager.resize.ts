@@ -1,6 +1,6 @@
 import type { DesktopBounds, WindowFrame, WindowPosition } from "@/entities/window";
 
-import { clampWindowPosition, replaceWindow, resolveWindowSize } from "./window-manager.helpers";
+import { buildWindowRecord, clampWindowPosition, replaceWindow, resolveWindowSize } from "./window-manager.helpers";
 import type {
   WindowManagerState,
   WindowResizeDirection,
@@ -95,7 +95,7 @@ export function beginWindowResizeModel(
   state: WindowManagerState,
   input: WindowResizeInput,
 ): WindowManagerState {
-  const targetWindow = state.windows.find((window) => window.id === input.windowId);
+  const targetWindow = state.windowRecord[input.windowId];
 
   if (
     !targetWindow ||
@@ -133,7 +133,7 @@ export function updateResizedWindowModel(
     return state;
   }
 
-  const targetWindow = state.windows.find((window) => window.id === state.resizeState?.windowId);
+  const targetWindow = state.windowRecord[state.resizeState.windowId];
 
   if (
     !targetWindow ||
@@ -158,13 +158,16 @@ export function updateResizedWindowModel(
     input.bounds,
   );
 
+  const nextWindows = replaceWindow(state.windows, targetWindow.id, (window) => ({
+    ...window,
+    position: nextFrame.position,
+    size: nextFrame.size,
+  }));
+
   return {
     ...state,
-    windows: replaceWindow(state.windows, targetWindow.id, (window) => ({
-      ...window,
-      position: nextFrame.position,
-      size: nextFrame.size,
-    })),
+    windows: nextWindows,
+    windowRecord: buildWindowRecord(nextWindows),
   };
 }
 

@@ -47,6 +47,7 @@ export const createSessionSlice: StateCreator<OSStore, [], [], SessionSlice> = (
       appMap: get().appMap,
       windowState: {
         windows: [],
+        windowRecord: {},
         activeWindowId: null,
         nextZIndex: 100,
         dragState: null,
@@ -54,6 +55,7 @@ export const createSessionSlice: StateCreator<OSStore, [], [], SessionSlice> = (
       },
       processState: {
         processes: [],
+        processRecord: {},
       },
     });
 
@@ -63,11 +65,13 @@ export const createSessionSlice: StateCreator<OSStore, [], [], SessionSlice> = (
 
     set((state) => ({
       windows: restored.windows.windows,
+      windowRecord: restored.windows.windowRecord,
       activeWindowId: restored.windows.activeWindowId,
       nextZIndex: restored.windows.nextZIndex,
       dragState: restored.windows.dragState,
       resizeState: restored.windows.resizeState,
       processes: restored.processes.processes,
+      processRecord: restored.processes.processRecord,
       currentWorkspaceId: migratedSession.currentWorkspaceId ?? state.currentWorkspaceId,
       workspaces: migratedSession.workspaces,
       sessionHydrated: true,

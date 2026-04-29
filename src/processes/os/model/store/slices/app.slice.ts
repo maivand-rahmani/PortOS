@@ -10,8 +10,10 @@ import {
   createProcessManagerModel,
   startProcessModel,
   attachWindowToProcessModel,
+  buildProcessRecord,
 } from "../../process-manager";
 import { openWindowModel } from "../../window-manager";
+import { buildWindowRecord } from "../../window-manager/window-manager.helpers";
 import {
   getWorkspaceById,
   isFullscreenWorkspace,
@@ -27,6 +29,7 @@ export type AppSlice = Pick<
   | "appMap"
   | "loadedApps"
   | "processes"
+  | "processRecord"
   | "loadAppComponent"
   | "launchApp"
   | "activateApp"
@@ -84,17 +87,18 @@ export const createAppSlice: StateCreator<OSStore, [], [], AppSlice> = (set, get
         state.workspaces,
         state.currentWorkspaceId,
       );
+      const activeWin = state.activeWindowId ? state.windowRecord[state.activeWindowId] : undefined;
       const launchWorkspaceId = isFullscreenWorkspace(currentWorkspace)
-        ? state.windows.find((w) => w.id === state.activeWindowId)
-            ?.fullscreenRestoreWorkspaceId ?? workspaceManagerInitialState.currentWorkspaceId
+        ? activeWin?.fullscreenRestoreWorkspaceId ?? workspaceManagerInitialState.currentWorkspaceId
         : state.currentWorkspaceId;
       const processResult = startProcessModel(
-        { processes: state.processes },
+        { processes: state.processes, processRecord: state.processRecord },
         app,
       );
       const windowResult = openWindowModel(
         {
           windows: state.windows,
+          windowRecord: state.windowRecord,
           activeWindowId: state.activeWindowId,
           nextZIndex: state.nextZIndex,
           dragState: state.dragState,
@@ -117,7 +121,9 @@ export const createAppSlice: StateCreator<OSStore, [], [], AppSlice> = (set, get
 
       return {
         processes: linkedProcesses.processes,
+        processRecord: buildProcessRecord(linkedProcesses.processes),
         windows: windowResult.state.windows,
+        windowRecord: buildWindowRecord(windowResult.state.windows),
         activeWindowId: windowResult.state.activeWindowId,
         nextZIndex: windowResult.state.nextZIndex,
         dragState: windowResult.state.dragState,

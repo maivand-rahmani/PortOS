@@ -14,11 +14,8 @@ import {
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
 
-import { runDataMigration } from "@/shared/lib/fs/fs-migration";
+
 import {
-  BOOT_PHASE_DURATIONS,
-  BOOT_PROGRESS_KEYFRAMES,
-  BOOT_SESSION_KEY,
   DESKTOP_AI_WIDGET,
   DESKTOP_INSETS,
   DOCK_MENU,
@@ -45,11 +42,11 @@ import type {
   WindowRenderItem,
   UseDesktopShellResult,
 } from "./desktop-shell.types";
+import { useDesktopPointerEvents } from "./use-desktop-pointer-events";
+import { useBootSequence } from "./use-boot-sequence";
 
 export function useDesktopShell(): UseDesktopShellResult {
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragRafRef = useRef<number | null>(null);
-  const pendingPointerEventRef = useRef<PointerEvent | null>(null);
   const [desktopBounds, setDesktopBounds] = useState<DesktopBounds | null>(null);
   const [selectedDesktopAppId, setSelectedDesktopAppId] = useState<string | null>(null);
   const [customDesktopIconPositions, setDesktopIconPositions] = useState<DesktopIconMap>({});
@@ -69,6 +66,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const appMap = useOSStore((state) => state.appMap);
   const windows = useOSStore((state) => state.windows);
   const processes = useOSStore((state) => state.processes);
+  const windowRecord = useOSStore((state) => state.windowRecord);
+  const processRecord = useOSStore((state) => state.processRecord);
   const loadedApps = useOSStore((state) => state.loadedApps);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
   const currentWorkspaceId = useOSStore((state) => state.currentWorkspaceId);
@@ -202,8 +201,10 @@ export function useDesktopShell(): UseDesktopShellResult {
         appMap,
         processes,
         windows,
+        windowRecord,
+        processRecord,
       }),
-    [activeWindowId, appMap, processes, windows],
+    [activeWindowId, appMap, processes, windowRecord, processRecord, windows],
   );
 
   const statusBar = useMemo<StatusBarModel>(
@@ -372,268 +373,36 @@ export function useDesktopShell(): UseDesktopShellResult {
   }, [customAiWidgetPosition, desktopBounds]);
 
   // ── Boot sequence state machine ──────────────────────────────────────────────
-  useEffect(() => {
-    if (bootPhase !== "off") {
-      return undefined;
-    }
+  useBootSequence(
+    bootPhase,
+    setBootPhase,
+    setBootProgress,
+    addBootMessage,
+    completeBoot,
+    hydrateFileSystem,
+    hydrateSettings,
+  );
 
-    // Check sessionStorage for same-session revisit (auto-skip)
-    if (typeof window !== "undefined" && sessionStorage.getItem(BOOT_SESSION_KEY)) {
-      // Fast boot: skip cinematic sequence, still hydrate data
-      const fastBootHydration = hydrateFileSystem()
-        .then(() => runDataMigration())
-        .catch((err) => {
-          console.error("Boot hydration failed:", err);
-          useOSStore.getState().pushNotification({
-            title: "System",
-            body: "Failed to restore file system. Some data may be unavailable.",
-            level: "warning",
-            appId: "system",
-          });
-        });
-
-      void fastBootHydration;
-
-      const settingsPromise = hydrateSettings().catch((err) => {
-        console.error("Settings hydration failed:", err);
-        useOSStore.getState().pushNotification({
-          title: "System",
-          body: "Failed to load settings. Using defaults.",
-          level: "warning",
-          appId: "system",
-        });
-      });
-
-      void settingsPromise;
-
-      setBootProgress(100);
-      addBootMessage("System ready");
-      completeBoot();
-      return undefined;
-    }
-
-    // Start the cinematic boot: power-on phase
-    setBootPhase("power-on");
-    return undefined;
-  }, [bootPhase, setBootPhase, setBootProgress, addBootMessage, completeBoot, hydrateFileSystem, hydrateSettings]);
-
-  useEffect(() => {
-    if (bootPhase !== "power-on") {
-      return undefined;
-    }
-
-    const duration = shouldReduceMotion ? 100 : BOOT_PHASE_DURATIONS["power-on"];
-    const timer = window.setTimeout(() => {
-      setBootPhase("logo");
-    }, duration);
-
-    return () => window.clearTimeout(timer);
-  }, [bootPhase, setBootPhase, shouldReduceMotion]);
-
-  useEffect(() => {
-    if (bootPhase !== "logo") {
-      return undefined;
-    }
-
-    // Start hydration in parallel with logo animation
-    const hydrationPromise = hydrateFileSystem()
-      .then(() => runDataMigration())
-      .catch((err) => {
-        console.error("Boot hydration failed:", err);
-        useOSStore.getState().pushNotification({
-          title: "System",
-          body: "Failed to restore file system. Some data may be unavailable.",
-          level: "warning",
-          appId: "system",
-        });
-      });
-
-    const settingsPromise = hydrateSettings().catch((err) => {
-      console.error("Settings hydration failed:", err);
-      useOSStore.getState().pushNotification({
-        title: "System",
-        body: "Failed to load settings. Using defaults.",
-        level: "warning",
-        appId: "system",
-      });
-    });
-
-    const duration = shouldReduceMotion ? 200 : BOOT_PHASE_DURATIONS.logo;
-    const timer = window.setTimeout(async () => {
-      // Wait for hydration to complete before moving to init
-      await Promise.all([hydrationPromise, settingsPromise]);
-      setBootPhase("init");
-    }, duration);
-
-    return () => window.clearTimeout(timer);
-  }, [bootPhase, setBootPhase, hydrateFileSystem, hydrateSettings, shouldReduceMotion]);
-
-  useEffect(() => {
-    if (bootPhase !== "init") {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    const runProgressSequence = async () => {
-      for (const keyframe of BOOT_PROGRESS_KEYFRAMES) {
-        if (cancelled) return;
-        addBootMessage(keyframe.message);
-        setBootProgress(keyframe.target);
-        await new Promise((resolve) =>
-          window.setTimeout(resolve, shouldReduceMotion ? 60 : keyframe.duration),
-        );
-      }
-
-      if (!cancelled) {
-        setBootPhase("reveal");
-      }
-    };
-
-    void runProgressSequence();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bootPhase, setBootPhase, setBootProgress, addBootMessage, shouldReduceMotion]);
-
-  useEffect(() => {
-    if (bootPhase !== "reveal") {
-      return undefined;
-    }
-
-    const duration = shouldReduceMotion ? 200 : BOOT_PHASE_DURATIONS.reveal;
-    const timer = window.setTimeout(() => {
-      // Mark session as booted for auto-skip on revisit
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(BOOT_SESSION_KEY, "1");
-      }
-      completeBoot();
-    }, duration);
-
-    return () => window.clearTimeout(timer);
-  }, [bootPhase, completeBoot, shouldReduceMotion]);
-
-  useEffect(() => {
-    if (!desktopBounds) {
-      return undefined;
-    }
-
-    const processPointerEvent = (event: PointerEvent) => {
-      const nextPointer = getContainerPointer({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      if (desktopIconDragState) {
-        const nextPosition = clampDesktopIconPosition(
-          {
-            x: nextPointer.x - desktopIconDragState.offset.x,
-            y: nextPointer.y - desktopIconDragState.offset.y,
-          },
-          desktopBounds,
-        );
-
-        setDesktopIconPositions((current) => ({
-          ...current,
-          [desktopIconDragState.appId]: nextPosition,
-        }));
-      }
-
-      if (desktopWidgetDragState) {
-        const maxX = Math.max(
-          desktopBounds.insetLeft,
-          desktopBounds.width - desktopBounds.insetRight - DESKTOP_AI_WIDGET.width,
-        );
-        const maxY = Math.max(
-          desktopBounds.insetTop,
-          desktopBounds.height - desktopBounds.insetBottom - DESKTOP_AI_WIDGET.height,
-        );
-
-        setAiWidgetPosition({
-          x: Math.min(
-            Math.max(nextPointer.x - desktopWidgetDragState.offset.x, desktopBounds.insetLeft),
-            maxX,
-          ),
-          y: Math.min(
-            Math.max(nextPointer.y - desktopWidgetDragState.offset.y, desktopBounds.insetTop),
-            maxY,
-          ),
-        });
-      }
-
-      updateFileDrag(nextPointer);
-      if (splitResizeState) {
-        updateSplitResize(nextPointer.x, desktopBounds);
-      }
-      updateWindowDrag(nextPointer, desktopBounds);
-      updateWindowResize(nextPointer, desktopBounds);
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      pendingPointerEventRef.current = event;
-
-      if (dragRafRef.current === null) {
-        dragRafRef.current = requestAnimationFrame(() => {
-          dragRafRef.current = null;
-          const latest = pendingPointerEventRef.current;
-
-          if (latest) {
-            pendingPointerEventRef.current = null;
-            processPointerEvent(latest);
-          }
-        });
-      }
-    };
-
-    const handlePointerUp = () => {
-      // Apply snap if a zone was active when drag ended
-      const currentState = useOSStore.getState();
-
-      if (currentState.dragState && currentState.windowSnapZone && desktopBounds) {
-        const snapWindowId = currentState.dragState.windowId;
-        const zone = currentState.windowSnapZone;
-
-        endWindowDrag();
-        snapWindowToZone(snapWindowId, zone, desktopBounds);
-      } else {
-        endWindowDrag();
-      }
-
-      endFileDrag();
-      endSplitResize();
-      endWindowResize();
-      setDesktopIconDragState(null);
-      setDesktopWidgetDragState(null);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-
-      if (dragRafRef.current !== null) {
-        cancelAnimationFrame(dragRafRef.current);
-        dragRafRef.current = null;
-      }
-    };
-  }, [
+  useDesktopPointerEvents({
     desktopBounds,
     desktopIconDragState,
     desktopWidgetDragState,
-      endWindowDrag,
-      endFileDrag,
-      endSplitResize,
-      endWindowResize,
-      snapWindowToZone,
-      splitResizeState,
-      updateSplitResize,
-      updateFileDrag,
-      updateWindowDrag,
-      updateWindowResize,
-    ]);
+    splitResizeState,
+    updateFileDrag,
+    updateSplitResize,
+    updateWindowDrag,
+    updateWindowResize,
+    endWindowDrag,
+    endFileDrag,
+    endSplitResize,
+    endWindowResize,
+    snapWindowToZone,
+    getContainerPointer,
+    setDesktopIconPositions,
+    setAiWidgetPosition,
+    setDesktopIconDragState,
+    setDesktopWidgetDragState,
+  });
 
   const clearDesktopSelection = () => {
     setSelectedDesktopAppId(null);
@@ -823,7 +592,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       return;
     }
 
-    const anchorWindow = windows.find((window) => window.id === windowId);
+    const anchorWindow = windowRecord[windowId];
 
     if (!anchorWindow) {
       return;
@@ -836,7 +605,7 @@ export function useDesktopShell(): UseDesktopShellResult {
       });
     }
 
-    const runtimeWindow = useOSStore.getState().windows.find((window) => window.id === windowId);
+    const runtimeWindow = useOSStore.getState().windowRecord[windowId];
 
     setSplitViewPicker({
       workspaceId: runtimeWindow?.workspaceId ?? anchorWindow.workspaceId,
@@ -957,7 +726,7 @@ export function useDesktopShell(): UseDesktopShellResult {
         dockApps
           .find((item) => item.app.id === action.appId)
           ?.windows.forEach((window) => {
-            const runtimeWindow = windows.find((entry) => entry.id === window.id);
+            const runtimeWindow = windowRecord[window.id];
 
             if (runtimeWindow) {
               terminateProcess(runtimeWindow.processId);

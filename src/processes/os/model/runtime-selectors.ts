@@ -7,6 +7,8 @@ type ActiveRuntimeTargetInput = {
   appMap: AppConfigMap;
   processes: ProcessInstance[];
   windows: WindowInstance[];
+  windowRecord?: Record<string, WindowInstance>;
+  processRecord?: Record<string, ProcessInstance>;
 };
 
 export type ActiveRuntimeTarget = {
@@ -18,23 +20,25 @@ export type ActiveRuntimeTarget = {
 export function getWindowById(
   windows: WindowInstance[],
   windowId: string | null,
+  windowRecord?: Record<string, WindowInstance>,
 ): WindowInstance | null {
   if (!windowId) {
     return null;
   }
 
-  return windows.find((window) => window.id === windowId) ?? null;
+  return windowRecord?.[windowId] ?? windows.find((window) => window.id === windowId) ?? null;
 }
 
 export function getProcessById(
   processes: ProcessInstance[],
   processId: string | null,
+  processRecord?: Record<string, ProcessInstance>,
 ): ProcessInstance | null {
   if (!processId) {
     return null;
   }
 
-  return processes.find((process) => process.id === processId) ?? null;
+  return processRecord?.[processId] ?? processes.find((process) => process.id === processId) ?? null;
 }
 
 export function getActiveRuntimeTarget({
@@ -42,9 +46,11 @@ export function getActiveRuntimeTarget({
   appMap,
   processes,
   windows,
+  windowRecord,
+  processRecord,
 }: ActiveRuntimeTargetInput): ActiveRuntimeTarget {
-  const activeWindow = getWindowById(windows, activeWindowId);
-  const activeProcess = getProcessById(processes, activeWindow?.processId ?? null);
+  const activeWindow = getWindowById(windows, activeWindowId, windowRecord);
+  const activeProcess = getProcessById(processes, activeWindow?.processId ?? null, processRecord);
   const activeApp = activeWindow ? appMap[activeWindow.appId] ?? null : null;
 
   return {
