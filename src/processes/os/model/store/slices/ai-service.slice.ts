@@ -37,6 +37,7 @@ export type AiServiceSlice = Pick<
   | "aiPaletteContext"
   | "aiWindowContexts"
   | "aiMessages"
+  | "aiCurrentTranscript"
 > & {
   aiOpenPalette: (context: AiServiceContext) => void;
   aiClosePalette: () => void;
@@ -49,20 +50,16 @@ export type AiServiceSlice = Pick<
   aiStartNewSession: () => void;
 };
 
-/** Current transcript being built within this session. */
-let currentTranscript: AiTranscriptFile | null = null;
-
 export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice> = (set, get) => ({
   ...aiServiceManagerInitialState,
   abortController: null as AbortController | null,
+  aiCurrentTranscript: null,
 
   aiStartNewSession: () => {
     if (get().abortController) {
       get().abortController!.abort();
       set({ abortController: null });
     }
-    currentTranscript = null;
-    
     set({
       aiSessionId: null,
       aiMessages: [],
@@ -71,14 +68,15 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
       aiStreamContent: "",
       aiLastResult: null,
       aiError: null,
+      aiCurrentTranscript: null,
     });
   },
 
   aiOpenPalette: (context: AiServiceContext) => {
     const sessionId = get().aiSessionId ?? generateSessionId();
 
-    if (!currentTranscript) {
-      currentTranscript = createTranscriptFile(sessionId);
+    if (!get().aiCurrentTranscript) {
+      set({ aiCurrentTranscript: createTranscriptFile(sessionId) });
     }
 
     set({
@@ -240,10 +238,12 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
 
       // Persist transcript entry
       const sessionId = get().aiSessionId;
-      if (sessionId && currentTranscript) {
+      const transcript = get().aiCurrentTranscript;
+      if (sessionId && transcript) {
         const entry = buildTranscriptEntry(sessionId, request, result);
-        currentTranscript = appendToTranscript(currentTranscript, entry);
-        void persistTranscript(currentTranscript);
+        const updated = appendToTranscript(transcript, entry);
+        set({ aiCurrentTranscript: updated });
+        void persistTranscript(updated);
       }
     } catch (error) {
       if (signal.aborted) return;
@@ -265,10 +265,12 @@ export const createAiServiceSlice: StateCreator<OSStore, [], [], AiServiceSlice>
 
       // Persist error in transcript
       const sessionId = get().aiSessionId;
-      if (sessionId && currentTranscript) {
+      const transcript = get().aiCurrentTranscript;
+      if (sessionId && transcript) {
         const entry = buildTranscriptEntry(sessionId, request, null, message);
-        currentTranscript = appendToTranscript(currentTranscript, entry);
-        void persistTranscript(currentTranscript);
+        const updated = appendToTranscript(transcript, entry);
+        set({ aiCurrentTranscript: updated });
+        void persistTranscript(updated);
       }
     } finally {
       set({ abortController: null });

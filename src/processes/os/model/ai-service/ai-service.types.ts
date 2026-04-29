@@ -126,6 +126,7 @@ export type AiMessage = {
 export type AiServiceManagerState = {
   aiStatus: AiServiceStatus;
   aiCurrentRequest: AiServiceRequest | null;
+  aiCurrentTranscript: AiTranscriptFile | null;
   aiStreamContent: string;
   aiLastResult: AiServiceResult | null;
   aiError: string | null;

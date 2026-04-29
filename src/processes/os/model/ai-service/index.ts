@@ -46,6 +46,7 @@ export {
 export const aiServiceManagerInitialState = {
   aiStatus: "idle" as const,
   aiCurrentRequest: null,
+  aiCurrentTranscript: null,
   aiStreamContent: "",
   aiLastResult: null,
   aiError: null,
