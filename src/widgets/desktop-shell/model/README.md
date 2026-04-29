@@ -10,7 +10,9 @@ Shell-level model layer for the desktop widget.
 - `desktop-shell.types.ts`: shared shell types used by the UI folders.
 - `use-ai-command-palette.ts`: Space-to-Mission-Control and `Space+K` chord handling, plus active-context AI palette opening.
 - `use-system-shortcuts.ts`: central shell-level execution for configurable system shortcuts across combo and sequence bindings.
-- `use-desktop-shell.ts`: main hook that wires desktop UI state to the OS runtime store, including split-view picker and divider interactions.
+- `use-desktop-shell.ts`: main orchestration hook that wires desktop UI state to the OS runtime store, including split-view picker and divider interactions.
+- `use-boot-sequence.ts`: extracted boot phase state machine managing the 5-phase cinematic boot sequence (off → power-on → logo → init → reveal → ready) with fast-boot on revisit.
+- `use-desktop-pointer-events.ts`: extracted pointer event handler with requestAnimationFrame gating for window drag, resize, file drag, icon drag, AI widget drag, and split-view resize.
 - `use-app-switcher.ts`: app switcher interaction hook for cycling and activating running apps from a shell-level overlay.
 - `use-mission-control.ts`: Mission Control overview state for highlighted spaces and keyboard-confirmed selection.
 

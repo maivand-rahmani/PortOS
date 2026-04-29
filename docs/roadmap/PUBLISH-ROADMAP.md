@@ -348,7 +348,11 @@
 - [x] M-6 to M-19: Code quality (1.5h)
 
 ### Phase 4 — Architectural (Post-Launch)
-- [ ] A-1 to A-5: Refactoring (8h+)
+- [x] A-1: DesktopShell split into micro-components (WindowManagerSurface, OverlayShell, DesktopIconsShell, DockShell, MenuBarShell, NotificationShell)
+- [x] A-2: Store type composition cleanup with proper OSBootPhase/OSRuntimeSnapshot exports
+- [x] A-3: Transactional IDB writes with `withFsRollback()` utility extracting try-catch-rollback boilerplate
+- [x] A-4: Shadow state `currentTranscript` migrated from module scope to Zustand `aiCurrentTranscript`
+- [x] A-5: O(1) lookups via `windowRecord`/`processRecord` replacing 35+ `.find()` calls across 14 files
 
 ### Phase 5 — Low Priority
 - [ ] L-1 to L-9: Polish (2h)

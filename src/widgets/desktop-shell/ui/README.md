@@ -25,5 +25,10 @@ Visual building blocks for the macOS-style desktop shell.
 - `workspace-switcher/`: compact segmented control for switching virtual desktops and fullscreen spaces.
 - `split-view-picker/`: in-pane chooser for selecting the second app when entering split view.
 - `split-view-divider/`: draggable divider for resizing left and right split panes.
+- `overlay-shell/`: composes BootOverlay, AppSwitcherOverlay, MissionControlOverlay, AiCommandPalette, and SpotlightOverlay into a single shell section.
+- `desktop-icons-shell/`: composes DesktopAiTeaser and DesktopIcons into a chrome-gated desktop section.
+- `dock-shell/`: animated motion wrapper around MacDock with slide-up entrance/exit.
+- `menu-bar-shell/`: animated motion wrapper around MacMenuBar with slide-down entrance/exit.
+- `notification-shell/`: composes NotificationToasts and NotificationCenterPanel into a single shell section.
 
 Each UI folder should stay small and focused on one visible shell responsibility.
