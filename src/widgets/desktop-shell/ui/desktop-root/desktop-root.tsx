@@ -7,7 +7,6 @@ import {
   useOSStore,
   type FileDropTarget,
 } from "@/processes";
-import { SpotlightOverlay } from "@/features/spotlight-search";
 import { getNodePath } from "@/processes/os/model/file-system";
 import { dispatchOpenFileRequest } from "@/shared/lib/os-events/fs-os-events";
 import { dispatchFilesFocusNodeRequest } from "@/shared/lib/os-events/files-os-events";
@@ -23,24 +22,19 @@ import { useMissionControl } from "../../model/use-mission-control";
 import { useKeyboardShortcuts } from "../../model/use-keyboard-shortcuts";
 import { useDefaultShortcuts } from "../../model/use-default-shortcuts";
 import { useSystemShortcuts } from "../../model/use-system-shortcuts";
-import { AiCommandPalette } from "../ai-command-palette";
-import { AppSwitcherOverlay } from "../app-switcher-overlay/app-switcher-overlay";
-import { BootOverlay } from "../boot-overlay";
-import { DesktopIcons } from "../desktop-icons";
-import { DesktopAiTeaser } from "../desktop-ai-teaser/desktop-ai-teaser";
 import { DesktopWallpaper } from "../desktop-wallpaper";
 import { FileDropOverlay } from "../file-drop-overlay/file-drop-overlay";
-import { MacDock } from "../mac-dock";
-import { MacMenuBar } from "../mac-menu-bar";
-import { MissionControlOverlay } from "../mission-control-overlay";
-import { NotificationCenterPanel } from "../notification-center-panel/notification-center-panel";
-import { NotificationToasts } from "../notification-toasts/notification-toasts";
 import { DockMenu } from "../dock-menu";
 import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { SplitViewDivider } from "../split-view-divider/split-view-divider";
 import { SplitViewPicker } from "../split-view-picker/split-view-picker";
 import { WindowErrorBoundary } from "@/shared/ui/window-error-boundary";
 import { WindowSurface } from "../window-surface";
+import { OverlayShell } from "../overlay-shell";
+import { DesktopIconsShell } from "../desktop-icons-shell";
+import { DockShell } from "../dock-shell";
+import { MenuBarShell } from "../menu-bar-shell";
+import { NotificationShell } from "../notification-shell";
 
 export function DesktopShell() {
   const [isSpotlightOpen, setSpotlightOpen] = useState(false);
@@ -529,58 +523,35 @@ export function DesktopShell() {
       <DesktopWallpaper />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(10,132,255,0.18),transparent_30%)]" />
 
-      <motion.div
-        initial={shouldReduceMotion ? false : { y: -28, opacity: 0 }}
-        animate={
-          isBooting
-            ? { y: -28, opacity: 0 }
-            : showMenuBar
-              ? { y: 0, opacity: 1 }
-              : { y: -36, opacity: 0 }
-        }
-        transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.1 }}
-      >
-        <MacMenuBar
-          statusBar={statusBar}
-          isFullscreen={isFullscreenWorkspace}
-          onRunAction={runStatusBarCommand}
-          onOpenAgent={() => openDesktopApp("ai-agent")}
-          onOpenAiPalette={() => {
-            void openAiPaletteFromActiveContext();
-          }}
-          onOpenAppSwitcher={openAppSwitcher}
-          notificationCount={unreadNotificationCount}
-          onToggleNotifications={toggleNotificationCenter}
-        />
-      </motion.div>
+      <MenuBarShell
+        isBooting={isBooting}
+        showMenuBar={showMenuBar}
+        isFullscreenWorkspace={isFullscreenWorkspace}
+        statusBar={statusBar}
+        unreadNotificationCount={unreadNotificationCount}
+        shouldReduceMotion={shouldReduceMotion ?? false}
+        onRunStatusBarCommand={runStatusBarCommand}
+        onOpenDesktopApp={openDesktopApp}
+        onOpenAiPaletteFromActiveContext={openAiPaletteFromActiveContext}
+        onOpenAppSwitcher={openAppSwitcher}
+        onToggleNotifications={toggleNotificationCenter}
+      />
 
       <main className="relative h-screen w-full">
-        {showDesktopChrome ? (
-          <DesktopAiTeaser
-            isBooting={isBooting}
-            position={aiWidgetPosition}
-            onOpenAgent={() => openDesktopApp("ai-agent")}
-            onRunPrompt={openAgentPrompt}
-            onDragStart={beginAiWidgetDrag}
-          />
-        ) : null}
-
-        {showDesktopChrome ? (
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={isBooting ? { opacity: 0, scale: 0.96 } : { opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.2 }}
-          >
-            <DesktopIcons
-              apps={apps}
-              positions={desktopIconPositions}
-              selectedAppId={selectedDesktopAppId}
-              onSelectApp={selectDesktopApp}
-              onOpenApp={openDesktopApp}
-              onDragStart={beginDesktopIconDrag}
-            />
-          </motion.div>
-        ) : null}
+        <DesktopIconsShell
+          showDesktopChrome={showDesktopChrome}
+          isBooting={isBooting}
+          apps={apps}
+          desktopIconPositions={desktopIconPositions}
+          selectedDesktopAppId={selectedDesktopAppId}
+          aiWidgetPosition={aiWidgetPosition}
+          shouldReduceMotion={shouldReduceMotion ?? false}
+          onSelectApp={selectDesktopApp}
+          onOpenApp={openDesktopApp}
+          onOpenAgentPrompt={openAgentPrompt}
+          onBeginAiWidgetDrag={beginAiWidgetDrag}
+          onBeginDesktopIconDrag={beginDesktopIconDrag}
+        />
 
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
@@ -677,92 +648,66 @@ export function DesktopShell() {
         </div>
       </main>
 
-      <motion.div
-        initial={shouldReduceMotion ? false : { y: 80, opacity: 0 }}
-        animate={
-          isBooting
-            ? { y: 80, opacity: 0 }
-            : showDock
-              ? { y: 0, opacity: 1 }
-              : { y: 120, opacity: 0 }
-        }
-        transition={{ duration: 0.5, ease: "easeOut", delay: isBooting ? 0 : 0.15 }}
-      >
-        <MacDock
-          dockApps={dockApps}
-          minimizedWindows={minimizedWindows}
-          apps={apps}
-          autohide={!isFullscreenWorkspace && dockAutohide}
-          isFullscreen={isFullscreenWorkspace}
-          onActivateApp={openDesktopApp}
-          onOpenMenu={openDockMenu}
-          onRestoreWindow={restoreWindow}
-        />
-      </motion.div>
-
-      <AnimatePresence>
-        {isBooting ? (
-          <BootOverlay
-            phase={bootPhase}
-            progress={bootProgress}
-            messages={bootMessages}
-          />
-        ) : null}
-      </AnimatePresence>
-
-      <NotificationToasts
-        toasts={activeToasts}
-        appMap={appMap}
-        onDismiss={dismissToast}
-        onOpenCenter={() => setNotificationCenterOpen(true)}
+      <DockShell
+        isBooting={isBooting}
+        showDock={showDock}
+        dockApps={dockApps}
+        minimizedWindows={minimizedWindows}
+        apps={apps}
+        dockAutohide={dockAutohide}
+        isFullscreenWorkspace={isFullscreenWorkspace}
+        shouldReduceMotion={shouldReduceMotion ?? false}
+        onActivateApp={openDesktopApp}
+        onOpenMenu={openDockMenu}
+        onRestoreWindow={restoreWindow}
       />
 
-      <NotificationCenterPanel
-        isOpen={isNotificationCenterOpen}
-        notifications={notifications}
-        unreadCount={unreadNotificationCount}
-        appMap={appMap}
-        onClose={() => setNotificationCenterOpen(false)}
-        onMarkRead={markNotificationRead}
-        onMarkAllRead={markAllNotificationsRead}
-        onRemove={removeNotification}
-        onClearAll={clearAllNotifications}
-      />
-
-      <AppSwitcherOverlay
-        isOpen={isAppSwitcherOpen}
-        apps={switcherApps}
-        selectedAppId={selectedSwitcherAppId}
-        onPreview={previewSwitcherApp}
-        onActivate={activateSelectedApp}
-      />
-
-      <MissionControlOverlay
-        isOpen={isMissionControlOpen}
-        workspaces={workspaceRenderItems}
+      <OverlayShell
+        isBooting={isBooting}
+        bootPhase={bootPhase as Exclude<typeof bootPhase, "ready">}
+        bootProgress={bootProgress}
+        bootMessages={bootMessages}
+        isAppSwitcherOpen={isAppSwitcherOpen}
+        switcherApps={switcherApps}
+        selectedSwitcherAppId={selectedSwitcherAppId}
+        isMissionControlOpen={isMissionControlOpen}
+        workspaceRenderItems={workspaceRenderItems}
         highlightedWorkspaceId={highlightedWorkspaceId}
         selectedWindowId={selectedWindowId}
-        onClose={closeMissionControl}
+        isSpotlightOpen={isSpotlightOpen}
+        onCloseMissionControl={closeMissionControl}
         onHighlightWorkspace={highlightWorkspace}
         onCommitWorkspace={commitWorkspace}
         onSelectWindow={commitWindow}
         onCreateDesktop={createDesktop}
         onCloseSpace={closeFullscreenSpace}
+        onPreviewSwitcherApp={previewSwitcherApp}
+        onActivateSelectedApp={activateSelectedApp}
+        onCloseSpotlight={() => setSpotlightOpen(false)}
+        onOpenApp={openDesktopApp}
+        onFocusWindow={focusWindow}
+        onRunShortcut={(shortcutId, options) =>
+          runSystemShortcut(shortcutId, {
+            ignoreSurfaceState: options?.ignoreSurfaceState,
+          })
+        }
       />
 
-      <AiCommandPalette />
-
-        <SpotlightOverlay
-          isOpen={isSpotlightOpen}
-          onClose={() => setSpotlightOpen(false)}
-          onOpenApp={openDesktopApp}
-          onFocusWindow={focusWindow}
-          onRunShortcut={(shortcutId, options) =>
-            runSystemShortcut(shortcutId, {
-              ignoreSurfaceState: options?.ignoreSurfaceState,
-            })
-          }
-        />
-      </div>
-    );
+      <NotificationShell
+        isBooting={isBooting}
+        activeToasts={activeToasts}
+        notifications={notifications}
+        unreadNotificationCount={unreadNotificationCount}
+        appMap={appMap}
+        isNotificationCenterOpen={isNotificationCenterOpen}
+        onDismissToast={dismissToast}
+        onOpenCenter={() => setNotificationCenterOpen(true)}
+        onCloseCenter={() => setNotificationCenterOpen(false)}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllNotificationsRead}
+        onRemove={removeNotification}
+        onClearAll={clearAllNotifications}
+      />
+    </div>
+  );
 }
