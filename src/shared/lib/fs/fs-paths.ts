@@ -33,6 +33,7 @@ export const SYSTEM_SHARED_DIRECTORIES = {
   session: "/System/shared/session" as AbsolutePath,
   registry: "/System/shared/registry" as AbsolutePath,
   recent: "/System/shared/recent" as AbsolutePath,
+  desktop: "/System/shared/desktop" as AbsolutePath,
 } as const;
 
 export const SYSTEM_CACHE_DIRECTORIES = {
@@ -49,6 +50,7 @@ export const PERSISTED_FILE_PATHS = {
   settingsWallpaper: "/System/apps/settings/wallpaper.json" as AbsolutePath,
   terminalHistory: "/System/apps/terminal/history.json" as AbsolutePath,
   sessionSnapshot: "/System/shared/session/window-session.json" as AbsolutePath,
+  desktopPositions: "/System/shared/desktop/icon-positions.json" as AbsolutePath,
 } as const;
 
 export const LEGACY_FILE_PATHS = {
