@@ -14,6 +14,7 @@ import type { NotificationManagerState, NotificationLevel } from "../notificatio
 import type { ShortcutManagerState } from "../shortcut-manager";
 import type { Shortcut } from "../shortcut-manager/shortcut-manager.types";
 import type { AiServiceManagerState, AiActionId, AiServiceContext } from "../ai-service";
+import type { DesktopManagerState } from "../desktop-manager";
 import type { FileNode, FileSystemNode } from "@/entities/file-system";
 import type { WindowPosition } from "@/entities/window";
 import type { WindowResizeDirection } from "../window-manager";
@@ -47,7 +48,8 @@ export type OSStore = AppRegistryState &
   WorkspaceManagerState &
   NotificationManagerState &
   ShortcutManagerState &
-  AiServiceManagerState & {
+  AiServiceManagerState &
+  DesktopManagerState & {
     bootPhase: OSBootPhase;
     bootProgress: number;
     bootMessages: string[];
@@ -160,6 +162,26 @@ export type OSStore = AppRegistryState &
     registerShortcut: (shortcut: Shortcut) => void;
     registerShortcuts: (shortcuts: Shortcut[]) => void;
     unregisterShortcut: (shortcutId: string) => void;
+    // Desktop
+    setDesktopIconPositions: (
+      positions: import("../desktop-manager").DesktopIconMap | ((prev: import("../desktop-manager").DesktopIconMap) => import("../desktop-manager").DesktopIconMap),
+    ) => void;
+    setDesktopSelection: (itemId: string | null) => void;
+    setDesktopSelections: (ids: string[]) => void;
+    toggleDesktopSelection: (id: string) => void;
+    setRangeSelection: (fromId: string, toId: string, allItemIds: string[]) => void;
+    clearDesktopSelections: () => void;
+    setDesktopLastClicked: (id: string | null) => void;
+    setDesktopCleanUpMode: (mode: import("../desktop-manager").CleanUpMode) => void;
+    markDesktopLayoutDirty: () => void;
+    clearDesktopSelection: () => void;
+    setDesktopSort: (sort: import("../desktop-manager").SortConfig) => void;
+    setDesktopViewMode: (mode: import("../desktop-manager").ViewMode) => void;
+    startDesktopRename: (itemId: string, currentName: string) => void;
+    commitDesktopRename: () => Promise<void>;
+    cancelDesktopRename: () => void;
+    hydrateDesktopState: () => Promise<void>;
+    persistDesktopPositions: () => Promise<void>;
     // AI Service
     aiOpenPalette: (context: AiServiceContext) => void;
     aiClosePalette: () => void;

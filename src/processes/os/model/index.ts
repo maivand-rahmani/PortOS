@@ -161,6 +161,14 @@ export {
 export { useOSStore } from "./store/store";
 export type { AppRegistryState } from "./app-registry";
 export type { ProcessManagerState } from "./process-manager";
+export type {
+  DesktopIconMap,
+  DesktopManagerState,
+  DesktopRenameState,
+  SortConfig,
+  SortKey,
+  ViewMode,
+} from "./desktop-manager";
 export type { FileSystemManagerState } from "./file-system";
 export type { FileDragManagerState, FileDropTarget } from "./file-drag-manager";
 export type { SessionManagerState, PersistedSessionState } from "./session-manager";
