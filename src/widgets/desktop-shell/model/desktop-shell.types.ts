@@ -15,6 +15,8 @@ import type {
 } from "@/processes";
 
 import type { StatusBarModel } from "./status-bar";
+import type { ContextMenuState, ContextMenuTarget, DesktopItem, SortConfig, ViewMode } from "./desktop-context-menu/desktop-context-menu.types";
+import type { DesktopMarqueeState } from "./use-desktop-marquee";
 
 export type DesktopIconPosition = WindowPosition;
 
@@ -23,6 +25,8 @@ export type DesktopIconMap = Record<string, DesktopIconPosition>;
 export type DesktopIconDragState = {
   appId: string;
   offset: WindowPosition;
+  /** Initial positions of all items being dragged (unprefixed keys), captured at drag start. */
+  initialPositions: Record<string, WindowPosition>;
 } | null;
 
 export type DesktopWidgetDragState = {
@@ -112,6 +116,8 @@ export type UseDesktopShellResult = {
   bootMessages: string[];
   desktopBounds: DesktopBounds | null;
   selectedDesktopAppId: string | null;
+  desktopSelections: string[];
+  desktopItems: DesktopItem[];
   desktopIconPositions: DesktopIconMap;
   aiWidgetPosition: WindowPosition | null;
   dockApps: DockAppState[];
@@ -124,6 +130,7 @@ export type UseDesktopShellResult = {
   currentSplitView: WorkspaceSplitView | null;
   splitViewPicker: SplitViewPickerState | null;
   splitViewCandidates: AppConfig[];
+  iconDropTargetFolderId: string | null;
   fileDragNodeId: string | null;
   fileDropTarget: FileDropTarget | null;
   statusBar: StatusBarModel;
@@ -132,13 +139,21 @@ export type UseDesktopShellResult = {
   clearDesktopSelection: () => void;
   closeDockMenu: () => void;
   selectDesktopApp: (appId: string | null) => void;
+  handleItemClick: (itemId: string, event: React.MouseEvent) => void;
   openDesktopApp: (appId: string) => void;
+  openDesktopItem: (itemId: string) => void;
   openAgentPrompt: (prompt: string) => void;
   beginAiWidgetDrag: (pointer: WindowPosition) => void;
-  beginDesktopIconDrag: (appId: string, pointer: WindowPosition) => void;
+  beginDesktopIconDrag: (itemId: string, pointer: WindowPosition) => void;
   openDockMenu: (appId: string, anchor: WindowPosition) => void;
   runDockMenuAction: (action: DockMenuAction) => void;
   runStatusBarCommand: (actionId: string) => void;
+  contextMenuState: ContextMenuState;
+  openDesktopContextMenu: (position: WindowPosition, target: ContextMenuTarget) => void;
+  closeContextMenu: () => void;
+  runContextMenuAction: (actionId: string) => void;
+  desktopSort: SortConfig;
+  desktopViewMode: ViewMode;
   switchWorkspace: (workspaceId: WorkspaceId) => void;
   createDesktop: () => void;
   closeFullscreenSpace: (workspaceId: WorkspaceId) => void;
@@ -161,4 +176,7 @@ export type UseDesktopShellResult = {
     pointer: WindowPosition,
   ) => void;
   windowSnapZone: WindowSnapZone | null;
+  marqueeState: DesktopMarqueeState;
+  beginMarquee: (pointer: WindowPosition, metaKey: boolean) => void;
+  handleMarqueeEnd: (ids: string[], isAdditive: boolean) => void;
 };

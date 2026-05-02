@@ -33,6 +33,24 @@ export const DESKTOP_ICON_SPACING = {
   y: 108,
 } as const;
 
+export const DESKTOP_ICON_FRAME_COMPACT = {
+  width: 64,
+  height: 72,
+} as const;
+
+export const DESKTOP_ICON_SPACING_COMPACT = {
+  x: 82,
+  y: 82,
+} as const;
+
+export const DESKTOP_ICON_LABEL_WIDTH_COMPACT = 56 as const;
+
+export function getDesktopIconConfig(mode: "grid" | "compact") {
+  return mode === "compact"
+    ? { frame: DESKTOP_ICON_FRAME_COMPACT, spacing: DESKTOP_ICON_SPACING_COMPACT }
+    : { frame: DESKTOP_ICON_FRAME, spacing: DESKTOP_ICON_SPACING };
+}
+
 export const DOCK_MENU = {
   width: 260,
   safeMargin: 18,

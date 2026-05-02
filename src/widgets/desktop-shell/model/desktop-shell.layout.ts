@@ -2,7 +2,13 @@ import type { AppConfig } from "@/entities/app";
 import type { DesktopBounds, WindowInstance, WindowPosition } from "@/entities/window";
 import type { WorkspaceDefinition, WorkspaceId } from "@/entities/workspace";
 
-import { DESKTOP_ICON_FRAME, DESKTOP_ICON_SPACING, DESKTOP_INSETS } from "./desktop-shell.constants";
+import {
+  DESKTOP_ICON_FRAME,
+  DESKTOP_ICON_SPACING,
+  DESKTOP_INSETS,
+  getDesktopIconConfig,
+} from "./desktop-shell.constants";
+import type { ViewMode } from "@/processes/os/model/desktop-manager";
 import type { DockMenuEntry } from "./desktop-shell.types";
 import type { DesktopIconMap, DockAppState, DockWindowItem } from "./desktop-shell.types";
 
@@ -54,12 +60,110 @@ export function clampDesktopIconPosition(
   };
 }
 
+export function snapToRightAlignedGrid(
+  position: WindowPosition,
+  bounds: DesktopBounds,
+  frame: { width: number },
+  spacing: { x: number; y: number },
+): WindowPosition {
+  const baseX = bounds.width - DESKTOP_INSETS.right - frame.width;
+  const col = Math.max(0, Math.round((baseX - position.x) / spacing.x));
+  const row = Math.max(0, Math.round((position.y - (DESKTOP_INSETS.top + 20)) / spacing.y));
+
+  return {
+    x: Math.max(DESKTOP_INSETS.left, baseX - col * spacing.x),
+    y: DESKTOP_INSETS.top + 20 + row * spacing.y,
+  };
+}
+
+export function positionToCellRightAligned(
+  position: WindowPosition,
+  bounds: DesktopBounds,
+  frame: { width: number },
+  spacing: { x: number; y: number },
+): { row: number; col: number } {
+  const baseX = bounds.width - DESKTOP_INSETS.right - frame.width;
+  return {
+    row: Math.max(0, Math.round((position.y - (DESKTOP_INSETS.top + 20)) / spacing.y)),
+    col: Math.max(0, Math.round((baseX - position.x) / spacing.x)),
+  };
+}
+
+export function cellToPositionRightAligned(
+  cell: { row: number; col: number },
+  bounds: DesktopBounds,
+  frame: { width: number },
+  spacing: { x: number; y: number },
+): WindowPosition {
+  const baseX = bounds.width - DESKTOP_INSETS.right - frame.width;
+  return {
+    x: Math.max(DESKTOP_INSETS.left, baseX - cell.col * spacing.x),
+    y: DESKTOP_INSETS.top + 20 + cell.row * spacing.y,
+  };
+}
+
+export function getOccupiedCellsRightAligned(
+  positions: Record<string, WindowPosition>,
+  bounds: DesktopBounds,
+  frame: { width: number },
+  spacing: { x: number; y: number },
+): Set<string> {
+  const occupied = new Set<string>();
+  for (const _id of Object.keys(positions)) {
+    const pos = positions[_id];
+    const cell = positionToCellRightAligned(pos, bounds, frame, spacing);
+    occupied.add(`${cell.row},${cell.col}`);
+  }
+  return occupied;
+}
+
+export function resolveCollisionRightAligned(
+  desiredCell: { row: number; col: number },
+  occupiedCells: Set<string>,
+  maxRows: number,
+  maxCols: number,
+): { row: number; col: number } {
+  const key = (r: number, c: number) => `${r},${c}`;
+
+  if (!occupiedCells.has(key(desiredCell.row, desiredCell.col))) {
+    return desiredCell;
+  }
+
+  const maxRadius = Math.max(maxRows, maxCols);
+
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const onBoundary = Math.abs(dr) === radius || Math.abs(dc) === radius;
+        if (!onBoundary) continue;
+
+        const r = desiredCell.row + dr;
+        const c = desiredCell.col + dc;
+
+        if (r < 0 || r >= maxRows || c < 0 || c >= maxCols) continue;
+        if (!occupiedCells.has(key(r, c))) {
+          return { row: r, col: c };
+        }
+      }
+    }
+  }
+
+  return desiredCell;
+}
+
 export function syncDesktopIconPositions(
   apps: AppConfig[],
   bounds: DesktopBounds | null,
   currentPositions: DesktopIconMap,
 ): DesktopIconMap {
   const nextPositions: DesktopIconMap = {};
+
+  const appIds = new Set(apps.map((a) => a.id));
+  for (const [key, pos] of Object.entries(currentPositions)) {
+    if (!appIds.has(key)) {
+      nextPositions[key] = bounds ? clampDesktopIconPosition(pos, bounds) : pos;
+    }
+  }
 
   apps.forEach((app, index) => {
     const existingPosition = currentPositions[app.id];
