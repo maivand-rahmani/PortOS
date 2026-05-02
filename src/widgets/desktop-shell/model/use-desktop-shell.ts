@@ -13,12 +13,22 @@ import {
 } from "@/processes";
 import type { DesktopBounds, WindowPosition } from "@/entities/window";
 import { openAgentWithPrompt } from "@/apps/ai-agent/model/external";
+import { dispatchFilesFocusNodeRequest } from "@/shared/lib/os-events/files-os-events";
+import {
+  subscribeToFileSystemChanges,
+  isFileSystemChangeWithinPath,
+} from "@/shared/lib/fs/fs-events";
+import { SYSTEM_SHARED_DIRECTORIES } from "@/shared/lib/fs/fs-paths";
 
+import { useDesktopContextMenu } from "./desktop-context-menu/use-desktop-context-menu";
+import { getDesktopItems } from "./desktop-context-menu/desktop-items";
+import type { DesktopItem } from "./desktop-context-menu/desktop-context-menu.types";
 
 import {
   DESKTOP_AI_WIDGET,
   DESKTOP_INSETS,
   DOCK_MENU,
+  getDesktopIconConfig,
 } from "./desktop-shell.constants";
 import {
   createStatusBarCommandRunner,
@@ -32,10 +42,10 @@ import {
   getDockMenuEntries,
   sortWorkspaces,
   syncDesktopIconPositions,
+  snapToRightAlignedGrid,
 } from "./desktop-shell.layout";
 import type {
   DesktopIconDragState,
-  DesktopIconMap,
   DesktopWidgetDragState,
   DockMenuAction,
   DockMenuModel,
@@ -43,24 +53,44 @@ import type {
   UseDesktopShellResult,
 } from "./desktop-shell.types";
 import { useDesktopPointerEvents } from "./use-desktop-pointer-events";
+import { useDesktopSelection } from "./use-desktop-selection";
+import { useDesktopMarquee } from "./use-desktop-marquee";
+import { useDesktopKeyboardNav } from "./use-desktop-keyboard-nav";
 import { useBootSequence } from "./use-boot-sequence";
 
 export function useDesktopShell(): UseDesktopShellResult {
   const containerRef = useRef<HTMLDivElement>(null);
   const [desktopBounds, setDesktopBounds] = useState<DesktopBounds | null>(null);
-  const [selectedDesktopAppId, setSelectedDesktopAppId] = useState<string | null>(null);
-  const [customDesktopIconPositions, setDesktopIconPositions] = useState<DesktopIconMap>({});
   const [desktopIconDragState, setDesktopIconDragState] =
     useState<DesktopIconDragState>(null);
   const [customAiWidgetPosition, setAiWidgetPosition] = useState<WindowPosition | null>(null);
   const [desktopWidgetDragState, setDesktopWidgetDragState] = useState<DesktopWidgetDragState>(null);
+  const [iconDropTargetFolderId, setIconDropTargetFolderId] = useState<string | null>(null);
   const [dockMenu, setDockMenu] = useState<DockMenuModel | null>(null);
   const [splitViewPicker, setSplitViewPicker] = useState<{
     workspaceId: string;
     anchorWindowId: string;
     side: "left" | "right";
   } | null>(null);
+  const [desktopFsVersion, setDesktopFsVersion] = useState(0);
   const shouldReduceMotion = useReducedMotion();
+
+  const activateDesktopApp = useCallback((appId: string) => {
+    void useOSStore.getState().activateApp(appId);
+  }, []);
+
+  const {
+    contextMenuState,
+    openDesktopContextMenu,
+    closeContextMenu,
+    runContextMenuAction,
+    desktopSort,
+    setDesktopSort,
+    desktopViewMode,
+    setDesktopViewMode,
+  } = useDesktopContextMenu({
+    onOpenApp: activateDesktopApp,
+  });
 
   const apps = useOSStore((state) => state.apps);
   const appMap = useOSStore((state) => state.appMap);
@@ -75,6 +105,8 @@ export function useDesktopShell(): UseDesktopShellResult {
   const fileDragState = useOSStore((state) => state.fileDragState);
   const fileDropTarget = useOSStore((state) => state.fileDropTarget);
   const sessionHydrated = useOSStore((state) => state.sessionHydrated);
+  const fsNodeMap = useOSStore((state) => state.fsNodeMap);
+  const fsChildMap = useOSStore((state) => state.fsChildMap);
   const dragWindowId = useOSStore((state) => state.dragState?.windowId ?? null);
   const resizeWindowId = useOSStore((state) => state.resizeState?.windowId ?? null);
   const bootPhase = useOSStore((state) => state.bootPhase);
@@ -120,6 +152,31 @@ export function useDesktopShell(): UseDesktopShellResult {
   const updateWindowResize = useOSStore((state) => state.updateWindowResize);
   const endWindowResize = useOSStore((state) => state.endWindowResize);
   const resizeWindowsToBounds = useOSStore((state) => state.resizeWindowsToBounds);
+
+  // Desktop state from store (persisted)
+  const desktopIconPositions = useOSStore((state) => state.desktopIconPositions);
+  const desktopSelection = useOSStore((state) => state.desktopSelection);
+  const desktopSortState = useOSStore((state) => state.desktopSort);
+  const desktopHydrated = useOSStore((state) => state.desktopHydrated);
+  const setDesktopSelection = useOSStore((state) => state.setDesktopSelection);
+  const hydrateDesktopState = useOSStore((state) => state.hydrateDesktopState);
+  const persistDesktopPositions = useOSStore((state) => state.persistDesktopPositions);
+
+  // Multi-selection hook (macOS-style)
+  const { desktopSelections, handleItemClick: baseHandleItemClick, handleClearSelection: clearDesktopSelections } = useDesktopSelection();
+
+  // Marquee drag-to-select hook
+  const { marqueeState, beginMarquee, updateMarquee, endMarquee, cancelMarquee } = useDesktopMarquee();
+
+  const handleMarqueeEnd = useCallback((ids: string[], isAdditive: boolean) => {
+    if (isAdditive) {
+      const existing = useOSStore.getState().desktopSelections;
+      const merged = [...new Set([...existing, ...ids])];
+      useOSStore.getState().setDesktopSelections(merged);
+    } else {
+      useOSStore.getState().setDesktopSelections(ids);
+    }
+  }, []);
 
   const visibleWindows = useMemo<WindowRenderItem[]>(
     () =>
@@ -223,9 +280,22 @@ export function useDesktopShell(): UseDesktopShellResult {
     [activeWindowId, apps, currentWorkspaceId, windows],
   );
 
-  const desktopIconPositions = useMemo(
-    () => syncDesktopIconPositions(apps, desktopBounds, customDesktopIconPositions),
-    [apps, customDesktopIconPositions, desktopBounds],
+  const syncedDesktopIconPositions = useMemo(
+    () => syncDesktopIconPositions(apps, desktopBounds, desktopIconPositions),
+    [apps, desktopIconPositions, desktopBounds],
+  );
+
+  const desktopItems = useMemo(
+    () => getDesktopItems({
+      apps,
+      fsNodeMap,
+      fsChildMap,
+      desktopIconPositions: syncedDesktopIconPositions,
+      desktopBounds,
+      sortConfig: desktopSortState,
+      viewMode: desktopViewMode,
+    }),
+    [apps, fsNodeMap, fsChildMap, syncedDesktopIconPositions, desktopBounds, desktopSortState, desktopFsVersion, desktopViewMode],
   );
 
   const minimizedWindows = useMemo(
@@ -300,6 +370,32 @@ export function useDesktopShell(): UseDesktopShellResult {
     void hydrateSession(desktopBounds);
   }, [desktopBounds, hydrateSession, sessionHydrated]);
 
+  useEffect(() => {
+    if (!desktopBounds || bootPhase !== "ready") {
+      return;
+    }
+
+    void hydrateDesktopState();
+  }, [desktopBounds, bootPhase, hydrateDesktopState]);
+
+  useEffect(() => {
+    if (!desktopBounds || !desktopHydrated || bootPhase !== "ready") {
+      return;
+    }
+
+    const store = useOSStore.getState();
+    const currentPositions = store.desktopIconPositions;
+    const iconConfig = getDesktopIconConfig(desktopViewMode);
+
+    const newPositions: Record<string, WindowPosition> = {};
+    for (const [key, pos] of Object.entries(currentPositions)) {
+      newPositions[key] = snapToRightAlignedGrid(pos, desktopBounds, iconConfig.frame, iconConfig.spacing);
+    }
+
+    store.setDesktopIconPositions(newPositions);
+    void persistDesktopPositions();
+  }, [desktopViewMode, desktopBounds, desktopHydrated, bootPhase, persistDesktopPositions]);
+
   // ── Network connectivity listener ────────────────────────────────────────────
   useEffect(() => {
     const handleOffline = () => {
@@ -327,6 +423,17 @@ export function useDesktopShell(): UseDesktopShellResult {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
+  }, []);
+
+  // ── VFS change listener (desktop-relevant only) ─────────────────────────
+  useEffect(() => {
+    const unsubscribe = subscribeToFileSystemChanges((detail) => {
+      if (isFileSystemChangeWithinPath(detail, SYSTEM_SHARED_DIRECTORIES.desktop)) {
+        setDesktopFsVersion((v) => v + 1);
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -398,23 +505,32 @@ export function useDesktopShell(): UseDesktopShellResult {
     endWindowResize,
     snapWindowToZone,
     getContainerPointer,
-    setDesktopIconPositions,
     setAiWidgetPosition,
     setDesktopIconDragState,
     setDesktopWidgetDragState,
+    updateMarquee,
+    endMarquee,
+    desktopItems,
+    handleMarqueeEnd,
+    setIconDropTargetFolderId,
   });
 
-  const clearDesktopSelection = () => {
-    setSelectedDesktopAppId(null);
-  };
+  const clearDesktopSelection = clearDesktopSelections;
 
   const closeDockMenu = () => {
     setDockMenu(null);
   };
 
   const selectDesktopApp = (appId: string | null) => {
-    setSelectedDesktopAppId(appId);
+    setDesktopSelection(appId ? `app:${appId}` : null);
   };
+
+  const handleDesktopItemClick = useCallback((itemId: string, event: React.MouseEvent) => {
+    const allItemIds = desktopItems.map((item) =>
+      item.kind === "app" ? `app:${item.app.id}` : `fs:${item.node.id}`,
+    );
+    baseHandleItemClick(itemId, event, allItemIds);
+  }, [baseHandleItemClick, desktopItems]);
 
   const openDesktopApp = (appId: string) => {
     if (!desktopBounds) {
@@ -422,9 +538,37 @@ export function useDesktopShell(): UseDesktopShellResult {
     }
 
     setDockMenu(null);
-    setSelectedDesktopAppId(appId);
+    setDesktopSelection(`app:${appId}`);
     void activateApp(appId, desktopBounds);
   };
+
+  const openDesktopItem = (itemId: string) => {
+    if (itemId.startsWith("app:")) {
+      openDesktopApp(itemId.slice(4));
+      return;
+    }
+
+    if (!desktopBounds) {
+      return;
+    }
+
+    const store = useOSStore.getState();
+    const nodeId = itemId.slice(3);
+
+    const node = store.fsNodeMap[nodeId];
+    if (!node) return;
+
+    dispatchFilesFocusNodeRequest({ nodeId, source: "desktop-icon" });
+    void store.activateApp("files");
+  };
+
+  useDesktopKeyboardNav(
+    desktopItems,
+    desktopSelections,
+    openDesktopItem,
+    desktopBounds,
+    desktopViewMode,
+  );
 
   const openAgentPrompt = (prompt: string) => {
     if (!desktopBounds) {
@@ -433,7 +577,7 @@ export function useDesktopShell(): UseDesktopShellResult {
 
     openAgentWithPrompt(prompt);
     setDockMenu(null);
-    setSelectedDesktopAppId("ai-agent");
+    setDesktopSelection("app:ai-agent");
     void activateApp("ai-agent", desktopBounds);
   };
 
@@ -443,7 +587,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     }
 
     setDockMenu(null);
-    setSelectedDesktopAppId(appId);
+    setDesktopSelection(`app:${appId}`);
     void launchApp(appId, desktopBounds);
   };
 
@@ -517,25 +661,60 @@ export function useDesktopShell(): UseDesktopShellResult {
     void runStatusBarCommandWithContext(action.command, context);
   };
 
-  const beginDesktopIconDrag = (appId: string, pointer: WindowPosition) => {
+  const beginDesktopIconDrag = (itemId: string, pointer: WindowPosition) => {
     if (bootPhase !== "ready") {
       return;
     }
 
     const localPointer = getContainerPointer(pointer);
-    const currentPosition = desktopIconPositions[appId];
+    const desktopItem = desktopItems.find(
+      (di) => (di.kind === "app" ? `app:${di.app.id}` : `fs:${di.node.id}`) === itemId,
+    );
 
-    if (!currentPosition) {
+    if (!desktopItem) {
       return;
     }
 
-    setSelectedDesktopAppId(appId);
+    const currentPosition = desktopItem.position;
+    const appId = desktopItem.kind === "app" ? desktopItem.app.id : desktopItem.node.id;
+
+    const store = useOSStore.getState();
+    const selections = store.desktopSelections;
+
+    const initialPositions: Record<string, WindowPosition> = {};
+
+    if (selections.length > 1 && selections.includes(itemId)) {
+      const currentPositions = store.desktopIconPositions;
+      for (const selectionId of selections) {
+        const storeKey = selectionId.startsWith("app:")
+          ? selectionId.slice(4)
+          : selectionId.startsWith("fs:")
+            ? selectionId.slice(3)
+            : selectionId;
+        const savedPos = currentPositions[storeKey];
+        if (savedPos) {
+          initialPositions[storeKey] = { ...savedPos };
+        } else {
+          const computedItem = desktopItems.find(
+            (di) => (di.kind === "app" ? `app:${di.app.id}` : `fs:${di.node.id}`) === selectionId,
+          );
+          if (computedItem) {
+            initialPositions[storeKey] = { ...computedItem.position };
+          }
+        }
+      }
+    } else {
+      setDesktopSelection(itemId);
+      initialPositions[appId] = { ...currentPosition };
+    }
+
     setDesktopIconDragState({
       appId,
       offset: {
         x: localPointer.x - currentPosition.x,
         y: localPointer.y - currentPosition.y,
       },
+      initialPositions,
     });
   };
 
@@ -746,8 +925,10 @@ export function useDesktopShell(): UseDesktopShellResult {
     bootProgress,
     bootMessages,
     desktopBounds,
-    selectedDesktopAppId,
-    desktopIconPositions,
+    selectedDesktopAppId: desktopSelection?.startsWith("app:") ? desktopSelection.slice(4) : null,
+    desktopSelections,
+    desktopItems,
+    desktopIconPositions: syncedDesktopIconPositions,
     aiWidgetPosition,
     dockApps,
     dockMenu,
@@ -759,6 +940,7 @@ export function useDesktopShell(): UseDesktopShellResult {
     currentSplitView,
     splitViewPicker,
     splitViewCandidates,
+    iconDropTargetFolderId,
     fileDragNodeId: fileDragState?.nodeId ?? null,
     fileDropTarget,
     statusBar,
@@ -767,13 +949,21 @@ export function useDesktopShell(): UseDesktopShellResult {
     clearDesktopSelection,
     closeDockMenu,
     selectDesktopApp,
+    handleItemClick: handleDesktopItemClick,
     openDesktopApp,
+    openDesktopItem,
     openAgentPrompt,
     beginAiWidgetDrag,
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,
     runStatusBarCommand,
+    contextMenuState,
+    openDesktopContextMenu,
+    closeContextMenu,
+    runContextMenuAction,
+    desktopSort,
+    desktopViewMode,
     switchWorkspace,
     createDesktop,
     closeFullscreenSpace,
@@ -792,5 +982,8 @@ export function useDesktopShell(): UseDesktopShellResult {
     beginWindowDrag: beginDesktopWindowDrag,
     beginWindowResize: beginDesktopWindowResize,
     windowSnapZone,
+    marqueeState,
+    beginMarquee,
+    handleMarqueeEnd,
   };
 }
