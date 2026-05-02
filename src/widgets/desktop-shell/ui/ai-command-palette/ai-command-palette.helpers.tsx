@@ -19,7 +19,7 @@ export function StatusChip({ status }: { status: AiServiceStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex min-h-8 items-center rounded-full border px-3 text-[11px] font-medium uppercase tracking-[0.14em]",
+        "inline-flex min-h-7 items-center rounded-full border px-2.5 text-[10px] font-medium uppercase tracking-[0.12em]",
         className,
       )}
     >
@@ -30,7 +30,7 @@ export function StatusChip({ status }: { status: AiServiceStatus }) {
 
 export function LoadingState({ label }: { label: string }) {
   return (
-    <div className="flex h-full min-h-[132px] items-center justify-center text-sm text-muted/75">
+    <div className="flex h-full min-h-[132px] items-center justify-center text-sm text-muted">
       <span className="inline-flex items-center gap-2">
         <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
         {label}
@@ -50,8 +50,8 @@ export function IdleState({
   const hasSelection = Boolean(context.selection?.text.trim());
 
   return (
-    <div className="flex h-full min-h-[132px] flex-col justify-center text-sm text-muted/72">
-      <p className="text-foreground/88">
+    <div className="flex h-full min-h-[132px] flex-col justify-center text-sm text-muted">
+      <p className="text-foreground">
         {selectedAction ? `${selectedAction.label} is ready.` : "Choose an AI action to begin."}
       </p>
       <p className="mt-2 leading-6">
@@ -67,7 +67,7 @@ export function IdleState({
 
 export function PreviewContent({ content }: { content: string }) {
   return (
-    <pre className="whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-foreground/92">
+    <pre className="whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-foreground">
       {content}
     </pre>
   );
@@ -153,27 +153,27 @@ function getStatusMeta(status: AiServiceStatus): {
     case "loading":
       return {
         label: "Loading",
-        className: "border-sky-400/20 bg-sky-500/10 text-sky-100",
+        className: "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-300",
       };
     case "streaming":
       return {
         label: "Streaming",
-        className: "border-violet-400/20 bg-violet-500/10 text-violet-100",
+        className: "border-purple-500/25 bg-purple-500/10 text-purple-600 dark:text-purple-300",
       };
     case "done":
       return {
         label: "Ready",
-        className: "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
+        className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
       };
     case "error":
       return {
         label: "Error",
-        className: "border-red-400/20 bg-red-500/10 text-red-100",
+        className: "border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-300",
       };
     default:
       return {
         label: "Idle",
-        className: "border-white/10 bg-white/5 text-muted/78",
+        className: "border-border bg-surface text-muted",
       };
   }
 }

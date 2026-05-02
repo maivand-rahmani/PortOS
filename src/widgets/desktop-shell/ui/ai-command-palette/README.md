@@ -25,6 +25,10 @@ Global overlay widget for the OS-level AI command palette, triggered by **Space+
 6. Capability and apply behavior are derived from the published AI context for the active window
 7. The conversation pane scrolls independently from the action rail and composer, and keeps auto-scroll only while the user stays near the latest message
 
+## Theming
+
+All components use the project's global theme variables (`--background`, `--foreground`, `--muted`, `--surface`, `--window`, `--border`, `--accent`) via Tailwind's `@theme inline` mapping. The palette adapts automatically to light/dark mode through the `data-theme` attribute on `<html>`.
+
 ## Data flow
 
 - Reads from: `useOSStore` (`aiPaletteOpen`, `aiPaletteContext`, `aiStatus`, `aiStreamContent`, `aiLastResult`, `aiError`)

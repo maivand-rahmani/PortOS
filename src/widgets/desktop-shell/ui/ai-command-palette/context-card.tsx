@@ -8,18 +8,18 @@ type ContextCardProps = {
 
 export function ContextCard({ context, contextSummary, selectionPreview }: ContextCardProps) {
   return (
-    <div className="rounded-[24px] border border-white/8 bg-white/6 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted/55">
+    <div className="rounded-xl border border-border bg-background p-3.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
         Active Context
       </p>
-      <p className="mt-2 text-sm font-semibold text-foreground">{contextSummary}</p>
+      <p className="mt-1.5 text-[13px] font-semibold text-foreground">{contextSummary}</p>
 
       {context.file?.path ? (
-        <p className="mt-2 break-words text-xs leading-5 text-muted/72">{context.file.path}</p>
+        <p className="mt-1.5 break-words text-[11px] leading-5 text-muted">{context.file.path}</p>
       ) : null}
 
       {selectionPreview ? (
-        <div className="mt-3 rounded-2xl border border-white/8 bg-black/10 px-3 py-2 text-xs leading-5 text-muted/82">
+        <div className="mt-2.5 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-5 text-muted">
           &ldquo;{selectionPreview}&rdquo;
         </div>
       ) : null}

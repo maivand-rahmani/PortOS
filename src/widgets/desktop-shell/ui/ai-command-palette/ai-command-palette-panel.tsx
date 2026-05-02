@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Wand2, X } from "lucide-react";
+import { ArrowUp, Sparkles, X } from "lucide-react";
 
 import {
   getAvailableActions,
@@ -229,19 +229,19 @@ export function AiCommandPalettePanel({
       initial={shouldReduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.16 }}
+      transition={{ duration: 0.15 }}
       className="pointer-events-none fixed inset-0 z-[9800]"
     >
       <motion.div
         ref={panelRef}
         role="dialog"
         aria-label="AI command palette"
-        initial={shouldReduceMotion ? false : { opacity: 0, y: -10, scale: 0.985 }}
+        initial={shouldReduceMotion ? false : { opacity: 0, y: -12, scale: 0.975 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.985 }}
-        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.975 }}
+        transition={{ type: "spring", stiffness: 500, damping: 36 }}
         onKeyDown={handleKeyDown}
-        className="pointer-events-auto absolute -translate-x-1/2 overflow-hidden rounded-[32px] border border-white/12 bg-[linear-gradient(180deg,rgba(30,33,44,0.9),rgba(18,20,28,0.94))] shadow-[0_40px_120px_rgba(15,23,42,0.42),0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-3xl"
+        className="pointer-events-auto absolute -translate-x-1/2 overflow-hidden rounded-[22px] bg-window border border-border shadow-window backdrop-blur-2xl"
         style={{
           left: panelMetrics.left,
           top: panelMetrics.top,
@@ -251,55 +251,48 @@ export function AiCommandPalettePanel({
         }}
       >
         <div className="flex h-full min-h-0 flex-col">
-          <header className="border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01))] px-6 py-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff8a7a] via-[#ff6b57] to-[#ff4d73] text-white shadow-[0_10px_28px_rgba(255,107,87,0.35)]">
-                    <Sparkles className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted/65">
-                      System AI
-                    </p>
-                    <h2 className="truncate text-[18px] font-semibold tracking-[-0.02em] text-foreground">
-                      Command Palette
-                    </h2>
-                  </div>
-                </div>
-                <p className="mt-3 max-w-[38rem] text-sm text-muted/85">{contextSummary}</p>
+          <header className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-accent text-white shadow-sm">
+                <Sparkles className="h-4.5 w-4.5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-[13px] font-semibold tracking-[-0.01em] text-foreground">
+                  AI Assistant
+                </p>
+                <p className="truncate text-[11px] text-muted">{contextSummary}</p>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <StatusChip status={aiStatus} />
-                
-                {aiMessages.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={aiStartNewSession}
-                    className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 text-[12px] font-medium text-muted/75 transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                    aria-label="Start new conversation"
-                  >
-                    New Chat
-                  </button>
-                )}
+            <div className="flex items-center gap-2">
+              <StatusChip status={aiStatus} />
 
+              {aiMessages.length > 0 && (
                 <button
                   type="button"
-                  onClick={aiClosePalette}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-muted/75 transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                  aria-label="Close AI command palette"
+                  onClick={aiStartNewSession}
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-surface px-3 text-[11px] font-medium text-muted transition-colors hover:bg-surface/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                  aria-label="Start new conversation"
                 >
-                  <X className="h-4 w-4" aria-hidden="true" />
+                  New Chat
                 </button>
-              </div>
+              )}
+
+              <button
+                type="button"
+                onClick={aiClosePalette}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-muted transition-colors hover:bg-surface/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                aria-label="Close AI command palette"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           </header>
 
-          <div className="grid min-h-0 flex-1 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="order-2 min-h-0 border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.12))] lg:order-1 lg:border-r lg:border-t-0">
+          <div className="grid min-h-0 flex-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <aside className="order-2 min-h-0 border-t border-border bg-surface/40 lg:order-1 lg:border-r lg:border-t-0">
               <div className="flex h-full min-h-0 flex-col">
-                <div className="border-b border-white/8 p-4">
+                <div className="border-b border-border p-4">
                   <ContextCard
                     context={context}
                     contextSummary={contextSummary}
@@ -327,143 +320,140 @@ export function AiCommandPalettePanel({
                   </div>
                 </div>
 
-                <div className="border-t border-white/8 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted/55">
+                <div className="border-t border-border px-4 py-3">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
                     Active Action
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
+                  <p className="mt-1.5 text-sm font-semibold text-foreground">
                     {selectedAction ? selectedAction.label : "Choose an action"}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-muted/75">{composerMessage}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-muted">{composerMessage}</p>
                 </div>
               </div>
             </aside>
 
-            <section className="order-1 min-h-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.08))] lg:order-2">
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="border-b border-white/8 px-6 py-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted/55">
-                        Conversation
-                      </p>
-                      <h3 className="mt-1 truncate text-base font-semibold text-foreground">
-                        {selectedAction ? selectedAction.label : "AI response"}
-                      </h3>
-                    </div>
+            <section className="order-1 flex min-h-0 flex-col bg-background/60 lg:order-2">
+              <div className="border-b border-border px-5 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-[13px] font-semibold text-foreground">
+                      {selectedAction ? selectedAction.label : "AI Response"}
+                    </h3>
+                  </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      {selectedAction ? (
-                        <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[11px] font-medium text-muted/78">
-                          {getOutputModeLabel(selectedAction.outputMode)}
-                        </span>
-                      ) : null}
-                      <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[11px] font-medium text-muted/78">
-                        {aiMessages.length + (aiStatus === "streaming" ? 1 : 0)} turn{aiMessages.length + (aiStatus === "streaming" ? 1 : 0) === 1 ? "" : "s"}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedAction ? (
+                      <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted">
+                        {getOutputModeLabel(selectedAction.outputMode)}
                       </span>
-                      {aiLastResult?.suggestedPath ? (
-                        <span className="max-w-[18rem] truncate rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[11px] font-medium text-muted/78">
-                          {aiLastResult.suggestedPath}
-                        </span>
-                      ) : null}
-                    </div>
+                    ) : null}
+                    <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted">
+                      {aiMessages.length + (aiStatus === "streaming" ? 1 : 0)} turn
+                      {aiMessages.length + (aiStatus === "streaming" ? 1 : 0) === 1 ? "" : "s"}
+                    </span>
+                    {aiLastResult?.suggestedPath ? (
+                      <span className="max-w-[16rem] truncate rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted">
+                        {aiLastResult.suggestedPath}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
+              </div>
 
-                <div className="min-h-0 flex-1 px-6 py-5">
-                  <div className="mx-auto flex h-full min-h-0 w-full max-w-[74ch]">
-                    <MessageList 
-                      messages={aiMessages} 
-                      streamingContent={aiStatus === "streaming" ? aiStreamContent : ""} 
-                    />
-                  </div>
+              <div className="min-h-0 flex-1 px-5 py-4">
+                <div className="mx-auto flex h-full min-h-0 w-full max-w-[72ch]">
+                  <MessageList
+                    messages={aiMessages}
+                    streamingContent={aiStatus === "streaming" ? aiStreamContent : ""}
+                  />
                 </div>
+              </div>
 
-                <div className="border-t border-white/8 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.16))] px-5 py-4">
-                  <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-                    <div className="flex flex-col gap-3 md:flex-row">
-                      <label className="flex min-h-12 flex-1 items-center gap-3 rounded-[22px] border border-white/10 bg-white/6 px-4 transition-colors focus-within:border-accent/35 focus-within:bg-white/8">
-                        <Wand2 className="h-4 w-4 shrink-0 text-muted/60" />
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          value={userPrompt}
-                          onChange={(event) => setUserPrompt(event.target.value)}
-                          placeholder={
-                            selectedAction
-                              ? `Add a direction for ${selectedAction.label.toLowerCase()}...`
-                              : "Add an optional instruction..."
-                          }
-                          className="min-h-12 flex-1 bg-transparent text-[15px] text-foreground placeholder:text-muted/45 outline-none"
-                          autoComplete="off"
-                          autoCorrect="off"
-                          spellCheck={false}
-                        />
-                      </label>
+              <div className="border-t border-border bg-surface/30 px-4 py-3">
+                <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+                  <div className="flex items-center gap-2">
+                    <label className="flex min-h-11 flex-1 items-center gap-2.5 rounded-[16px] border border-border bg-background px-4 transition-colors focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/10">
+                      <Sparkles className="h-4 w-4 shrink-0 text-muted" />
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={userPrompt}
+                        onChange={(event) => setUserPrompt(event.target.value)}
+                        placeholder={
+                          selectedAction
+                            ? `Add a prompt for ${selectedAction.label.toLowerCase()}...`
+                            : "Add an optional instruction..."
+                        }
+                        className="min-h-11 flex-1 bg-transparent text-[14px] text-foreground placeholder:text-muted outline-none"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                      />
+                    </label>
 
-                      <button
-                        type="submit"
-                        disabled={!canExecute}
-                        className={cn(
-                          "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 md:min-w-[144px]",
-                          canExecute
-                            ? "bg-accent text-white shadow-[0_16px_36px_rgba(10,132,255,0.32)] hover:bg-[#238dff]"
-                            : "cursor-not-allowed bg-white/8 text-muted/55",
-                        )}
-                      >
-                          {isBusy ? "Running" : "Send"}
-                      </button>
-                    </div>
+                    <button
+                      type="submit"
+                      disabled={!canExecute}
+                      className={cn(
+                        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                        canExecute
+                          ? "bg-foreground text-background hover:bg-foreground/85"
+                          : "cursor-not-allowed bg-surface text-muted border border-border",
+                      )}
+                      aria-label="Send"
+                    >
+                      <ArrowUp className="h-5 w-5" />
+                    </button>
+                  </div>
 
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                      <p className="max-w-[46rem] text-xs leading-5 text-muted/75">{composerMessage}</p>
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                    <p className="max-w-[42rem] text-[11px] leading-5 text-muted">{composerMessage}</p>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        {isBusy ? (
-                          <button
-                            type="button"
-                            onClick={aiCancelRequest}
-                            className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/12 bg-white/6 px-3 text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                          >
-                            Cancel
-                          </button>
-                        ) : null}
-
-                        {canApply ? (
-                          <button
-                            type="button"
-                            onClick={() => void aiApplyResult()}
-                            className="inline-flex min-h-9 items-center justify-center rounded-full bg-accent px-3.5 text-white shadow-[0_14px_32px_rgba(10,132,255,0.28)] transition-colors hover:bg-[#238dff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                          >
-                            {applyLabel}
-                          </button>
-                        ) : null}
-
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {isBusy ? (
                         <button
                           type="button"
-                          onClick={aiClosePalette}
-                          className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/12 bg-white/6 px-3 text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                          onClick={aiCancelRequest}
+                          className="inline-flex min-h-8 items-center justify-center rounded-lg border border-border bg-surface px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                         >
-                          {canApply ? "Dismiss" : "Close"}
+                          Cancel
                         </button>
-                      </div>
-                    </div>
-                  </form>
+                      ) : null}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted/65">
-                    <span>
-                      <kbd className="rounded border border-white/10 bg-white/6 px-1 py-px">1-6</kbd> pick action
-                    </span>
-                    <span>
-                      <kbd className="rounded border border-white/10 bg-white/6 px-1 py-px">arrows</kbd> move
-                    </span>
-                    <span>
-                      <kbd className="rounded border border-white/10 bg-white/6 px-1 py-px">enter</kbd> run
-                    </span>
-                    <span>
-                      <kbd className="rounded border border-white/10 bg-white/6 px-1 py-px">esc</kbd> dismiss
-                    </span>
+                      {canApply ? (
+                        <button
+                          type="button"
+                          onClick={() => void aiApplyResult()}
+                          className="inline-flex min-h-8 items-center justify-center rounded-lg bg-accent px-3 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                        >
+                          {applyLabel}
+                        </button>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        onClick={aiClosePalette}
+                        className="inline-flex min-h-8 items-center justify-center rounded-lg border border-border bg-surface px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                      >
+                        {canApply ? "Dismiss" : "Close"}
+                      </button>
+                    </div>
                   </div>
+                </form>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-3 text-[10px] text-muted">
+                  <span>
+                    <kbd className="rounded border border-border bg-surface px-1 py-px font-medium">1-6</kbd> pick
+                  </span>
+                  <span>
+                    <kbd className="rounded border border-border bg-surface px-1 py-px font-medium">arrows</kbd> move
+                  </span>
+                  <span>
+                    <kbd className="rounded border border-border bg-surface px-1 py-px font-medium">enter</kbd> run
+                  </span>
+                  <span>
+                    <kbd className="rounded border border-border bg-surface px-1 py-px font-medium">esc</kbd> dismiss
+                  </span>
                 </div>
               </div>
             </section>
