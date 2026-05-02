@@ -1,47 +1,75 @@
-import type { AppConfig } from "@/entities/app";
-import type { WindowPosition } from "@/entities/window";
+"use client";
 
-import type { DesktopIconMap } from "../../model/desktop-shell.types";
+import { memo } from "react";
+import type { WindowPosition } from "@/entities/window";
+import type { DesktopItem } from "../../model/desktop-context-menu/desktop-context-menu.types";
 import { DesktopIcon } from "../desktop-icon";
+import { FsDesktopIcon } from "./fs-desktop-icon";
 
 type DesktopIconsProps = {
-  apps: AppConfig[];
-  selectedAppId: string | null;
-  positions: DesktopIconMap;
-  onSelectApp: (appId: string | null) => void;
-  onOpenApp: (appId: string) => void;
-  onDragStart: (appId: string, pointer: WindowPosition) => void;
+  items: DesktopItem[];
+  selectedItemIds: string[];
+  dropTargetFolderId: string | null;
+  compact: boolean;
+  onSelectItem: (itemId: string, event: React.MouseEvent) => void;
+  onOpenItem: (itemId: string) => void;
+  onDragStart: (itemId: string, pointer: WindowPosition) => void;
+  onContextMenuItem?: (itemId: string, event: React.MouseEvent) => void;
+  onRenameItem?: (itemId: string) => void;
 };
 
-export function DesktopIcons({
-  apps,
-  selectedAppId,
-  positions,
-  onSelectApp,
-  onOpenApp,
+function DesktopIconsComponent({
+  items,
+  selectedItemIds,
+  dropTargetFolderId,
+  compact,
+  onSelectItem,
+  onOpenItem,
   onDragStart,
+  onContextMenuItem,
+  onRenameItem,
 }: DesktopIconsProps) {
   return (
     <div className="absolute inset-0 z-10">
-      {apps.map((app) => {
-        const position = positions[app.id];
+      {items.map((item) => {
+        const itemId = item.kind === "app" ? `app:${item.app.id}` : `fs:${item.node.id}`;
 
-        if (!position) {
-          return null;
+        if (item.kind === "app") {
+          return (
+            <DesktopIcon
+              key={itemId}
+              app={item.app}
+              isSelected={selectedItemIds.includes(itemId)}
+              position={item.position}
+              compact={compact}
+              onSelect={(event) => onSelectItem(itemId, event)}
+              onOpen={() => onOpenItem(itemId)}
+              onDragStart={(pointer) => onDragStart(itemId, pointer)}
+              onContextMenu={(event) => onContextMenuItem?.(itemId, event)}
+            />
+          );
         }
 
+        const isDropTarget = dropTargetFolderId === item.node.id;
+
         return (
-          <DesktopIcon
-            key={app.id}
-            app={app}
-            isSelected={selectedAppId === app.id}
-            position={position}
-            onSelect={() => onSelectApp(app.id)}
-            onOpen={() => onOpenApp(app.id)}
-            onDragStart={(pointer) => onDragStart(app.id, pointer)}
+          <FsDesktopIcon
+            key={itemId}
+            node={item.node}
+            isSelected={selectedItemIds.includes(itemId)}
+            isDropTarget={isDropTarget}
+            position={item.position}
+            compact={compact}
+            onSelect={(event) => onSelectItem(itemId, event)}
+            onOpen={() => onOpenItem(itemId)}
+            onDragStart={(pointer) => onDragStart(itemId, pointer)}
+            onContextMenu={(event) => onContextMenuItem?.(itemId, event)}
+            onRename={onRenameItem ? () => onRenameItem(itemId) : undefined}
           />
         );
       })}
     </div>
   );
 }
+
+export const DesktopIcons = memo(DesktopIconsComponent);

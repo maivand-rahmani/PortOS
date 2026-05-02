@@ -25,6 +25,8 @@ import { useSystemShortcuts } from "../../model/use-system-shortcuts";
 import { DesktopWallpaper } from "../desktop-wallpaper";
 import { FileDropOverlay } from "../file-drop-overlay/file-drop-overlay";
 import { DockMenu } from "../dock-menu";
+import { DesktopContextMenu } from "../desktop-context-menu";
+import { DesktopRenameInput } from "../desktop-rename-input";
 import { SnapGuideOverlay } from "../snap-guide-overlay/snap-guide-overlay";
 import { SplitViewDivider } from "../split-view-divider/split-view-divider";
 import { SplitViewPicker } from "../split-view-picker/split-view-picker";
@@ -32,6 +34,7 @@ import { WindowErrorBoundary } from "@/shared/ui/window-error-boundary";
 import { WindowSurface } from "../window-surface";
 import { OverlayShell } from "../overlay-shell";
 import { DesktopIconsShell } from "../desktop-icons-shell";
+import { DesktopMarquee } from "../desktop-marquee";
 import { DockShell } from "../dock-shell";
 import { MenuBarShell } from "../menu-bar-shell";
 import { NotificationShell } from "../notification-shell";
@@ -72,6 +75,8 @@ export function DesktopShell() {
     bootProgress,
     bootMessages,
     selectedDesktopAppId,
+    desktopSelections,
+    desktopItems,
     desktopIconPositions,
     aiWidgetPosition,
     dockApps,
@@ -84,6 +89,7 @@ export function DesktopShell() {
     currentSplitView,
     splitViewPicker,
     splitViewCandidates,
+    iconDropTargetFolderId,
     fileDragNodeId,
     fileDropTarget,
     statusBar,
@@ -92,13 +98,21 @@ export function DesktopShell() {
     clearDesktopSelection,
     closeDockMenu,
     selectDesktopApp,
+    handleItemClick,
     openDesktopApp,
+    openDesktopItem,
     openAgentPrompt,
     beginAiWidgetDrag,
     beginDesktopIconDrag,
     openDockMenu,
     runDockMenuAction,
     runStatusBarCommand,
+    contextMenuState,
+    openDesktopContextMenu,
+    closeContextMenu,
+    runContextMenuAction,
+    desktopSort,
+    desktopViewMode,
     switchWorkspace,
     createDesktop,
     closeFullscreenSpace,
@@ -117,6 +131,9 @@ export function DesktopShell() {
     beginWindowResize,
     windowSnapZone,
     desktopBounds,
+    marqueeState,
+    beginMarquee,
+    handleMarqueeEnd,
   } = useDesktopShell();
 
   const dockAutohide = useOSStore((state) => state.osSettings.dockAutohide);
@@ -130,14 +147,20 @@ export function DesktopShell() {
   const markNotificationRead = useOSStore((state) => state.markNotificationRead);
   const markAllNotificationsRead = useOSStore((state) => state.markAllNotificationsRead);
   const clearAllNotifications = useOSStore((state) => state.clearAllNotifications);
+  const desktopRenameState = useOSStore((state) => state.desktopRenameState);
+  const startDesktopRename = useOSStore((state) => state.startDesktopRename);
+  const cancelDesktopRename = useOSStore((state) => state.cancelDesktopRename);
+  const fsRenameNode = useOSStore((state) => state.fsRenameNode);
+  const fsChildMap = useOSStore((state) => state.fsChildMap);
   const shouldReduceMotion = useReducedMotion();
   const [isMenuBarRevealed, setMenuBarRevealed] = useState(false);
   const [isDockRevealed, setDockRevealed] = useState(false);
   const isBooting = bootPhase !== "ready";
   const closeDesktopTransientUi = useCallback(() => {
     closeDockMenu();
+    closeContextMenu();
     clearDesktopSelection();
-  }, [clearDesktopSelection, closeDockMenu]);
+  }, [clearDesktopSelection, closeDockMenu, closeContextMenu]);
   const unreadNotificationCount = useMemo(
     () => notifications.filter((item) => !item.isRead).length,
     [notifications],
@@ -232,6 +255,16 @@ export function DesktopShell() {
     onCycleAppSwitcher: cycleAppSwitcher,
     onOpenAiPaletteFromActiveContext: openAiPaletteFromActiveContext,
   });
+
+  const allDesktopItemIds = useMemo(
+    () => desktopItems.map((item) =>
+      item.kind === "app" ? `app:${item.app.id}` : `fs:${item.node.id}`,
+    ),
+    [desktopItems],
+  );
+
+  useKeyboardShortcuts();
+  useDefaultShortcuts({ allItemIds: allDesktopItemIds });
 
   const resolveDropTarget = useCallback(
     (targetAppId: string, windowId: string): FileDropTarget | null => {
@@ -332,9 +365,34 @@ export function DesktopShell() {
     };
   }, [fileDragNodeId, fileDropTarget, handleFileDrop, resolveDropTarget, setFileDropTarget, visibleWindows]);
 
-  // OS-level keyboard shortcut system
-  useKeyboardShortcuts();
-  useDefaultShortcuts();
+  // Enter key triggers rename on selected FS item
+  useEffect(() => {
+    if (isBooting) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      if (desktopRenameState) return;
+
+      const target = event.target as HTMLElement | null;
+      if (isInteractiveKeyboardTarget(target)) return;
+
+      const selections = useOSStore.getState().desktopSelections;
+      if (selections.length !== 1) return;
+
+      const selectedId = selections[0];
+      if (!selectedId.startsWith("fs:")) return;
+
+      const nodeId = selectedId.slice(3);
+      const node = useOSStore.getState().fsNodeMap[nodeId];
+      if (!node) return;
+
+      event.preventDefault();
+      useOSStore.getState().startDesktopRename(nodeId, node.name);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [isBooting, desktopRenameState, isInteractiveKeyboardTarget]);
 
   useEffect(() => {
     if (bootPhase !== "ready" || hasReadyNotification) {
@@ -505,6 +563,44 @@ export function DesktopShell() {
   const splitDividerZIndex = currentWorkspaceTopZIndex + 8;
   const splitPickerZIndex = currentWorkspaceTopZIndex + 12;
 
+  const desktopRenameItemPosition = useMemo(() => {
+    if (!desktopRenameState) return null;
+    const item = desktopItems.find(
+      (di) => (di.kind === "fs-item" ? `fs:${di.node.id}` : "") === `fs:${desktopRenameState.itemId}`,
+    );
+    return item?.position ?? null;
+  }, [desktopRenameState, desktopItems]);
+
+  const desktopRenameSiblingNames = useMemo(() => {
+    if (!desktopRenameState) return [];
+    const desktopChildIds = fsChildMap["dir-desktop"] ?? [];
+    return desktopChildIds
+      .filter((id) => id !== desktopRenameState.itemId)
+      .map((id) => fsNodeMap[id]?.name ?? "")
+      .filter(Boolean);
+  }, [desktopRenameState, fsChildMap, fsNodeMap]);
+
+  const handleRenameItem = useCallback(
+    (itemId: string) => {
+      const nodeId = itemId.startsWith("fs:") ? itemId.slice(3) : itemId;
+      const node = fsNodeMap[nodeId];
+      if (!node) return;
+      startDesktopRename(nodeId, node.name);
+    },
+    [fsNodeMap, startDesktopRename],
+  );
+
+  const handleRenameCommit = useCallback(
+    (newName: string) => {
+      const state = useOSStore.getState();
+      const renameState = state.desktopRenameState;
+      if (!renameState) return;
+      void state.fsRenameNode(renameState.itemId, newName);
+      state.cancelDesktopRename();
+    },
+    [],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -517,7 +613,27 @@ export function DesktopShell() {
         }
 
         closeDockMenu();
-        clearDesktopSelection();
+        closeContextMenu();
+
+        const rect = containerRef.current?.getBoundingClientRect();
+        beginMarquee(
+          {
+            x: event.clientX - (rect?.left ?? 0),
+            y: event.clientY - (rect?.top ?? 0),
+          },
+          event.metaKey,
+        );
+      }}
+      onContextMenu={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest("button") || target.closest("article") || target.closest("[role='menuitem']")) {
+          return;
+        }
+        event.preventDefault();
+        openDesktopContextMenu(
+          { x: event.clientX, y: event.clientY },
+          { kind: "desktop" },
+        );
       }}
     >
       <DesktopWallpaper />
@@ -538,22 +654,38 @@ export function DesktopShell() {
       />
 
       <main className="relative h-screen w-full">
-        <DesktopIconsShell
-          showDesktopChrome={showDesktopChrome}
-          isBooting={isBooting}
-          apps={apps}
-          desktopIconPositions={desktopIconPositions}
-          selectedDesktopAppId={selectedDesktopAppId}
-          aiWidgetPosition={aiWidgetPosition}
-          shouldReduceMotion={shouldReduceMotion ?? false}
-          onSelectApp={selectDesktopApp}
-          onOpenApp={openDesktopApp}
-          onOpenAgentPrompt={openAgentPrompt}
-          onBeginAiWidgetDrag={beginAiWidgetDrag}
-          onBeginDesktopIconDrag={beginDesktopIconDrag}
-        />
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          <DesktopIconsShell
+            showDesktopChrome={showDesktopChrome}
+            isBooting={isBooting}
+            items={desktopItems}
+            selectedItemIds={desktopSelections}
+            dropTargetFolderId={iconDropTargetFolderId}
+            aiWidgetPosition={aiWidgetPosition}
+            shouldReduceMotion={shouldReduceMotion ?? false}
+            onSelectItem={handleItemClick}
+            onOpenItem={openDesktopItem}
+            onOpenAgentPrompt={openAgentPrompt}
+            onBeginAiWidgetDrag={beginAiWidgetDrag}
+            onBeginDesktopIconDrag={beginDesktopIconDrag}
+            onRenameItem={handleRenameItem}
+            onContextMenuItem={(itemId, event) => {
+              const item = desktopItems.find(
+                (di) => (di.kind === "app" ? `app:${di.app.id}` : `fs:${di.node.id}`) === itemId,
+              );
+              if (!item) return;
+              openDesktopContextMenu(
+                { x: event.clientX, y: event.clientY },
+                { kind: "desktop-item", desktopItem: item },
+              );
+            }}
+          />
+        </div>
 
-        <div className="absolute inset-0 overflow-hidden">
+        <DesktopMarquee state={marqueeState} />
+
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          <div className="absolute inset-0 overflow-hidden">
           <motion.div
             className="flex h-full w-full"
             animate={trackAnimate}
@@ -633,8 +765,9 @@ export function DesktopShell() {
             ))}
           </motion.div>
         </div>
+        </div>
 
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 z-30 pointer-events-none">
           <SnapGuideOverlay zone={windowSnapZone} bounds={desktopBounds} />
           <FileDropOverlay
             fileDragNodeId={fileDragNodeId}
@@ -644,6 +777,25 @@ export function DesktopShell() {
 
           <AnimatePresence>
             {dockMenu ? <DockMenu menu={dockMenu} onAction={runDockMenuAction} /> : null}
+            {contextMenuState.isOpen ? (
+              <DesktopContextMenu
+                state={contextMenuState}
+                onAction={runContextMenuAction}
+                onClose={closeContextMenu}
+                currentSort={desktopSort}
+                currentViewMode={desktopViewMode}
+              />
+            ) : null}
+            {desktopRenameState && desktopRenameItemPosition ? (
+              <DesktopRenameInput
+                itemId={desktopRenameState.itemId}
+                currentName={desktopRenameState.currentName}
+                position={desktopRenameItemPosition}
+                siblingNames={desktopRenameSiblingNames}
+                onCommit={handleRenameCommit}
+                onCancel={cancelDesktopRename}
+              />
+            ) : null}
           </AnimatePresence>
         </div>
       </main>
