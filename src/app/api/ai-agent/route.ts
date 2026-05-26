@@ -1,7 +1,3 @@
-import { OpenRouter } from "@openrouter/sdk";
-import type { Message } from "@openrouter/sdk/models";
-import * as openRouterErrors from "@openrouter/sdk/models/errors";
-
 import { buildAiAgentContext } from "@/shared/server/ai-agent-context";
 import {
   validateAgentRequest,
@@ -9,10 +5,17 @@ import {
   createPlainTextError,
 } from "@/shared/server/api-guard";
 import type { AgentRequestMessageInput } from "@/shared/server/api-guard";
+import {
+  buildMistralErrorMessage,
+  createMistralClient,
+  extractMistralStreamText,
+  getMistralApiKey,
+  getMistralModelId,
+  isTransientMistralError,
+} from "@/shared/server/mistral";
+import type { ChatCompletionRequestMessage } from "@/shared/server/mistral";
 
 export const runtime = "nodejs";
-
-const MODEL_ID = "openrouter/free";
 
 const GRATITUDE_PATTERN = /^(thanks|thank you|thx|ty|appreciate it|nice|good job|great|cool|ok thanks)[!.\s]*$/i;
 
@@ -79,32 +82,29 @@ function buildFallbackResponse(userMessage: string, fallbackBrief: string) {
 function buildErrorMessage(error: unknown): string {
   console.error("AI Agent error:", error);
 
-  if (error instanceof openRouterErrors.UnauthorizedResponseError) {
-    return "OpenRouter authentication failed. Check `OPENROUTER_API_KEY`.";
-  }
+  const providerMessage = buildMistralErrorMessage(error);
 
-  if (error instanceof openRouterErrors.TooManyRequestsResponseError) {
-    return "OpenRouter rate limit hit. Try again in a moment.";
-  }
-
-  if (
-    error instanceof openRouterErrors.BadRequestResponseError ||
-    error instanceof openRouterErrors.InternalServerResponseError ||
-    error instanceof openRouterErrors.OpenRouterError
-  ) {
-    return "OpenRouter request failed.";
+  if (providerMessage !== "Unexpected Mistral error.") {
+    return providerMessage;
   }
 
   return "Unexpected AI agent error.";
 }
 
-function buildConversation(messages: AgentRequestMessageInput[], systemPrompt: string): Message[] {
+function shouldUseLocalFallback(error: unknown) {
+  return isTransientMistralError(error);
+}
+
+function buildConversation(
+  messages: AgentRequestMessageInput[],
+  systemPrompt: string,
+): ChatCompletionRequestMessage[] {
   return [
     {
       role: "system",
       content: systemPrompt,
     },
-    ...messages.map((message): Message =>
+    ...messages.map((message): ChatCompletionRequestMessage =>
       message.role === "assistant"
         ? {
             role: "assistant",
@@ -150,10 +150,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = getMistralApiKey();
+    const modelId = getMistralModelId();
 
     if (!apiKey) {
-      return new Response("OPENROUTER_API_KEY is not configured on the server.", { status: 500 });
+      return new Response("MISTRAL_API_KEY is not configured on the server.", { status: 500 });
     }
 
     const context = await buildAiAgentContext({
@@ -162,26 +163,35 @@ export async function POST(request: Request) {
       requestedAction: validated.requestedAction,
     });
 
-    const client = new OpenRouter({ apiKey });
+    const client = createMistralClient(apiKey);
     let stream;
 
     try {
-      stream = await client.chat.send({
-        chatGenerationParams: {
-          model: MODEL_ID,
-          messages: buildConversation(messages, context.systemPrompt),
-          temperature: 0.55,
-          stream: true,
-          provider: {
-            allowFallbacks: true,
-          },
+      stream = await client.chat.stream({
+        model: modelId,
+        messages: buildConversation(messages, context.systemPrompt),
+        temperature: 0.55,
+        responseFormat: {
+          type: "text",
         },
       });
     } catch (providerError) {
+      console.error("AI Agent provider error:", providerError);
+
+      if (!shouldUseLocalFallback(providerError)) {
+        return new Response(buildErrorMessage(providerError), {
+          status: 502,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+            "X-PortOS-Context": context.contextPreview.join(", "),
+            "X-PortOS-Fallback": "provider-error",
+          },
+        });
+      }
+
       const encoder = new TextEncoder();
       const fallbackText = buildFallbackResponse(latestUserMessage, context.fallbackBrief);
-
-      console.error("AI Agent provider error:", providerError);
 
       return new Response(encoder.encode(fallbackText), {
         headers: {
@@ -201,8 +211,8 @@ export async function POST(request: Request) {
           try {
             let combinedText = "";
 
-            for await (const chunk of stream) {
-              const delta = chunk.choices[0]?.delta?.content;
+            for await (const event of stream) {
+              const delta = extractMistralStreamText(event);
 
               if (delta) {
                 combinedText += delta;

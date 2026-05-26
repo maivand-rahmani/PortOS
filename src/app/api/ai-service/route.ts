@@ -1,11 +1,17 @@
-import { OpenRouter } from "@openrouter/sdk";
-import * as openRouterErrors from "@openrouter/sdk/models/errors";
-
 import {
   validateAiServiceRequest,
   detectPromptInjection,
   createPlainTextError,
 } from "@/shared/server/api-guard";
+import {
+  buildMistralErrorMessage,
+  createMistralClient,
+  extractMistralStreamText,
+  getMistralApiKey,
+  getMistralModelId,
+  isTransientMistralError,
+} from "@/shared/server/mistral";
+import type { ChatCompletionRequestMessage } from "@/shared/server/mistral";
 
 export const runtime = "nodejs";
 
@@ -24,8 +30,6 @@ type AiServiceRouteRequest = {
   fileName: string | null;
   mimeType: string | null;
 };
-
-const MODEL_ID = "openrouter/free";
 
 const SYSTEM_PROMPTS: Record<AiServiceActionId, string> = {
   summarize: [
@@ -101,20 +105,14 @@ function buildSystemPrompt(action: AiServiceActionId, fileName: string | null, m
 function buildErrorMessage(error: unknown): string {
   console.error("AI Service error:", error);
 
-  if (error instanceof openRouterErrors.UnauthorizedResponseError) {
-    return "OpenRouter authentication failed. Check OPENROUTER_API_KEY.";
-  }
+  const providerMessage = buildMistralErrorMessage(error);
 
-  if (error instanceof openRouterErrors.TooManyRequestsResponseError) {
+  if (providerMessage === "Mistral rate limit hit. Try again in a moment.") {
     return "Rate limit reached. Try again in a moment.";
   }
 
-  if (
-    error instanceof openRouterErrors.BadRequestResponseError ||
-    error instanceof openRouterErrors.InternalServerResponseError ||
-    error instanceof openRouterErrors.OpenRouterError
-  ) {
-    return "OpenRouter request failed.";
+  if (providerMessage !== "Unexpected Mistral error.") {
+    return providerMessage;
   }
 
   return "Unexpected AI service error.";
@@ -135,10 +133,11 @@ export async function POST(request: Request) {
 
     const body = validated as AiServiceRouteRequest;
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = getMistralApiKey();
+    const modelId = getMistralModelId();
 
     if (!apiKey) {
-      return new Response("OPENROUTER_API_KEY is not configured on the server.", { status: 500 });
+      return new Response("MISTRAL_API_KEY is not configured on the server.", { status: 500 });
     }
 
     const systemPrompt = buildSystemPrompt(body.action, body.fileName, body.mimeType);
@@ -147,26 +146,34 @@ export async function POST(request: Request) {
       ? `${body.prompt}\n\n---\n\n${body.content}`
       : body.prompt;
 
-    const client = new OpenRouter({ apiKey });
+    const client = createMistralClient(apiKey);
+
+    const messages: ChatCompletionRequestMessage[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ];
 
     let stream;
 
     try {
-      stream = await client.chat.send({
-        chatGenerationParams: {
-          model: MODEL_ID,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          temperature: 0.3,
-          stream: true,
-          provider: {
-            allowFallbacks: true,
-          },
+      stream = await client.chat.stream({
+        model: modelId,
+        messages,
+        temperature: 0.3,
+        responseFormat: {
+          type: "text",
         },
       });
     } catch (providerError) {
+      if (isTransientMistralError(providerError)) {
+        return new Response("Mistral is temporarily unavailable. Try again in a moment.", {
+          status: 503,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+          },
+        });
+      }
+
       const message = buildErrorMessage(providerError);
 
       return new Response(message, {
@@ -183,8 +190,8 @@ export async function POST(request: Request) {
       new ReadableStream({
         async start(controller) {
           try {
-            for await (const chunk of stream) {
-              const delta = chunk.choices[0]?.delta?.content;
+            for await (const event of stream) {
+              const delta = extractMistralStreamText(event);
 
               if (delta) {
                 controller.enqueue(encoder.encode(delta));

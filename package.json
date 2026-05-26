@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@openrouter/sdk": "^0.10.2",
+    "@mistralai/mistralai": "^2.2.5",
     "@types/dompurify": "^3.0.5",
     "@vvo/tzdb": "^6.198.0",
     "clsx": "^2.1.1",

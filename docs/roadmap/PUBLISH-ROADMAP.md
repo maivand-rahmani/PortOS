@@ -77,7 +77,7 @@
 
 **Files:** All 5 API routes
 
-**Issue:** Zero rate limiting, throttling, or abuse mitigation on any API route. The AI routes proxy to a paid upstream (OpenRouter). The docs/blog routes use readFileSync and can be used for server-side DoS.
+**Issue:** Zero rate limiting, throttling, or abuse mitigation on any API route. The AI routes proxy to a paid upstream (Mistral AI). The docs/blog routes use readFileSync and can be used for server-side DoS.
 
 **Fix:**
 1. Create `src/middleware.ts` with IP-based rate limiting

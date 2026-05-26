@@ -140,7 +140,7 @@ he will answer as me not as a ai agent and will be able to open other apps on co
   - Can answer questions about projects and personal portfolio
   - Opens other apps on command (e.g., `open terminal`)
 - **Integration:**
-  - Connected to OpenRouter model
+  - Connected to Mistral AI model
   - Registered in App Registry
   - Uses Project Context Loader to pre-load documents
   - Interacts with Process Manager to open apps on command

@@ -164,7 +164,7 @@
   - [x] (easy) blog (personal blog reader)
   - [x] (easy) contact (contact form and info)
   - [x] (hard) AI agent (interactive assistant app that answers from project/profile context and can open apps)
-    * description: This app will be an AI assistant that can read the project documentation and answer questions about the project, as well as perform simple tasks like opening other apps. It will be integrated with the OS interface and will provide an interactive way for users to learn about the project and navigate the OS. it will to a ai model from openrouter and will read the `docs/project`
+    * description: This app will be an AI assistant that can read the project documentation and answer questions about the project, as well as perform simple tasks like opening other apps. It will be integrated with the OS interface and will provide an interactive way for users to learn about the project and navigate the OS. it will use a Mistral AI model and will read the `docs/project`
     `docs/maivand/info.json` folder for context to answer questions about the project and about my projects and portfolio.
   - [x] (easy) calculator (simple calculator app)
   - [x] (easy) notes (note-taking app)

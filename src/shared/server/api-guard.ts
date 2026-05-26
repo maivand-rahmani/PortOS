@@ -237,18 +237,23 @@ export function validateAgentRequest(body: unknown): ValidatedAgentRequest | nul
     bootProgress: typeof body.runtime.bootProgress === "number" ? body.runtime.bootProgress : undefined,
   } : undefined;
 
-  const requestedAction = (() => {
-    if (typeof body.requestedAction === "string") {
-      const sliced = body.requestedAction.slice(0, 120);
-      return isValidAgentAction(sliced) ? sliced : null;
-    }
-    if (body.requestedAction === null) {
+  let requestedAction: string | null | undefined;
+
+  if (typeof body.requestedAction === "string") {
+    const sliced = body.requestedAction.slice(0, 120);
+
+    if (!isValidAgentAction(sliced)) {
       return null;
     }
-    return undefined;
-  })();
 
-  if (requestedAction === null) {
+    requestedAction = sliced;
+  } else if (body.requestedAction === null) {
+    requestedAction = null;
+  } else {
+    requestedAction = undefined;
+  }
+
+  if (typeof body.requestedAction !== "undefined" && typeof requestedAction === "undefined") {
     return null;
   }
 
