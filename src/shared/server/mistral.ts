@@ -3,6 +3,7 @@ import type {
   ChatCompletionRequestMessage,
   CompletionEvent,
   ContentChunk,
+  ThinkChunk,
 } from "@mistralai/mistralai/models/components";
 import * as mistralErrors from "@mistralai/mistralai/models/errors";
 
@@ -42,9 +43,11 @@ export function createMistralClient(apiKey: string) {
   return new Mistral({ apiKey });
 }
 
-function extractThinkingText(chunks: Array<{ text?: string }>) {
+function extractThinkingText(chunks: ThinkChunk["thinking"]) {
   return chunks
-    .map((chunk) => (typeof chunk.text === "string" ? chunk.text : ""))
+    .map((chunk) =>
+      "text" in chunk && typeof chunk.text === "string" ? chunk.text : "",
+    )
     .join("");
 }
 

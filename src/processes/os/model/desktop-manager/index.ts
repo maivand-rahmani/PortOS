@@ -5,6 +5,7 @@ export {
 } from "./desktop-manager.types";
 
 export type {
+  CleanUpMode,
   DesktopIconMap,
   DesktopManagerState,
   DesktopRenameState,
